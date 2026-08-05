@@ -31,12 +31,18 @@ export default {
         },
 
         className() {
-            // `bg-dark` is near-black in light mode and near-invisible in dark mode,
-            // so the least important state ends up the loudest badge on the page.
-            // The subtle/emphasis tokens invert correctly with the active theme.
-            let className = (this.color === "dark")
-                ? "badge rounded-pill bg-secondary-subtle text-secondary-emphasis border"
-                : `badge rounded-pill bg-${this.color}`;
+            // Remap the shared status colours for presentation only, leaving
+            // common/util-common.ts untouched:
+            //   primary -> success  so that "active" reads green, not blue.
+            //   dark    -> subtle   because `bg-dark` is near-black in light mode
+            //                       and near-invisible in dark mode, which made the
+            //                       least important state the loudest badge.
+            const variant = {
+                primary: "bg-success",
+                dark: "bg-secondary-subtle text-secondary-emphasis border",
+            }[this.color] ?? `bg-${this.color}`;
+
+            let className = `badge rounded-pill ${variant}`;
 
             if (this.fixedWidth) {
                 className += " fixed-width";

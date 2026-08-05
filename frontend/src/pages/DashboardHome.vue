@@ -13,7 +13,7 @@
                         <div class="row">
                             <div class="col">
                                 <h3 class="fs-6 text-body-secondary text-uppercase">{{ $t("active") }}</h3>
-                                <span class="num text-primary">{{ activeNum }}</span>
+                                <span class="num text-success">{{ activeNum }}</span>
                             </div>
                             <div class="col">
                                 <h3 class="fs-6 text-body-secondary text-uppercase">{{ $t("exited") }}</h3>
