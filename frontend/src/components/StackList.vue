@@ -10,7 +10,6 @@
                     {{ $t("Select") }}
                 </button>
 
-                <div class="placeholder"></div>
                 <div class="search-wrapper">
                     <a v-if="searchText == ''" class="search-icon">
                         <font-awesome-icon icon="search" />
@@ -388,6 +387,8 @@ export default {
     height: calc(100vh - 150px);
     position: sticky;
     top: 10px;
+    // ~10% smaller than the body size; inherited by the rows and the header.
+    font-size: 0.9rem;
 }
 
 .small-padding {
@@ -399,9 +400,10 @@ export default {
     background-color: var(--bs-tertiary-bg);
     border-bottom: 1px solid var(--bs-border-color);
     border-radius: calc(var(--bs-border-radius) - 1px) calc(var(--bs-border-radius) - 1px) 0 0;
-    margin: -0.75rem;
-    margin-bottom: 0.75rem;
-    padding: 0.5rem 0.75rem;
+    // Cancels the .shadow-box padding so the header spans the full box width.
+    margin: -0.25rem;
+    margin-bottom: 0.5rem;
+    padding: 0.4rem 0.5rem;
 }
 
 .header-top {
@@ -418,10 +420,18 @@ export default {
 .search-wrapper {
     display: flex;
     align-items: center;
+    // Fill the header rather than sitting at its right edge.
+    flex: 1 1 auto;
+    min-width: 0;
+
+    form {
+        flex: 1 1 auto;
+        min-width: 0;
+    }
 }
 
 .search-icon {
-    padding: 10px;
+    padding: 0 8px 0 2px;
     color: var(--bs-secondary-color);
 
     // Clear filter button (X)
@@ -435,7 +445,7 @@ export default {
 }
 
 .search-input {
-    max-width: 15em;
+    width: 100%;
 }
 
 .stack-item {

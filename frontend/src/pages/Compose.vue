@@ -87,7 +87,7 @@
             </transition>
 
             <div v-if="stack.isManagedByDockge" class="row">
-                <div class="col-lg-6">
+                <div class="col-12">
                     <!-- General -->
                     <div v-if="isAdd">
                         <h4 class="fs-5 mb-2">{{ $t("general") }}</h4>
@@ -172,7 +172,7 @@
                         ></Terminal>
                     </div>
                 </div>
-                <div class="col-lg-6">
+                <div class="col-12">
                     <h4 class="fs-5 mb-2">{{ stack.composeFileName }}</h4>
 
                     <!-- YAML editor -->
