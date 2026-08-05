@@ -14,9 +14,11 @@
 
 <script>
 import { getContainerExecTerminalName } from "../../../common/util-common";
+import Terminal from "../components/Terminal.vue";
 
 export default {
     components: {
+        Terminal,
     },
     data() {
         return {

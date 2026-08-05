@@ -194,11 +194,15 @@ import { defineComponent } from "vue";
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
 import { parseDockerPort } from "../../../common/util-common";
 import DockerStat from "./DockerStat.vue";
+import ArrayInput from "./ArrayInput.vue";
+import ArraySelect from "./ArraySelect.vue";
 
 export default defineComponent({
     components: {
         FontAwesomeIcon,
-        DockerStat
+        DockerStat,
+        ArrayInput,
+        ArraySelect,
     },
     props: {
         name: {

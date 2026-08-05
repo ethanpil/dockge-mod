@@ -191,6 +191,12 @@ footer {
 .settings-menu {
     a {
         text-decoration: none !important;
+        color: var(--bs-body-color);
+    }
+
+    .active .menu-item,
+    a:hover .menu-item {
+        color: var(--bs-body-color);
     }
 
     .menu-item {

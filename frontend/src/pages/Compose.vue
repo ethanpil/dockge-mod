@@ -270,6 +270,10 @@ import {
 } from "../../../common/util-common";
 import NetworkInput from "../components/NetworkInput.vue";
 import Confirm from "../components/Confirm.vue";
+import Container from "../components/Container.vue";
+import Terminal from "../components/Terminal.vue";
+import Uptime from "../components/Uptime.vue";
+import ArrayInput from "../components/ArrayInput.vue";
 import dotenv from "dotenv";
 import { ref } from "vue";
 
@@ -294,6 +298,10 @@ export default {
         FontAwesomeIcon,
         CodeMirror,
         Confirm,
+        Container,
+        Terminal,
+        Uptime,
+        ArrayInput,
     },
     beforeRouteUpdate(to, from, next) {
         this.exitConfirm(next);

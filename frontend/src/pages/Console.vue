@@ -29,8 +29,11 @@
 </template>
 
 <script>
+import Terminal from "../components/Terminal.vue";
+
 export default {
     components: {
+        Terminal,
     },
     data() {
         return {
