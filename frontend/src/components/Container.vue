@@ -2,21 +2,21 @@
     <div class="shadow-box big-padding mb-3 container">
         <div class="row">
             <div class="col-5">
-                <h4>{{ name }}</h4>
+                <h4 class="fs-6 fw-semibold mb-1">{{ name }}</h4>
                 <div class="image mb-2">
                     <span class="me-1">{{ imageName }}:</span><span class="tag">{{ imageTag }}</span>
                 </div>
                 <div v-if="!isEditMode">
                     <span class="badge me-1" :class="bgStyle">{{ status }}</span>
 
-                    <a v-for="port in (ports ?? envsubstService.ports)" :key="port" :href="parsePort(port).url" target="_blank">
+                    <a v-for="port in (ports ?? envsubstService.ports)" :key="port" :href="parsePort(port).url" target="_blank" class="text-decoration-none">
                         <span class="badge me-1 bg-secondary">{{ parsePort(port).display }}</span>
                     </a>
                 </div>
             </div>
             <div class="col-7">
                 <div class="function">
-                    <div class="btn-group me-2" role="group">
+                    <div class="btn-group btn-group-sm me-2" role="group">
                         <router-link v-if="!isEditMode && (status === 'running' || status === 'healthy')" class="btn btn-normal" :to="terminalRouteLink" disabled="">
                             <font-awesome-icon icon="terminal" />
                             Bash
@@ -54,12 +54,12 @@
         </div>
 
         <div v-if="isEditMode" class="mt-2">
-            <button class="btn btn-normal me-2" @click="showConfig = !showConfig">
+            <button class="btn btn-sm btn-normal me-2" @click="showConfig = !showConfig">
                 <font-awesome-icon icon="edit" />
                 {{ $t("Edit") }}
             </button>
-            <button v-if="false" class="btn btn-normal me-2">Rename</button>
-            <button class="btn btn-danger me-2" @click="remove">
+            <button v-if="false" class="btn btn-sm btn-normal me-2">Rename</button>
+            <button class="btn btn-sm btn-outline-danger me-2" @click="remove">
                 <font-awesome-icon icon="trash" />
                 {{ $t("deleteContainer") }}
             </button>
@@ -94,7 +94,7 @@
         <transition name="slide-fade" appear>
             <div v-if="isEditMode && showConfig" class="config mt-3">
                 <!-- Image -->
-                <div class="mb-4">
+                <div class="mb-3">
                     <label class="form-label">
                         {{ $t("dockerImage") }}
                     </label>
@@ -114,7 +114,7 @@
                 </div>
 
                 <!-- Ports -->
-                <div class="mb-4">
+                <div class="mb-3">
                     <label class="form-label">
                         {{ $tc("port", 2) }}
                     </label>
@@ -122,7 +122,7 @@
                 </div>
 
                 <!-- Volumes -->
-                <div class="mb-4">
+                <div class="mb-3">
                     <label class="form-label">
                         {{ $tc("volume", 2) }}
                     </label>
@@ -130,7 +130,7 @@
                 </div>
 
                 <!-- Restart Policy -->
-                <div class="mb-4">
+                <div class="mb-3">
                     <label class="form-label">
                         {{ $t("restartPolicy") }}
                     </label>
@@ -143,7 +143,7 @@
                 </div>
 
                 <!-- Environment Variables -->
-                <div class="mb-4">
+                <div class="mb-3">
                     <label class="form-label">
                         {{ $tc("environmentVariable", 2) }}
                     </label>
@@ -151,7 +151,7 @@
                 </div>
 
                 <!-- Container Name -->
-                <div v-if="false" class="mb-4">
+                <div v-if="false" class="mb-3">
                     <label class="form-label">
                         {{ $t("containerName") }}
                     </label>
@@ -165,7 +165,7 @@
                 </div>
 
                 <!-- Network -->
-                <div class="mb-4">
+                <div class="mb-3">
                     <label class="form-label">
                         {{ $tc("network", 2) }}
                     </label>
@@ -178,7 +178,7 @@
                 </div>
 
                 <!-- Depends on -->
-                <div class="mb-4">
+                <div class="mb-3">
                     <label class="form-label">
                         {{ $t("dependsOn") }}
                     </label>
@@ -384,14 +384,13 @@ export default defineComponent({
 </script>
 
 <style scoped lang="scss">
-@import "../styles/vars";
-
 .container {
     .image {
         font-size: 0.8rem;
-        color: #6c757d;
+        color: var(--bs-secondary-color);
+
         .tag {
-            color: #33383b;
+            color: var(--bs-body-color);
         }
     }
 
@@ -406,7 +405,7 @@ export default defineComponent({
 
     .stats {
         font-size: 0.8rem;
-        color: #6c757d;
+        color: var(--bs-secondary-color);
     }
 }
 </style>

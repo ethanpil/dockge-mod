@@ -1,11 +1,11 @@
 <template>
     <transition name="slide-fade" appear>
         <div v-if="!processing">
-            <h1 class="mb-3">{{ $t("console") }}</h1>
+            <h1 class="fs-3 mb-3">{{ $t("console") }}</h1>
 
             <Terminal v-if="enableConsole" class="terminal" :rows="20" mode="mainTerminal" name="console" :endpoint="endpoint"></Terminal>
 
-            <div v-else class="alert alert-warning shadow-box" role="alert">
+            <div v-else class="alert alert-warning" role="alert">
                 <h4 class="alert-heading">{{ $t("Console is not enabled") }}</h4>
                 <i18n-t keypath="ConsoleNotEnabledMSG1" tag="p">
                     <template #docker><code>{{ $t('dockerCode') }}</code></template>

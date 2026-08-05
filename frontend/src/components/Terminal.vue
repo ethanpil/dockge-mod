@@ -376,6 +376,12 @@ export default {
 </script>
 
 <style scoped lang="scss">
+.shadow-box {
+    // xterm renders on black in both app themes
+    background-color: #000;
+    padding: 0.5rem;
+}
+
 .main-terminal {
     height: 100%;
 }

@@ -80,7 +80,7 @@ export default {
 
 .stats {
     font-size: 0.8rem;
-    color: #6c757d;
+    color: var(--bs-secondary-color);
 }
 
 .stat-label {

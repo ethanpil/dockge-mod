@@ -1,7 +1,7 @@
 <template>
     <div>
-        <div v-if="settingsLoaded" class="my-4">
-            <form class="my-4" autocomplete="off" @submit.prevent="saveGeneral">
+        <div v-if="settingsLoaded" class="my-3">
+            <form class="my-3" autocomplete="off" @submit.prevent="saveGeneral">
                 <div class="shadow-box mb-3 editor-box edit-mode">
                     <code-mirror
                         ref="editor"
@@ -16,7 +16,7 @@
                     />
                 </div>
 
-                <div class="my-4">
+                <div class="my-3">
                     <!-- Save Button -->
                     <div>
                         <button class="btn btn-primary" type="submit">
@@ -91,8 +91,8 @@ export default {
     font-family: 'JetBrains Mono', monospace;
     font-size: 14px;
 
-    &.edit-mode {
-        background-color: #2c2f38 !important;
-    }
+    // CodeMirror uses the dracula theme in both app themes
+    background-color: #282a36;
+    color: #f8f8f2;
 }
 </style>

@@ -102,25 +102,21 @@ export default {
 </script>
 
 <style lang="scss" scoped>
-@import "../styles/vars.scss";
-
 .list-group {
-    background-color: $dark-bg2;
-
     li {
         display: flex;
         align-items: center;
-        padding: 10px 0 10px 10px;
+        padding: 6px 0 6px 10px;
 
         .domain-input {
             flex-grow: 1;
-            background-color: $dark-bg2;
+            background-color: transparent;
             border: none;
-            color: $dark-font-color;
+            color: var(--bs-body-color);
             outline: none;
 
             &::placeholder {
-                color: #1d2634;
+                color: var(--bs-secondary-color);
             }
         }
     }

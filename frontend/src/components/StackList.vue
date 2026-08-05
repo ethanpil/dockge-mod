@@ -19,7 +19,7 @@
                         <font-awesome-icon icon="times" />
                     </a>
                     <form>
-                        <input v-model="searchText" class="form-control search-input" autocomplete="off" />
+                        <input v-model="searchText" class="form-control form-control-sm search-input" autocomplete="off" />
                     </form>
                 </div>
             </div>
@@ -388,8 +388,6 @@ export default {
 </script>
 
 <style lang="scss" scoped>
-@import "../styles/vars.scss";
-
 .shadow-box {
     height: calc(100vh - 150px);
     position: sticky;
@@ -402,16 +400,12 @@ export default {
 }
 
 .list-header {
-    border-bottom: 1px solid #dee2e6;
-    border-radius: 10px 10px 0 0;
-    margin: -10px;
-    margin-bottom: 10px;
-    padding: 10px;
-
-    .dark & {
-        background-color: $dark-header-bg;
-        border-bottom: 0;
-    }
+    background-color: var(--bs-tertiary-bg);
+    border-bottom: 1px solid var(--bs-border-color);
+    border-radius: calc(var(--bs-border-radius) - 1px) calc(var(--bs-border-radius) - 1px) 0 0;
+    margin: -0.75rem;
+    margin-bottom: 0.75rem;
+    padding: 0.5rem 0.75rem;
 }
 
 .header-top {
@@ -425,14 +419,6 @@ export default {
     align-items: center;
 }
 
-@media (max-width: 770px) {
-    .list-header {
-        margin: -20px;
-        margin-bottom: 10px;
-        padding: 5px;
-    }
-}
-
 .search-wrapper {
     display: flex;
     align-items: center;
@@ -440,12 +426,11 @@ export default {
 
 .search-icon {
     padding: 10px;
-    color: #c0c0c0;
+    color: var(--bs-secondary-color);
 
     // Clear filter button (X)
     svg[data-icon="times"] {
         cursor: pointer;
-        transition: all ease-in-out 0.1s;
 
         &:hover {
             opacity: 0.5;
@@ -485,7 +470,7 @@ export default {
     cursor: pointer;
     font-size: 14px;
     font-weight: 500;
-    color: $dark-font-color3;
+    color: var(--bs-secondary-color);
     padding-left: 10px;
     padding-right: 10px;
     display: flex;

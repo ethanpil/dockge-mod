@@ -132,26 +132,31 @@ export default {
     text-decoration: none;
     display: flex;
     align-items: center;
-    min-height: 52px;
-    border-radius: 10px;
-    transition: all ease-in-out 0.15s;
+    min-height: 40px;
+    border-radius: var(--bs-border-radius);
     width: 100%;
-    padding: 5px 8px;
+    padding: 2px 8px;
+    color: var(--bs-body-color);
+
     &.disabled {
         opacity: 0.3;
     }
+
     &:hover {
-        background-color: $highlight-white;
+        background-color: var(--bs-tertiary-bg);
     }
+
     &.active {
-        background-color: #cdf8f4;
+        background-color: var(--bs-primary-bg-subtle);
     }
+
     .title {
         margin-top: -4px;
     }
+
     .endpoint {
         font-size: 12px;
-        color: $dark-font-color3;
+        color: var(--bs-secondary-color);
     }
 }
 

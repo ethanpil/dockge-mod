@@ -1,6 +1,6 @@
 <template>
     <div>
-        <div class="my-4">
+        <div class="my-3">
             <label for="language" class="form-label">
                 {{ $t("Language") }}
             </label>
@@ -14,11 +14,11 @@
                 </option>
             </select>
         </div>
-        <div v-show="true" class="my-4">
+        <div v-show="true" class="my-3">
             <label for="timezone" class="form-label">{{ $t("Theme") }}</label>
             <div>
                 <div
-                    class="btn-group"
+                    class="btn-group btn-group-sm"
                     role="group"
                     aria-label="Basic checkbox toggle button group"
                 >
@@ -73,22 +73,4 @@ export default {
 </script>
 
 <style lang="scss" scoped>
-@import "../../styles/vars.scss";
-
-.btn-check:active + .btn-outline-primary,
-.btn-check:checked + .btn-outline-primary,
-.btn-check:hover + .btn-outline-primary {
-    color: #fff;
-
-    .dark & {
-        color: #000;
-    }
-}
-
-.dark {
-    .list-group-item {
-        background-color: $dark-bg2;
-        color: $dark-font-color;
-    }
-}
 </style>

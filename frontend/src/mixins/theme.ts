@@ -40,6 +40,7 @@ export default defineComponent({
         theme(to, from) {
             document.body.classList.remove(from);
             document.body.classList.add(this.theme);
+            document.documentElement.setAttribute("data-bs-theme", this.theme);
             this.updateThemeColorMeta();
         },
 
@@ -60,6 +61,7 @@ export default defineComponent({
         }
 
         document.body.classList.add(this.theme);
+        document.documentElement.setAttribute("data-bs-theme", this.theme);
         this.updateThemeColorMeta();
     },
 
@@ -70,9 +72,9 @@ export default defineComponent({
          */
         updateThemeColorMeta() {
             if (this.theme === "dark") {
-                document.querySelector("#theme-color").setAttribute("content", "#161B22");
+                document.querySelector("#theme-color").setAttribute("content", "#212529");
             } else {
-                document.querySelector("#theme-color").setAttribute("content", "#5cdd8b");
+                document.querySelector("#theme-color").setAttribute("content", "#ffffff");
             }
         }
     }

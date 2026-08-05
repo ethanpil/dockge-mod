@@ -47,7 +47,7 @@
                                     <input v-model="token" type="text" maxlength="6" class="form-control" autocomplete="one-time-code" required>
                                     <button class="btn btn-outline-primary" type="button" @click="verifyToken()">{{ $t("Verify Token") }}</button>
                                 </div>
-                                <p v-show="tokenValid" class="mt-2" style="color: green;">{{ $t("tokenValidSettingsMsg") }}</p>
+                                <p v-show="tokenValid" class="mt-2 text-success">{{ $t("tokenValidSettingsMsg") }}</p>
                             </div>
                         </div>
                     </div>
@@ -193,11 +193,4 @@ export default {
 </script>
 
 <style lang="scss" scoped>
-@import "../styles/vars.scss";
-
-.dark {
-    .modal-dialog .form-text, .modal-dialog p {
-        color: $dark-font-color;
-    }
-}
 </style>

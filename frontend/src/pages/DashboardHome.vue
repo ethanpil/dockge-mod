@@ -1,7 +1,7 @@
 <template>
     <transition ref="tableContainer" name="slide-fade" appear>
         <div v-if="$route.name === 'DashboardHome'">
-            <h1 class="mb-3">
+            <h1 class="fs-3 mb-3">
                 {{ $t("home") }}
             </h1>
 
@@ -9,36 +9,36 @@
                 <!-- Left -->
                 <div class="col-md-7">
                     <!-- Stats -->
-                    <div class="shadow-box big-padding text-center mb-4">
+                    <div class="shadow-box big-padding text-center mb-3">
                         <div class="row">
                             <div class="col">
-                                <h3>{{ $t("active") }}</h3>
-                                <span class="num active">{{ activeNum }}</span>
+                                <h3 class="fs-6 text-body-secondary text-uppercase">{{ $t("active") }}</h3>
+                                <span class="num text-primary">{{ activeNum }}</span>
                             </div>
                             <div class="col">
-                                <h3>{{ $t("exited") }}</h3>
-                                <span class="num exited">{{ exitedNum }}</span>
+                                <h3 class="fs-6 text-body-secondary text-uppercase">{{ $t("exited") }}</h3>
+                                <span class="num text-danger">{{ exitedNum }}</span>
                             </div>
                             <div class="col">
-                                <h3>{{ $t("inactive") }}</h3>
-                                <span class="num inactive">{{ inactiveNum }}</span>
+                                <h3 class="fs-6 text-body-secondary text-uppercase">{{ $t("inactive") }}</h3>
+                                <span class="num text-secondary">{{ inactiveNum }}</span>
                             </div>
                         </div>
                     </div>
 
                     <!-- Docker Run -->
-                    <h2 class="mb-3">{{ $t("Docker Run") }}</h2>
+                    <h2 class="fs-5 mb-2">{{ $t("Docker Run") }}</h2>
                     <div class="mb-3">
-                        <textarea id="name" v-model="dockerRunCommand" type="text" class="form-control docker-run shadow-box" required placeholder="docker run ..."></textarea>
+                        <textarea id="name" v-model="dockerRunCommand" type="text" class="form-control docker-run" required placeholder="docker run ..."></textarea>
                     </div>
 
-                    <button class="btn-normal btn mb-4" @click="convertDockerRun">{{ $t("Convert to Compose") }}</button>
+                    <button class="btn-normal btn btn-sm mb-3" @click="convertDockerRun">{{ $t("Convert to Compose") }}</button>
                 </div>
                 <!-- Right -->
                 <div class="col-md-5">
                     <!-- Agent List -->
                     <div class="shadow-box big-padding">
-                        <h4 class="mb-3">{{ $tc("dockgeAgent", 2) }} <span class="badge bg-warning" style="font-size: 12px;">beta</span></h4>
+                        <h4 class="fs-5 mb-3">{{ $tc("dockgeAgent", 2) }} <span class="badge bg-warning">beta</span></h4>
 
                         <div v-for="(agentItem, endpoint) in $root.agentList" :key="endpoint" class="mb-3 agent">
                             <!-- Agent Status -->
@@ -56,25 +56,27 @@
                             </template>
 
                             <!-- Edit Name  -->
-                            <font-awesome-icon v-if="agentItem.name !== ''" icon="pen-to-square" @click="showEditAgentNameDialog[agentItem.name] = !showEditAgentNameDialog[agentItem.Name]" />
-
-                            <!-- Edit Dialog -->
-                            <BModal v-model="showEditAgentNameDialog[agentItem.name]" :no-close-on-backdrop="true" :close-on-esc="true" :okTitle="$t('Update Name')" okVariant="info" @ok="updateName(agentItem.url, agentItem.updatedName)">
-                                <label for="Update Name" class="form-label">Current value: {{ $t(agentItem.name) }}</label>
-                                <input id="updatedName" v-model="agentItem.updatedName" type="text" class="form-control" optional>
-                            </BModal>
+                            <font-awesome-icon v-if="agentItem.name !== ''" class="action" icon="pen-to-square" @click="showEditAgentName(agentItem)" />
 
                             <!-- Remove Button -->
-                            <font-awesome-icon v-if="endpoint !== ''" class="ms-2 remove-agent" icon="trash" @click="showRemoveAgentDialog[agentItem.url] = !showRemoveAgentDialog[agentItem.url]" />
-
-                            <!-- Remove Agent Dialog -->
-                            <BModal v-model="showRemoveAgentDialog[agentItem.url]" :okTitle="$t('removeAgent')" okVariant="danger" @ok="removeAgent(agentItem.url)">
-                                <p>{{ agentItem.url }}</p>
-                                {{ $t("removeAgentMsg") }}
-                            </BModal>
+                            <font-awesome-icon v-if="endpoint !== ''" class="ms-2 remove-agent action" icon="trash" @click="showRemoveAgent(agentItem.url)" />
                         </div>
 
-                        <button v-if="!showAgentForm" class="btn btn-normal" @click="showAgentForm = !showAgentForm">{{ $t("addAgent") }}</button>
+                        <!-- Edit Dialog -->
+                        <Confirm ref="editAgentNameDialog" :yes-text="$t('Update Name')" :no-text="$t('cancel')" @yes="updateName(editingAgent.url, editingAgent.updatedName)">
+                            <template v-if="editingAgent">
+                                <label for="updatedName" class="form-label">Current value: {{ $t(editingAgent.name) }}</label>
+                                <input id="updatedName" v-model="editingAgent.updatedName" type="text" class="form-control" optional>
+                            </template>
+                        </Confirm>
+
+                        <!-- Remove Agent Dialog -->
+                        <Confirm ref="removeAgentDialog" btn-style="btn-danger" :yes-text="$t('removeAgent')" :no-text="$t('cancel')" @yes="removeAgent(removingAgentUrl)">
+                            <p>{{ removingAgentUrl }}</p>
+                            {{ $t("removeAgentMsg") }}
+                        </Confirm>
+
+                        <button v-if="!showAgentForm" class="btn btn-normal btn-sm" @click="showAgentForm = !showAgentForm">{{ $t("addAgent") }}</button>
 
                         <!-- Add Agent Form -->
                         <form v-if="showAgentForm" @submit.prevent="addAgent">
@@ -113,10 +115,11 @@
 
 <script>
 import { statusNameShort } from "../../../common/util-common";
+import Confirm from "../components/Confirm.vue";
 
 export default {
     components: {
-
+        Confirm,
     },
     props: {
         calculatedHeight: {
@@ -137,8 +140,8 @@ export default {
             displayedRecords: [],
             dockerRunCommand: "",
             showAgentForm: false,
-            showRemoveAgentDialog: {},
-            showEditAgentNameDialog: {},
+            editingAgent: null,
+            removingAgentUrl: null,
             connectingAgent: false,
             agent: {
                 url: "http://",
@@ -186,6 +189,16 @@ export default {
     },
 
     methods: {
+
+        showEditAgentName(agentItem) {
+            this.editingAgent = agentItem;
+            this.$refs.editAgentNameDialog.show();
+        },
+
+        showRemoveAgent(url) {
+            this.removingAgentUrl = url;
+            this.$refs.removeAgentDialog.show();
+        },
 
         addAgent() {
             this.connectingAgent = true;
@@ -324,53 +337,20 @@ export default {
 </script>
 
 <style lang="scss" scoped>
-@import "../styles/vars";
-
 .num {
-    font-size: 30px;
-
+    font-size: 1.75rem;
     font-weight: bold;
     display: block;
-
-    &.active {
-        color: $primary;
-    }
-
-    &.exited {
-        color: $danger;
-    }
-}
-
-.shadow-box {
-    padding: 20px;
-}
-
-table {
-    font-size: 14px;
-
-    tr {
-        transition: all ease-in-out 0.2ms;
-    }
-
-    @media (max-width: 550px) {
-        table-layout: fixed;
-        overflow-wrap: break-word;
-    }
 }
 
 .docker-run {
-    border: none;
     font-family: 'JetBrains Mono', monospace;
-    font-size: 15px;
-}
-
-.first-row .shadow-box {
-
+    font-size: 14px;
 }
 
 .remove-agent {
     cursor: pointer;
-    color: rgba(255, 255, 255, 0.3);
+    color: var(--bs-danger);
 }
 
 .agent {
@@ -378,5 +358,4 @@ table {
         text-decoration: none;
     }
 }
-
 </style>

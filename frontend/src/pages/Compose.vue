@@ -1,8 +1,8 @@
 <template>
     <transition name="slide-fade" appear>
         <div>
-            <h1 v-if="isAdd" class="mb-3">{{ $t("compose") }}</h1>
-            <h1 v-else class="mb-3">
+            <h1 v-if="isAdd" class="fs-3 mb-3">{{ $t("compose") }}</h1>
+            <h1 v-else class="fs-3 mb-3">
                 <Uptime :stack="globalStack" :pill="true" /> {{ stack.name }}
                 <span v-if="$root.agentCount > 1 && endpoint !== ''" class="agent-name">
                     ({{ endpointDisplay }})
@@ -10,7 +10,7 @@
             </h1>
 
             <div v-if="stack.isManagedByDockge" class="mb-3">
-                <div class="btn-group me-2" role="group">
+                <div class="btn-group btn-group-sm me-2" role="group">
                     <button v-if="isEditMode" class="btn btn-primary" :disabled="processing" @click="deployStack">
                         <font-awesome-icon icon="rocket" class="me-1" />
                         {{ $t("deployStack") }}
@@ -31,7 +31,7 @@
                         {{ $t("startStack") }}
                     </button>
 
-                    <button v-if="!isEditMode && active" class="btn btn-normal " :disabled="processing" @click="restartStack">
+                    <button v-if="!isEditMode && active" class="btn btn-normal" :disabled="processing" @click="restartStack">
                         <font-awesome-icon icon="rotate" class="me-1" />
                         {{ $t("restartStack") }}
                     </button>
@@ -46,16 +46,21 @@
                         {{ $t("stopStack") }}
                     </button>
 
-                    <BDropdown right text="" variant="normal">
-                        <BDropdownItem @click="downStack">
-                            <font-awesome-icon icon="stop" class="me-1" />
-                            {{ $t("downStack") }}
-                        </BDropdownItem>
-                    </BDropdown>
+                    <button type="button" class="btn btn-normal dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" aria-expanded="false">
+                        <span class="visually-hidden">Toggle Dropdown</span>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li>
+                            <button class="dropdown-item" @click="downStack">
+                                <font-awesome-icon icon="stop" class="me-1" />
+                                {{ $t("downStack") }}
+                            </button>
+                        </li>
+                    </ul>
                 </div>
 
-                <button v-if="isEditMode && !isAdd" class="btn btn-normal" :disabled="processing" @click="discardStack">{{ $t("discardStack") }}</button>
-                <button v-if="!isEditMode" class="btn btn-danger" :disabled="processing" @click="showDeleteDialog = !showDeleteDialog">
+                <button v-if="isEditMode && !isAdd" class="btn btn-sm btn-normal" :disabled="processing" @click="discardStack">{{ $t("discardStack") }}</button>
+                <button v-if="!isEditMode" class="btn btn-sm btn-outline-danger" :disabled="processing" @click="$refs.confirmDeleteStack.show()">
                     <font-awesome-icon icon="trash" class="me-1" />
                     {{ $t("deleteStack") }}
                 </button>
@@ -63,7 +68,7 @@
 
             <!-- URLs -->
             <div v-if="urls.length > 0" class="mb-3">
-                <a v-for="(urlItem, index) in urls" :key="index" target="_blank" :href="urlItem.url">
+                <a v-for="(urlItem, index) in urls" :key="index" target="_blank" :href="urlItem.url" class="text-decoration-none">
                     <span class="badge bg-secondary me-2">{{ urlItem.display }}</span>
                 </a>
             </div>
@@ -85,7 +90,7 @@
                 <div class="col-lg-6">
                     <!-- General -->
                     <div v-if="isAdd">
-                        <h4 class="mb-3">{{ $t("general") }}</h4>
+                        <h4 class="fs-5 mb-2">{{ $t("general") }}</h4>
                         <div class="shadow-box big-padding mb-3">
                             <!-- Stack Name -->
                             <div>
@@ -107,7 +112,7 @@
                     </div>
 
                     <!-- Containers -->
-                    <h4 class="mb-3">{{ $tc("container", 2) }}</h4>
+                    <h4 class="fs-5 mb-2">{{ $tc("container", 2) }}</h4>
 
                     <div v-if="isEditMode" class="input-group mb-3">
                         <input
@@ -140,7 +145,7 @@
 
                     <!-- General -->
                     <div v-if="isEditMode">
-                        <h4 class="mb-3">{{ $t("extra") }}</h4>
+                        <h4 class="fs-5 mb-2">{{ $t("extra") }}</h4>
                         <div class="shadow-box big-padding mb-3">
                             <!-- URLs -->
                             <div class="mb-4">
@@ -154,7 +159,7 @@
 
                     <!-- Combined Terminal Output -->
                     <div v-show="!isEditMode">
-                        <h4 class="mb-3">{{ $t("terminal") }}</h4>
+                        <h4 class="fs-5 mb-2">{{ $t("terminal") }}</h4>
                         <Terminal
                             ref="combinedTerminal"
                             class="mb-3 terminal"
@@ -167,7 +172,7 @@
                     </div>
                 </div>
                 <div class="col-lg-6">
-                    <h4 class="mb-3">{{ stack.composeFileName }}</h4>
+                    <h4 class="fs-5 mb-2">{{ stack.composeFileName }}</h4>
 
                     <!-- YAML editor -->
                     <div class="shadow-box mb-3 editor-box" :class="{'edit-mode' : isEditMode}">
@@ -190,7 +195,7 @@
 
                     <!-- ENV editor -->
                     <div v-if="isEditMode">
-                        <h4 class="mb-3">.env</h4>
+                        <h4 class="fs-5 mb-2">.env</h4>
                         <div class="shadow-box mb-3 editor-box" :class="{'edit-mode' : isEditMode}">
                             <code-mirror
                                 ref="editor"
@@ -210,13 +215,13 @@
                     <div v-if="isEditMode">
                         <!-- Volumes -->
                         <div v-if="false">
-                            <h4 class="mb-3">{{ $tc("volume", 2) }}</h4>
+                            <h4 class="fs-5 mb-2">{{ $tc("volume", 2) }}</h4>
                             <div class="shadow-box big-padding mb-3">
                             </div>
                         </div>
 
                         <!-- Networks -->
-                        <h4 class="mb-3">{{ $tc("network", 2) }}</h4>
+                        <h4 class="fs-5 mb-2">{{ $tc("network", 2) }}</h4>
                         <div class="shadow-box big-padding mb-3">
                             <NetworkInput />
                         </div>
@@ -238,9 +243,9 @@
             </div>
 
             <!-- Delete Dialog -->
-            <BModal v-model="showDeleteDialog" :cancelTitle="$t('cancel')" :okTitle="$t('deleteStack')" okVariant="danger" @ok="deleteDialog">
+            <Confirm ref="confirmDeleteStack" btn-style="btn-danger" :yes-text="$t('deleteStack')" :no-text="$t('cancel')" @yes="deleteDialog">
                 {{ $t("deleteStackMsg") }}
-            </BModal>
+            </Confirm>
         </div>
     </transition>
 </template>
@@ -263,8 +268,8 @@ import {
     PROGRESS_TERMINAL_ROWS,
     RUNNING
 } from "../../../common/util-common";
-import { BModal } from "bootstrap-vue-next";
 import NetworkInput from "../components/NetworkInput.vue";
+import Confirm from "../components/Confirm.vue";
 import dotenv from "dotenv";
 import { ref } from "vue";
 
@@ -288,7 +293,7 @@ export default {
         NetworkInput,
         FontAwesomeIcon,
         CodeMirror,
-        BModal,
+        Confirm,
     },
     beforeRouteUpdate(to, from, next) {
         this.exitConfirm(next);
@@ -340,7 +345,6 @@ export default {
             dockerStats: {},
             isEditMode: false,
             submitted: false,
-            showDeleteDialog: false,
             newContainerName: "",
             stopServiceStatusTimeout: false,
             stopDockerStatsTimeout: false,
@@ -847,8 +851,6 @@ export default {
 </script>
 
 <style scoped lang="scss">
-@import "../styles/vars.scss";
-
 .terminal {
     height: 200px;
 }
@@ -856,10 +858,14 @@ export default {
 .editor-box {
     font-family: 'JetBrains Mono', monospace;
     font-size: 14px;
+
+    // CodeMirror uses the dracula theme in both app themes
+    background-color: #282a36;
+    color: #f8f8f2;
 }
 
 .agent-name {
     font-size: 13px;
-    color: $dark-font-color3;
+    color: var(--bs-secondary-color);
 }
 </style>

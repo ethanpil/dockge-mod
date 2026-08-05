@@ -1,8 +1,8 @@
 <template>
     <div>
-        <form class="my-4" autocomplete="off" @submit.prevent="saveGeneral">
+        <form class="my-3" autocomplete="off" @submit.prevent="saveGeneral">
             <!-- Client side Timezone -->
-            <div v-if="false" class="mb-4">
+            <div v-if="false" class="mb-3">
                 <label for="timezone" class="form-label">
                     {{ $t("Display Timezone") }}
                 </label>
@@ -21,7 +21,7 @@
             </div>
 
             <!-- Server Timezone -->
-            <div v-if="false" class="mb-4">
+            <div v-if="false" class="mb-3">
                 <label for="timezone" class="form-label">
                     {{ $t("Server Timezone") }}
                 </label>
@@ -38,7 +38,7 @@
             </div>
 
             <!-- Primary Hostname -->
-            <div class="mb-4">
+            <div class="mb-3">
                 <label class="form-label" for="primaryBaseURL">
                     {{ $t("primaryHostname") }}
                 </label>

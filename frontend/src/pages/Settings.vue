@@ -1,6 +1,6 @@
 <template>
     <div>
-        <h1 v-show="show" class="mb-3">
+        <h1 v-show="show" class="fs-3 mb-3">
             {{ $t("Settings") }}
         </h1>
 
@@ -175,15 +175,13 @@ export default {
 </script>
 
 <style lang="scss" scoped>
-@import "../styles/vars.scss";
-
 .shadow-box-settings {
-    padding: 20px;
+    padding: 1rem;
     min-height: calc(100vh - 155px);
 }
 
 footer {
-    color: #aaa;
+    color: var(--bs-secondary-color);
     font-size: 13px;
     margin-top: 20px;
     padding-bottom: 30px;
@@ -196,60 +194,40 @@ footer {
     }
 
     .menu-item {
-        border-radius: 10px;
-        margin: 0.5em;
-        padding: 0.7em 1em;
+        border-radius: var(--bs-border-radius);
+        margin: 0.25em;
+        padding: 0.4em 0.8em;
         cursor: pointer;
         border-left-width: 0;
-        transition: all ease-in-out 0.1s;
     }
 
     .menu-item:hover {
-        background: $highlight-white;
-
-        .dark & {
-            background: $dark-header-bg;
-        }
+        background: var(--bs-tertiary-bg);
     }
 
     .active .menu-item {
-        background: $highlight-white;
-        border-left: 4px solid $primary;
+        background: var(--bs-primary-bg-subtle);
+        border-left: 3px solid var(--bs-primary);
         border-top-left-radius: 0;
         border-bottom-left-radius: 0;
-
-        .dark & {
-            background: $dark-header-bg;
-        }
     }
 }
 
 .settings-content {
     .settings-content-header {
-        width: calc(100% + 20px);
-        border-bottom: 1px solid #dee2e6;
-        border-radius: 0 10px 0 0;
-        margin-top: -20px;
-        margin-right: -20px;
-        padding: 12.5px 1em;
-        font-size: 26px;
-
-        .dark & {
-            background: $dark-header-bg;
-            border-bottom: 0;
-        }
+        border-bottom: 1px solid var(--bs-border-color);
+        margin-bottom: 0.75rem;
+        padding: 0.25rem 1em 0.75rem;
+        font-size: 1.25rem;
+        font-weight: 600;
 
         .mobile & {
             padding: 15px 0 0 0;
-
-            .dark & {
-                background-color: transparent;
-            }
         }
     }
 }
 
 .logout {
-    color: $danger !important;
+    color: var(--bs-danger) !important;
 }
 </style>
