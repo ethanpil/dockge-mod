@@ -64,31 +64,14 @@
                 {{ $t("deleteContainer") }}
             </button>
         </div>
-        <div v-else-if="statsInstances.length > 0" class="mt-2">
-            <div class="d-flex align-items-center gap-3">
-                <template v-if="!expandedStats">
-                    <div class="stats">
-                        {{ $t('CPU') }}: {{ statsInstances[0].CPUPerc }}
-                    </div>
-                    <div class="stats">
-                        {{ $t('memoryAbbreviated') }}: {{ statsInstances[0].MemUsage }}
-                    </div>
-                </template>
-                <div class="d-flex flex-grow-1 justify-content-end">
-                    <button class="btn btn-sm btn-normal" @click="expandedStats = !expandedStats">
-                        <font-awesome-icon :icon="expandedStats ? 'chevron-up' : 'chevron-down'" />
-                    </button>
-                </div>
-            </div>
-            <transition name="slide-fade" appear>
-                <div v-if="expandedStats" class="d-flex flex-column gap-3 mt-2">
-                    <DockerStat
-                        v-for="stat in statsInstances"
-                        :key="stat.Name"
-                        :stat="stat"
-                    />
-                </div>
-            </transition>
+        <div v-else-if="instances.length > 0" class="d-flex flex-column gap-3 mt-2">
+            <DockerStat
+                v-for="instance in instances"
+                :key="instance.name"
+                :name="instance.name"
+                :stat="instance.stat"
+                :info="instance"
+            />
         </div>
 
         <transition name="slide-fade" appear>
@@ -234,7 +217,6 @@ export default defineComponent({
     data() {
         return {
             showConfig: false,
-            expandedStats: false,
         };
     },
     computed: {
@@ -249,7 +231,7 @@ export default defineComponent({
 
         bgStyle() {
             if (this.status === "running" || this.status === "healthy") {
-                return "bg-primary";
+                return "bg-success";
             } else if (this.status === "unhealthy") {
                 return "bg-danger";
             } else {
@@ -339,15 +321,24 @@ export default defineComponent({
                 return "";
             }
         },
-        statsInstances() {
+        /**
+         * One entry per running or stopped container of this service, each carrying
+         * its uptime/address/ports plus the docker stats when the container is up.
+         */
+        instances() {
             if (!this.serviceStatus) {
                 return [];
             }
 
             return this.serviceStatus
-                .map(s => this.dockerStats[s.name])
-                .filter(s => !!s)
-                .sort((a, b) => a.Name.localeCompare(b.Name));
+                .map(s => ({
+                    name: s.name,
+                    uptime: s.uptime ?? "",
+                    ip: s.ip ?? "",
+                    ports: s.ports ?? "",
+                    stat: this.dockerStats?.[s.name] ?? null,
+                }))
+                .sort((a, b) => a.name.localeCompare(b.name));
         },
         status() {
             if (!this.serviceStatus) {

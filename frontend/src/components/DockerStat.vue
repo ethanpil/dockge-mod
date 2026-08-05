@@ -1,9 +1,38 @@
 <template>
     <div class="stats-container">
         <div class="stats-title">
-            {{ stat.Name }}
+            {{ name }}
         </div>
+
         <div class="d-flex justify-content-between stats gap-2 mt-1">
+            <div class="stat">
+                <div class="stat-label">
+                    {{ $t('uptime') }}
+                </div>
+                <div>
+                    {{ info.uptime || "-" }}
+                </div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">
+                    {{ $t('ipAddress') }}
+                </div>
+                <div>
+                    {{ info.ip || "-" }}
+                </div>
+            </div>
+            <div class="stat">
+                <div class="stat-label">
+                    {{ $tc('port', 2) }}
+                </div>
+                <div>
+                    {{ info.ports || "-" }}
+                </div>
+            </div>
+        </div>
+
+        <!-- Only running containers are reported by `docker stats`. -->
+        <div v-if="stat" class="d-flex justify-content-between stats gap-2 mt-1">
             <div class="stat">
                 <div class="stat-label">
                     {{ $t('CPU') }}
@@ -43,9 +72,17 @@
 <script>
 export default {
     props: {
+        name: {
+            type: String,
+            required: true
+        },
         stat: {
             type: Object,
-            required: true
+            default: null
+        },
+        info: {
+            type: Object,
+            default: () => ({})
         }
     },
 };
@@ -62,6 +99,8 @@ export default {
             display: flex;
             flex-direction: column;
             gap: 4px;
+            min-width: 0;
+            overflow-wrap: anywhere;
         }
 
         @container (width < 420px) {
@@ -69,6 +108,7 @@ export default {
 
             .stat {
                 flex-direction: row;
+                gap: 6px;
             }
 
             .stat-label::after {

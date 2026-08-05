@@ -511,6 +511,49 @@ export class Stack {
         terminal.start();
     }
 
+    /**
+     * Resolve container IP addresses with a single batched `docker inspect`.
+     * `docker compose ps` only reports the network name, not the address.
+     * Addresses are best effort: a stopped container simply has none.
+     * @param names container names to inspect
+     */
+    static async getContainerIPs(names : string[]) : Promise<Map<string, string>> {
+        const map = new Map<string, string>();
+
+        if (names.length === 0) {
+            return map;
+        }
+
+        const parse = (out : string) => {
+            for (const line of out.split("\n")) {
+                const [ rawName, rawIPs ] = line.split("\t");
+                if (!rawName) {
+                    continue;
+                }
+                const ip = (rawIPs ?? "").trim().split(/\s+/).filter(Boolean)[0] ?? "";
+                map.set(rawName.replace(/^\//, ""), ip);
+            }
+        };
+
+        const format = "{{.Name}}\t{{range .NetworkSettings.Networks}}{{.IPAddress}} {{end}}";
+
+        try {
+            const res = await childProcessAsync.spawn("docker", [ "inspect", "--format", format, ...names ], {
+                encoding: "utf-8",
+            });
+            parse(res.stdout?.toString() ?? "");
+        } catch (e) {
+            // A container removed between `ps` and `inspect` makes inspect exit
+            // non-zero, but the surviving containers are still printed.
+            const partial = (e as { stdout ?: string | Buffer })?.stdout;
+            if (partial) {
+                parse(partial.toString());
+            }
+        }
+
+        return map;
+    }
+
     async getServiceStatusList() {
         let statusList = new Map<string, Array<object>>();
 
@@ -526,14 +569,23 @@ export class Stack {
 
             let lines = res.stdout?.toString().split("\n");
 
-            const addLine = (obj: { Service: string, State: string, Name: string, Health: string }) => {
+            const names : string[] = [];
+
+            const addLine = (obj: { Service: string, State: string, Name: string, Health: string, Status: string, Ports: string }) => {
                 if (!statusList.has(obj.Service)) {
                     statusList.set(obj.Service, []);
                 }
                 statusList.get(obj.Service)?.push({
                     status: obj.Health || obj.State,
-                    name: obj.Name
+                    name: obj.Name,
+                    // `Status` is docker's human readable uptime, e.g. "Up 23 minutes".
+                    uptime: obj.Status ?? "",
+                    ports: obj.Ports ?? "",
+                    ip: "",
                 });
+                if (obj.Name) {
+                    names.push(obj.Name);
+                }
             };
 
             for (let line of lines) {
@@ -545,6 +597,16 @@ export class Stack {
                         addLine(obj);
                     }
                 } catch (e) {
+                }
+            }
+
+            // `docker compose ps` reports the network name but not the address, so the
+            // addresses come from a single batched inspect rather than one call each.
+            const ipMap = await Stack.getContainerIPs(names);
+            for (const entries of statusList.values()) {
+                for (const entry of entries) {
+                    const e = entry as { name : string, ip : string };
+                    e.ip = ipMap.get(e.name) ?? "";
                 }
             }
 
