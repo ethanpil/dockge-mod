@@ -188,6 +188,7 @@ export class TerminalSocketHandler extends AgentSocketHandler {
                     //log.debug("terminalInput", "Terminal found, writing to terminal.");
                     terminal.rows = rows;
                     terminal.cols = cols;
+                    terminal.sizedByClient = true;
                 } else {
                     throw new Error(`${terminalName} Terminal not found.`);
                 }

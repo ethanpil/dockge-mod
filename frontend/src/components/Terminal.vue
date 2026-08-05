@@ -281,6 +281,11 @@ export default {
                 window.addEventListener("resize", this.onResizeEvent);
             }
             this.terminalFitAddOn.fit();
+
+            // Push the fitted size to the backend. Without this the pty keeps the
+            // hardcoded default width until the user happens to resize the window,
+            // which makes output wrap mid-word on any wider viewport.
+            this.$root.emitAgent(this.endpoint, "terminalResize", this.name, this.terminal.rows, this.terminal.cols);
         },
         /**
          * Handles the resize event of the terminal component.

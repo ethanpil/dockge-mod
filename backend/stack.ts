@@ -479,8 +479,12 @@ export class Stack {
         const terminalName = getCombinedTerminalName(socket.endpoint, this.name);
         const terminal = Terminal.getOrCreateTerminal(this.server, terminalName, "docker", this.getComposeOptions("logs", "-f", "--tail", "100"), this.path);
         terminal.enableKeepAlive = true;
-        terminal.rows = COMBINED_TERMINAL_ROWS;
-        terminal.cols = COMBINED_TERMINAL_COLS;
+        // Only seed the fallback size. Applying it on every join would clobber the
+        // real size the client reported and force output back to the default width.
+        if (!terminal.sizedByClient) {
+            terminal.rows = COMBINED_TERMINAL_ROWS;
+            terminal.cols = COMBINED_TERMINAL_COLS;
+        }
         terminal.join(socket);
         terminal.start();
     }

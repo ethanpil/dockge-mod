@@ -31,6 +31,12 @@ export class Terminal {
     protected _cols : number = TERMINAL_COLS;
 
     public enableKeepAlive : boolean = false;
+
+    /**
+     * True once a client has reported its real terminal size, so that a later
+     * join does not reset the pty back to the hardcoded default width.
+     */
+    public sizedByClient : boolean = false;
     protected keepAliveInterval? : NodeJS.Timeout;
     protected kickDisconnectedClientsInterval? : NodeJS.Timeout;
 
