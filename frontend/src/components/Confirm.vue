@@ -63,9 +63,19 @@ export default {
         this.modal = new Modal(this.$refs.modal);
     },
     beforeUnmount() {
-        // The backdrop and body scroll-lock live on <body>; hide() is the only
-        // path that removes them if this component unmounts while shown.
-        this.modal?.hide();
+        if (!this.modal) {
+            return;
+        }
+
+        // The backdrop and body scroll-lock live on <body>, so they must be
+        // torn down here; dispose() also frees Bootstrap's per-element
+        // instance registry, which would otherwise leak on every unmount.
+        if (this.$refs.modal.classList.contains("show")) {
+            this.$refs.modal.addEventListener("hidden.bs.modal", () => this.modal.dispose(), { once: true });
+            this.modal.hide();
+        } else {
+            this.modal.dispose();
+        }
     },
     methods: {
         /**

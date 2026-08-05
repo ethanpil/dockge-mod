@@ -196,7 +196,8 @@ export default {
             this.editingAgent = {
                 url: agentItem.url,
                 name: agentItem.name,
-                updatedName: "",
+                // Prefill so confirming without typing keeps the current name
+                updatedName: agentItem.name,
             };
             this.$refs.editAgentNameDialog.show();
         },
@@ -241,13 +242,6 @@ export default {
         updateName(url, updatedName) {
             this.$root.getSocket().emit("updateAgent", url, updatedName, (res) => {
                 this.$root.toastRes(res);
-
-                if (res.ok) {
-                    this.showAgentForm = false;
-                    this.agent = {
-                        updatedName: "",
-                    };
-                }
             });
         },
 

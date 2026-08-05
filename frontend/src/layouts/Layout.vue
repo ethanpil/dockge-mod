@@ -114,12 +114,10 @@ export default {
 
     computed: {
 
-        // Theme or Mobile
         classes() {
-            const classes = {};
-            classes[this.$root.theme] = true;
-            classes["mobile"] = this.$root.isMobile;
-            return classes;
+            return {
+                mobile: this.$root.isMobile,
+            };
         },
 
         hasNewVersion() {

@@ -227,10 +227,6 @@ export default {
             return result;
         },
 
-        isDarkTheme() {
-            return document.body.classList.contains("dark");
-        },
-
         stackListStyle() {
             //let listHeaderHeight = 107;
             let listHeaderHeight = 48;

@@ -38,7 +38,6 @@ export default defineComponent({
         },
 
         theme(to, from) {
-            document.body.classList.remove(from);
             this.applyTheme();
         },
 
@@ -72,7 +71,6 @@ export default defineComponent({
          * @returns {void}
          */
         applyTheme() {
-            document.body.classList.add(this.theme);
             document.documentElement.setAttribute("data-bs-theme", this.theme);
             this.updateThemeColorMeta();
         },
