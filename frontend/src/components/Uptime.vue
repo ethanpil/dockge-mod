@@ -31,7 +31,12 @@ export default {
         },
 
         className() {
-            let className = `badge rounded-pill bg-${this.color}`;
+            // `bg-dark` is near-black in light mode and near-invisible in dark mode,
+            // so the least important state ends up the loudest badge on the page.
+            // The subtle/emphasis tokens invert correctly with the active theme.
+            let className = (this.color === "dark")
+                ? "badge rounded-pill bg-secondary-subtle text-secondary-emphasis border"
+                : `badge rounded-pill bg-${this.color}`;
 
             if (this.fixedWidth) {
                 className += " fixed-width";
@@ -45,11 +50,6 @@ export default {
 <style scoped>
 .badge {
     min-width: 62px;
-}
-
-/* bg-dark matches the stock dark-theme page background; keep the pill visible */
-.bg-dark {
-    border: 1px solid var(--bs-border-color);
 }
 
 .fixed-width {

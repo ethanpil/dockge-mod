@@ -111,8 +111,9 @@
                         </div>
                     </div>
 
-                    <!-- Containers -->
-                    <h4 class="fs-5 mb-2">{{ $tc("container", 2) }}</h4>
+                    <!-- Containers: hidden when there is nothing to list and nothing to add,
+                         otherwise the heading renders above empty space. -->
+                    <h4 v-if="hasContainers || isEditMode" class="fs-5 mb-2">{{ $tc("container", 2) }}</h4>
 
                     <div v-if="isEditMode" class="input-group mb-3">
                         <input
@@ -392,6 +393,10 @@ export default {
 
         isAdd() {
             return this.$route.path === "/compose" && !this.submitted;
+        },
+
+        hasContainers() {
+            return Object.keys(this.jsonConfig.services ?? {}).length > 0;
         },
 
         /**
