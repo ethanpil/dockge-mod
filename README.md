@@ -54,11 +54,9 @@ You must have this software and hardware:
 
 Debian Buster and Raspbian Buster are too old. Windows is not supported.
 
-To build the image, you must also have Node.js 22.14.0 or later.
-
 ## Install
 
-There is no published Docker image for dockge-mod. You must build the image on your own machine.
+There is no published Docker image for dockge-mod. You must build the image on your own machine. Docker does all the build steps, so you do not need Node.js on the host.
 
 ### Step 1. Get the Source Code
 
@@ -66,25 +64,15 @@ There is no published Docker image for dockge-mod. You must build the image on y
 git clone https://github.com/ethanpil/dockge-mod.git
 ```
 
-### Step 2. Build the Frontend
+### Step 2. Build the Image
 
-The Dockerfile does not build the frontend. You must build the frontend before you build the image.
-
-```bash
-cd dockge-mod && npm ci && npm run build:frontend
-```
-
-This command makes the `frontend-dist` directory. The Docker build step reads this directory.
-
-### Step 3. Build the Image
-
-This command downloads two base images from the upstream project. This is necessary, because the Dockerfile builds on them.
+The Dockerfile also builds the frontend. This step downloads two base images from the upstream project.
 
 ```bash
-docker build --target release -f docker/Dockerfile -t dockge-mod:local .
+cd dockge-mod && docker build --target release -f docker/Dockerfile -t dockge-mod:local .
 ```
 
-### Step 4. Make the Directories
+### Step 3. Make the Directories
 
 Make one directory for your stacks and one directory for dockge-mod.
 
@@ -92,7 +80,7 @@ Make one directory for your stacks and one directory for dockge-mod.
 mkdir -p /opt/stacks /opt/dockge-mod
 ```
 
-### Step 5. Make the Compose File
+### Step 4. Make the Compose File
 
 The two stack paths in the `volumes` section must be the same. If the two paths are different, dockge-mod writes your data to a wrong path.
 
@@ -121,7 +109,7 @@ services:
       - DOCKGE_STACKS_DIR=/opt/stacks
 ```
 
-### Step 6. Start the Server
+### Step 5. Start the Server
 
 ```bash
 cd /opt/dockge-mod && docker compose up -d
@@ -135,7 +123,7 @@ dockge-mod now runs on `http://localhost:5001`. Open this address in a browser. 
 
 dockge-mod can use the data of an existing Dockge installation. Do the steps that follow:
 
-1. Build the image. Read the install steps 1 to 3 above.
+1. Build the image. Read the install steps 1 and 2 above.
 2. Go to the directory that holds the compose file of Dockge.
 3. Stop Dockge with `docker compose down`.
 4. Make a copy of the `data` directory. Keep this copy in a safe place.
@@ -157,7 +145,7 @@ cd /path/to/your/dockge-mod/source && git pull
 ### Step 2. Build the Image Again
 
 ```bash
-npm ci && npm run build:frontend && docker build --target release -f docker/Dockerfile -t dockge-mod:local .
+docker build --target release -f docker/Dockerfile -t dockge-mod:local .
 ```
 
 ### Step 3. Start the New Image

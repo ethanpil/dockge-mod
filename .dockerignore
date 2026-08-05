@@ -9,7 +9,9 @@ tmp
 
 # Docker extra
 docker
-frontend
+# frontend/ is NOT ignored: the frontend_build stage compiles it inside the image.
+# frontend-dist is ignored so a stale local build cannot shadow that stage's output.
+frontend-dist
 .editorconfig
 .eslintrc.cjs
 .git

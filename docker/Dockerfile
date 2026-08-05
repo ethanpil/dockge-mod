@@ -13,6 +13,21 @@ COPY --chown=node:node  ./package-lock.json ./package-lock.json
 RUN npm ci --omit=dev
 
 ############################################
+# Frontend
+# Built here so that `docker build` alone produces a working image. Without this
+# stage the image starts and then exits on a missing frontend-dist/index.html.
+############################################
+FROM louislam/dockge:base AS frontend_build
+WORKDIR /app
+COPY --chown=node:node  ./package.json ./package.json
+COPY --chown=node:node  ./package-lock.json ./package-lock.json
+RUN npm ci
+COPY --chown=node:node  ./tsconfig.json ./tsconfig.json
+COPY --chown=node:node  ./common ./common
+COPY --chown=node:node  ./frontend ./frontend
+RUN npm run build:frontend
+
+############################################
 # ⭐ Main Image
 ############################################
 FROM louislam/dockge:base AS release
@@ -20,6 +35,8 @@ WORKDIR /app
 COPY --chown=node:node --from=build_healthcheck /app/extra/healthcheck /app/extra/healthcheck
 COPY --from=build /app/node_modules /app/node_modules
 COPY --chown=node:node  . .
+# After `COPY . .` so the freshly compiled frontend always wins.
+COPY --chown=node:node --from=frontend_build /app/frontend-dist /app/frontend-dist
 RUN mkdir ./data
 
 

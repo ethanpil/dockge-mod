@@ -69,6 +69,19 @@ I personally do not like something that requires so many configurations before y
 npm install
 ```
 
+### Windows note
+
+On Windows the install can fail while building `@homebridge/node-pty-prebuilt-multiarch`,
+with `EINVAL spawn` (seen on Node 26). That module is only needed to run the backend,
+not to build the frontend, so skip the native install scripts:
+
+```bash
+npm ci --ignore-scripts
+```
+
+`npm run build:frontend` then works normally. Use WSL or the Docker image if you need
+to run the backend itself on Windows.
+
 ## Dev Server
 
 ```
