@@ -1,207 +1,265 @@
-<div align="center" width="100%">
-    <img src="./frontend/public/icon.svg" width="128" alt="" />
-</div>
+# dockge-mod
 
-# Dockge
+dockge-mod is a self-hosted manager for Docker Compose stacks. It shows your stacks in a web page. You can start, stop, edit, and monitor each stack from a browser.
 
-A fancy, easy-to-use and reactive self-hosted docker compose.yaml stack-oriented manager.
+dockge-mod keeps your compose files on your disk. It does not move them into a database. You can also use normal `docker compose` commands on the same files.
 
-[![GitHub Repo stars](https://img.shields.io/github/stars/louislam/dockge?logo=github&style=flat)](https://github.com/louislam/dockge) [![Docker Pulls](https://img.shields.io/docker/pulls/louislam/dockge?logo=docker)](https://hub.docker.com/r/louislam/dockge/tags) [![Docker Image Version (latest semver)](https://img.shields.io/docker/v/louislam/dockge/latest?label=docker%20image%20ver.)](https://hub.docker.com/r/louislam/dockge/tags) [![GitHub last commit (branch)](https://img.shields.io/github/last-commit/louislam/dockge/master?logo=github)](https://github.com/louislam/dockge/commits/master/)
+## About This Fork
 
-<img src="https://github.com/louislam/dockge/assets/1336778/26a583e1-ecb1-4a8d-aedf-76157d714ad7" width="900" alt="" />
+dockge-mod is a fork of [Dockge](https://github.com/louislam/dockge) by Louis Lam. The upstream project does the primary work. This fork changes only the interface.
 
-View Video: https://youtu.be/AWAlOQeNpgU?t=48
+### What Is Different
 
-## ⭐ Features
+- The interface uses standard Bootstrap 5.3. The custom theme is removed.
+- The layout is more compact. More layout changes are planned.
+- The web terminal uses a more flexible xterm.js configuration.
 
-- 🧑‍💼 Manage your `compose.yaml` files
-  - Create/Edit/Start/Stop/Restart/Delete
-  - Update Docker Images
-- ⌨️ Interactive Editor for `compose.yaml`
-- 🦦 Interactive Web Terminal
-- 🕷️ (1.4.0 🆕) Multiple agents support - You can manage multiple stacks from different Docker hosts in one single interface
-- 🏪 Convert `docker run ...` commands into `compose.yaml`
-- 📙 File based structure - Dockge won't kidnap your compose files, they are stored on your drive as usual. You can interact with them using normal `docker compose` commands
+There are no other changes. The backend code is the same as the upstream code.
 
-<img src="https://github.com/louislam/dockge/assets/1336778/cc071864-592e-4909-b73a-343a57494002" width=300 />
+### Plans
 
-- 🚄 Reactive - Everything is just responsive. Progress (Pull/Up/Down) and terminal output are in real-time
-- 🐣 Easy-to-use & fancy UI - If you love Uptime Kuma's UI/UX, you will love this one too
+I plan to copy critical fixes and security fixes from the upstream project. I do not plan to add large new features.
 
-![](https://github.com/louislam/dockge/assets/1336778/89fc1023-b069-42c0-a01c-918c495f1a6a)
+## Compatibility
 
-## 🔧 How to Install
+dockge-mod is a drop-in replacement for Dockge. The backend code is unchanged, so the two programs work in the same way:
 
-Requirements:
-- [Docker](https://docs.docker.com/engine/install/) 20+ / Podman
-- (Podman only) podman-docker (Debian: `apt install podman-docker`)
-- OS:
-  - Major Linux distros that can run Docker/Podman such as:
-     - ✅ Ubuntu
-     - ✅ Debian (Bullseye or newer)
-     - ✅ Raspbian (Bullseye or newer)
-     - ✅ CentOS
-     - ✅ Fedora
-     - ✅ ArchLinux
-  - ❌ Debian/Raspbian Buster or lower is not supported
-  - ❌ Windows (Will be supported later)
-- Arch: armv7, arm64, amd64 (a.k.a x86_64)
+- The environment variables have the same names.
+- The `data` directory and the database have the same format.
+- The stacks directory has the same format.
+- The default port is 5001.
+- An agent connection works between dockge-mod and Dockge in both directions.
 
-### Basic
+You can point dockge-mod at the data directory of an existing Dockge installation. You can also go back to Dockge later. There is no migration step.
 
-- Default Stacks Directory: `/opt/stacks`
-- Default Port: 5001
+## Features
 
-```
-# Create directories that store your stacks and stores Dockge's stack
-mkdir -p /opt/stacks /opt/dockge
-cd /opt/dockge
+- Make, edit, start, stop, restart, and delete compose stacks.
+- Update the Docker images of a stack.
+- Edit `compose.yaml` in an interactive editor.
+- Open a web terminal for a stack or for the host.
+- Manage stacks on more than one Docker host from one interface.
+- Change a `docker run` command into a `compose.yaml` file.
+- See the progress of a pull, an up, or a down operation while it runs.
+- See the resource usage of the containers in a stack.
 
-# Download the compose.yaml
-curl https://raw.githubusercontent.com/louislam/dockge/master/compose.yaml --output compose.yaml
+## Requirements
 
-# Start the server
-docker compose up -d
+You must have this software and hardware:
 
-# If you are using docker-compose V1 or Podman
-# docker-compose up -d
-```
+- Docker 20 or later, or Podman.
+- For Podman only: the `podman-docker` package. On Debian, run `apt install podman-docker`.
+- A Linux system that can run Docker or Podman. Ubuntu, Debian, Raspbian, CentOS, Fedora, and Arch Linux are known to work.
+- A CPU architecture of armv7, arm64, or amd64.
 
-Dockge is now running on http://localhost:5001
+Debian Buster and Raspbian Buster are too old. Windows is not supported.
 
-### Advanced
+To build the image, you must also have Node.js 22.14.0 or later.
 
-If you want to store your stacks in another directory, you can generate your compose.yaml file by using the following URL with custom query strings.
+## Install
 
-```
-# Download your compose.yaml
-curl "https://dockge.kuma.pet/compose.yaml?port=5001&stacksPath=/opt/stacks" --output compose.yaml
+There is no published Docker image for dockge-mod. You must build the image on your own machine.
+
+### Step 1. Get the Source Code
+
+```bash
+git clone https://github.com/ethanpil/dockge-mod.git
 ```
 
-- port=`5001`
-- stacksPath=`/opt/stacks`
+### Step 2. Build the Frontend
 
-Also, once compose is generated/downloaded, add the `PUID` and `PGID` section below to your compose `environment:` section to set stack ownership, otherwise default is `root`
+The Dockerfile does not build the frontend. You must build the frontend before you build the image.
 
-```
-      # Both PUID and PGID must be set for it to do anything
-      - PUID=1000 # Set the stack file/dir ownership to this user
-      - PGID=1000 # Set the stack file/dir ownership to this group
+```bash
+cd dockge-mod && npm ci && npm run build:frontend
 ```
 
-Interactive compose.yaml generator is available on: 
-https://dockge.kuma.pet
+This command makes the `frontend-dist` directory. The Docker build step reads this directory.
 
-### -OR-
-Copy and paste your compose from the following:
+### Step 3. Build the Image
 
-If you want to store your stacks in another directory, you can change the `DOCKGE_STACKS_DIR` environment variable and volumes.
+This command downloads two base images from the upstream project. This is necessary, because the Dockerfile builds on them.
 
-compose:
+```bash
+docker build --target release -f docker/Dockerfile -t dockge-mod:local .
 ```
+
+### Step 4. Make the Directories
+
+Make one directory for your stacks and one directory for dockge-mod.
+
+```bash
+mkdir -p /opt/stacks /opt/dockge-mod
+```
+
+### Step 5. Make the Compose File
+
+The two stack paths in the `volumes` section must be the same. If the two paths are different, dockge-mod writes your data to a wrong path.
+
+- A correct example is `/opt/stacks:/opt/stacks`. The two paths are the same.
+- A wrong example is `/docker:/opt/stacks`. The two paths are different.
+
+Write this text to `/opt/dockge-mod/compose.yaml`:
+
+```yaml
 services:
-  dockge:
-    image: louislam/dockge:1
+  dockge-mod:
+    image: dockge-mod:local
     restart: unless-stopped
     ports:
-      # Host Port:Container Port
+      # Host port : container port
       - 5001:5001
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./data:/app/data
-        
-      # If you want to use private registries, you need to share the auth file with Dockge:
-      # - /root/.docker/:/root/.docker
 
-      # Stacks Directory
-      # Your stacks directory in the host (The paths inside container must be the same as the host)
-      # ⚠️ If you did it wrong, your data could end up be written into a wrong path.
-      # ✔️ CORRECT EXAMPLE: - /my-stacks:/my-stacks (Both paths match)
-      # ❌ WRONG EXAMPLE: - /docker:/my-stacks (Both paths do not match)
+      # Your stacks directory. Use a full path. Do not use a relative path.
+      # The path on the left and the path on the right must be the same.
       - /opt/stacks:/opt/stacks
     environment:
-      # Tell Dockge where your stacks directory is
+      # This tells dockge-mod where your stacks directory is.
       - DOCKGE_STACKS_DIR=/opt/stacks
-      # Both PUID and PGID must be set for it to do anything
-      - PUID=1000 # Set the stack file/dir ownership to this user
-      - PGID=1000 # Set the stack file/dir ownership to this group
 ```
 
-## How to Update
+### Step 6. Start the Server
 
 ```bash
-cd /opt/dockge
-docker compose pull && docker compose up -d
+cd /opt/dockge-mod && docker compose up -d
 ```
 
-## Screenshots
+If you use docker-compose V1 or Podman, run `docker-compose up -d` instead.
 
-![](https://github.com/louislam/dockge/assets/1336778/e7ff0222-af2e-405c-b533-4eab04791b40)
+dockge-mod now runs on `http://localhost:5001`. Open this address in a browser. The first page asks you to make an administrator account.
 
+## Move from Dockge
 
-![](https://github.com/louislam/dockge/assets/1336778/7139e88c-77ed-4d45-96e3-00b66d36d871)
+dockge-mod can use the data of an existing Dockge installation. Do the steps that follow:
 
-![](https://github.com/louislam/dockge/assets/1336778/f019944c-0e87-405b-a1b8-625b35de1eeb)
+1. Build the image. Read the install steps 1 to 3 above.
+2. Go to the directory that holds the compose file of Dockge.
+3. Stop Dockge with `docker compose down`.
+4. Make a copy of the `data` directory. Keep this copy in a safe place.
+5. In the compose file, change the `image` line to `dockge-mod:local`.
+6. Start the new container with `docker compose up -d`.
 
-![](https://github.com/louislam/dockge/assets/1336778/a4478d23-b1c4-4991-8768-1a7cad3472e3)
+Your stacks, your users, and your settings stay the same. To go back to Dockge, change the `image` line again.
 
+## Upgrade
 
-## Motivations
+Do the steps that follow to move to a newer version.
 
-- I have been using Portainer for some time, but for the stack management, I am sometimes not satisfied with it. For example, sometimes when I try to deploy a stack, the loading icon keeps spinning for a few minutes without progress. And sometimes error messages are not clear.
-- Try to develop with ES Module + TypeScript
+### Step 1. Get the New Source Code
 
-If you love this project, please consider giving it a ⭐.
+```bash
+cd /path/to/your/dockge-mod/source && git pull
+```
 
+### Step 2. Build the Image Again
 
-## 🗣️ Community and Contribution
+```bash
+npm ci && npm run build:frontend && docker build --target release -f docker/Dockerfile -t dockge-mod:local .
+```
 
-### Bug Report
-https://github.com/louislam/dockge/issues
+### Step 3. Start the New Image
 
-### Ask for Help / Discussions
-https://github.com/louislam/dockge/discussions
+```bash
+cd /opt/dockge-mod && docker compose up -d
+```
 
-### Translation
-If you want to translate Dockge into your language, please read [Translation Guide](https://github.com/louislam/dockge/blob/master/frontend/src/lang/README.md)
+Your data stays in the `data` volume. Your stacks stay in your stacks directory.
 
-### Create a Pull Request
+## Use
 
-Be sure to read the [guide](https://github.com/louislam/dockge/blob/master/CONTRIBUTING.md), as we don't accept all types of pull requests and don't want to waste your time.
+### Make a Stack
 
-## FAQ
+1. Click **Compose** in the top bar.
+2. Type a name for the stack.
+3. Type your services in the editor, or paste a `docker run` command into the conversion box.
+4. Click **Save** to write the file, or click **Deploy** to write the file and start the stack.
 
-#### "Dockge"?
+dockge-mod writes the stack to a new directory in your stacks directory.
 
-"Dockge" is a coinage word which is created by myself. I originally hoped it sounds like `Dodge`, but apparently many people called it `Dockage`, it is also acceptable.
+### Control a Stack
 
-The naming idea came from Twitch emotes like `sadge`, `bedge` or `wokege`. They all end in `-ge`.
+Select a stack in the list on the left. Then use the buttons at the top of the page:
 
-#### Can I manage a single container without `compose.yaml`?
+- **Start** starts the containers of the stack.
+- **Stop** stops the containers of the stack.
+- **Restart** stops and then starts the containers.
+- **Update** pulls the newest images and then starts the containers again.
+- **Delete** stops the containers and removes the stack directory.
 
-The main objective of Dockge is to try to use the docker `compose.yaml` for everything. If you want to manage a single container, you can just use Portainer or Docker CLI.
+### Add an Existing Stack
 
-#### Can I manage existing stacks?
+dockge-mod reads only the stacks in your stacks directory. To add a stack that is not in this directory, do the steps that follow:
 
-Yes, you can. However, you need to move your compose file into the stacks directory:
+1. Stop the stack with `docker compose down`.
+2. Move the compose file to `/opt/stacks/<stackName>/compose.yaml`.
+3. Open the menu in the top-right corner of the page.
+4. Click **Scan Stacks Folder**.
 
-1. Stop your stack
-2. Move your compose file into `/opt/stacks/<stackName>/compose.yaml`
-3. In Dockge, click the " Scan Stacks Folder" button in the top-right corner's dropdown menu
-4. Now you should see your stack in the list
+The stack is now in the list.
 
-#### Is Dockge a Portainer replacement?
+### Use the Terminal
 
-Yes or no. Portainer provides a lot of Docker features. While Dockge is currently only focusing on docker-compose with a better user interface and better user experience.
+Each stack has a terminal tab. The terminal shows the output of the containers of that stack.
 
-If you want to manage your container with docker-compose only, the answer may be yes.
+The host terminal is off by default. To make the host terminal available, set `DOCKGE_ENABLE_CONSOLE` to `true`. This terminal gives full access to the host, so be careful.
 
-If you still need to manage something like docker networks, single containers, the answer may be no.
+### Manage More Than One Host
 
-#### Can I install both Dockge and Portainer?
+You can control the stacks on other Docker hosts from one interface. Do the steps that follow:
 
-Yes, you can.
+1. Install dockge-mod on each host.
+2. Open the home page of the first installation.
+3. Click **Add Agent**.
+4. Type the URL, the username, and the password of the other installation.
 
-## Others
+The stacks of each agent are then in the same list. An agent can run dockge-mod or Dockge.
 
-Dockge is built on top of [Compose V2](https://docs.docker.com/compose/migrate/). `compose.yaml`  also known as `docker-compose.yml`.
+## Environment Variables
+
+The environment variables have the same names as the upstream names. The names keep the `DOCKGE_` prefix on purpose. This keeps your compose file compatible with both programs.
+
+| Name | Default | Function |
+| --- | --- | --- |
+| `DOCKGE_STACKS_DIR` | `/opt/stacks` | The directory that holds your stacks. |
+| `DOCKGE_DATA_DIR` | `./data/` | The directory that holds the database and the settings. |
+| `DOCKGE_PORT` | `5001` | The port of the web server. |
+| `DOCKGE_HOSTNAME` | none | The hostname that the web server listens on. |
+| `DOCKGE_ENABLE_CONSOLE` | `false` | Set this to `true` to make the host terminal available. |
+| `DOCKGE_SSL_KEY` | none | The path to an SSL key file. |
+| `DOCKGE_SSL_CERT` | none | The path to an SSL certificate file. |
+| `DOCKGE_SSL_KEY_PASSPHRASE` | none | The passphrase of the SSL key. |
+| `PUID` | none | The user that owns the stack files. |
+| `PGID` | none | The group that owns the stack files. |
+
+By default, the stack files belong to `root`. To change the owner, set `PUID` and `PGID`. You must set both variables. If you set only one variable, dockge-mod ignores it.
+
+```yaml
+    environment:
+      - PUID=1000
+      - PGID=1000
+```
+
+## Private Registries
+
+To use a private registry, give the Docker authentication file to the container. Add this line to the `volumes` section of your compose file:
+
+```yaml
+      - /root/.docker/:/root/.docker
+```
+
+## Contributions
+
+This is a personal fork, and I am unlikely to accept pull requests.
+
+If you find a problem in a feature that comes from the upstream project, report it to [Dockge](https://github.com/louislam/dockge/issues). If the problem is only in the interface of this fork, open an issue in this repository.
+
+## AI Assistance
+
+I made the changes in this fork with help from Claude Fable.
+
+## License
+
+dockge-mod uses the MIT license, the same license as the upstream project. The copyright of the original code belongs to Louis Lam. Read the [LICENSE](LICENSE) file for the full text.
