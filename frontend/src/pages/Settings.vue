@@ -120,9 +120,6 @@ export default {
         loadSettings() {
             this.$root.getSocket().emit("getSettings", (res) => {
                 this.settings = res.data;
-                if (this.settings.checkUpdate === undefined) {
-                    this.settings.checkUpdate = true;
-                }
                 this.settingsLoaded = true;
             });
         },
