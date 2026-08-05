@@ -1,5 +1,5 @@
 <template>
-    <div ref="modal" class="modal fade" tabindex="-1">
+    <div ref="modal" class="modal fade" tabindex="-1" :data-bs-backdrop="noCloseOnBackdrop ? 'static' : true">
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
@@ -48,7 +48,12 @@ export default {
         title: {
             type: String,
             default: null,
-        }
+        },
+        /** Prevent closing the dialog by clicking the backdrop */
+        noCloseOnBackdrop: {
+            type: Boolean,
+            default: false,
+        },
     },
     emits: [ "yes", "no" ],
     data: () => ({
@@ -56,6 +61,11 @@ export default {
     }),
     mounted() {
         this.modal = new Modal(this.$refs.modal);
+    },
+    beforeUnmount() {
+        // The backdrop and body scroll-lock live on <body>; hide() is the only
+        // path that removes them if this component unmounts while shown.
+        this.modal?.hide();
     },
     methods: {
         /**

@@ -59,11 +59,11 @@
                             <font-awesome-icon v-if="agentItem.name !== ''" class="action" icon="pen-to-square" @click="showEditAgentName(agentItem)" />
 
                             <!-- Remove Button -->
-                            <font-awesome-icon v-if="endpoint !== ''" class="ms-2 remove-agent action" icon="trash" @click="showRemoveAgent(agentItem.url)" />
+                            <font-awesome-icon v-if="endpoint !== ''" class="ms-2 action text-danger remove-agent" icon="trash" @click="showRemoveAgent(agentItem.url)" />
                         </div>
 
                         <!-- Edit Dialog -->
-                        <Confirm ref="editAgentNameDialog" :yes-text="$t('Update Name')" :no-text="$t('cancel')" @yes="updateName(editingAgent.url, editingAgent.updatedName)">
+                        <Confirm ref="editAgentNameDialog" :no-close-on-backdrop="true" :yes-text="$t('Update Name')" :no-text="$t('cancel')" @yes="updateName(editingAgent.url, editingAgent.updatedName)">
                             <template v-if="editingAgent">
                                 <label for="updatedName" class="form-label">Current value: {{ $t(editingAgent.name) }}</label>
                                 <input id="updatedName" v-model="editingAgent.updatedName" type="text" class="form-control" optional>
@@ -191,7 +191,13 @@ export default {
     methods: {
 
         showEditAgentName(agentItem) {
-            this.editingAgent = agentItem;
+            // Copy instead of referencing the live $root.agentList entry, which
+            // is replaced wholesale on every "agentList" socket push.
+            this.editingAgent = {
+                url: agentItem.url,
+                name: agentItem.name,
+                updatedName: "",
+            };
             this.$refs.editAgentNameDialog.show();
         },
 
@@ -350,7 +356,6 @@ export default {
 
 .remove-agent {
     cursor: pointer;
-    color: var(--bs-danger);
 }
 
 .agent {

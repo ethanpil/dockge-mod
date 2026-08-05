@@ -86,13 +86,3 @@ export default {
 };
 </script>
 
-<style scoped lang="scss">
-.editor-box {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 14px;
-
-    // CodeMirror uses the dracula theme in both app themes
-    background-color: #282a36;
-    color: #f8f8f2;
-}
-</style>

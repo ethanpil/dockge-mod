@@ -116,70 +116,9 @@ export default {
 </script>
 
 <style lang="scss" scoped>
-@import "../styles/vars.scss";
-
-.small-padding {
-    padding-left: 5px !important;
-    padding-right: 5px !important;
-}
-
-.collapse-padding {
-    padding-left: 8px !important;
-    padding-right: 2px !important;
-}
-
-.item {
-    text-decoration: none;
-    display: flex;
-    align-items: center;
-    min-height: 40px;
-    border-radius: var(--bs-border-radius);
-    width: 100%;
-    padding: 2px 8px;
-    color: var(--bs-body-color);
-
-    &.disabled {
-        opacity: 0.3;
-    }
-
-    &:hover {
-        background-color: var(--bs-tertiary-bg);
-    }
-
-    &.active {
-        background-color: var(--bs-primary-bg-subtle);
-    }
-
-    .title {
-        margin-top: -4px;
-    }
-
-    .endpoint {
-        font-size: 12px;
-        color: var(--bs-secondary-color);
-    }
-}
-
-.collapsed {
-    transform: rotate(-90deg);
-}
-
-.animated {
-    transition: all 0.2s $easing-in;
-}
-
-.select-input-wrapper {
-    float: left;
-    margin-top: 15px;
-    margin-left: 3px;
-    margin-right: 10px;
-    padding-left: 4px;
-    position: relative;
-    z-index: 15;
-}
+// .item is styled globally via ".stack-list .item" in main.scss
 
 .dim {
     opacity: 0.5;
 }
-
 </style>

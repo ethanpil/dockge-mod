@@ -47,11 +47,11 @@
                     </button>
 
                     <button type="button" class="btn btn-normal dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" aria-expanded="false">
-                        <span class="visually-hidden">Toggle Dropdown</span>
+                        <span class="visually-hidden">{{ $t("downStack") }}</span>
                     </button>
                     <ul class="dropdown-menu dropdown-menu-end">
                         <li>
-                            <button class="dropdown-item" @click="downStack">
+                            <button type="button" class="dropdown-item" @click="downStack">
                                 <font-awesome-icon icon="stop" class="me-1" />
                                 {{ $t("downStack") }}
                             </button>
@@ -861,15 +861,6 @@ export default {
 <style scoped lang="scss">
 .terminal {
     height: 200px;
-}
-
-.editor-box {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 14px;
-
-    // CodeMirror uses the dracula theme in both app themes
-    background-color: #282a36;
-    color: #f8f8f2;
 }
 
 .agent-name {

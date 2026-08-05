@@ -101,24 +101,3 @@ export default {
 };
 </script>
 
-<style lang="scss" scoped>
-.list-group {
-    li {
-        display: flex;
-        align-items: center;
-        padding: 6px 0 6px 10px;
-
-        .domain-input {
-            flex-grow: 1;
-            background-color: transparent;
-            border: none;
-            color: var(--bs-body-color);
-            outline: none;
-
-            &::placeholder {
-                color: var(--bs-secondary-color);
-            }
-        }
-    }
-}
-</style>

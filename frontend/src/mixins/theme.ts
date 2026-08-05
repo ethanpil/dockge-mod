@@ -39,9 +39,7 @@ export default defineComponent({
 
         theme(to, from) {
             document.body.classList.remove(from);
-            document.body.classList.add(this.theme);
-            document.documentElement.setAttribute("data-bs-theme", this.theme);
-            this.updateThemeColorMeta();
+            this.applyTheme();
         },
 
         userHeartbeatBar(to, from) {
@@ -60,12 +58,25 @@ export default defineComponent({
             this.userTheme = "dark";
         }
 
-        document.body.classList.add(this.theme);
-        document.documentElement.setAttribute("data-bs-theme", this.theme);
-        this.updateThemeColorMeta();
+        this.applyTheme();
+
+        // Follow OS theme changes live when the user selected "auto"
+        window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", (e) => {
+            this.system = e.matches ? "dark" : "light";
+        });
     },
 
     methods: {
+        /**
+         * Apply the current theme to the document
+         * @returns {void}
+         */
+        applyTheme() {
+            document.body.classList.add(this.theme);
+            document.documentElement.setAttribute("data-bs-theme", this.theme);
+            this.updateThemeColorMeta();
+        },
+
         /**
          * Update the theme color meta tag
          * @returns {void}

@@ -4,7 +4,7 @@
             <div class="header-top">
                 <!-- TODO -->
                 <button
-                    v-if="false" class="btn btn-outline-normal ms-2" :class="{ 'active': selectMode }" type="button"
+                    v-if="false" class="btn btn-sm btn-outline-secondary ms-2" :class="{ 'active': selectMode }" type="button"
                     @click="selectMode = !selectMode"
                 >
                     {{ $t("Select") }}
@@ -33,11 +33,11 @@
             <div v-if="selectMode && false" class="selection-controls px-2 pt-2">
                 <input v-model="selectAll" class="form-check-input select-input" type="checkbox" />
 
-                <button class="btn-outline-normal" @click="pauseDialog">
+                <button class="btn btn-sm btn-outline-secondary" @click="pauseDialog">
                     <font-awesome-icon icon="pause" size="sm" /> {{
                         $t("Pause") }}
                 </button>
-                <button class="btn-outline-normal" @click="resumeSelected">
+                <button class="btn btn-sm btn-outline-secondary" @click="resumeSelected">
                     <font-awesome-icon icon="play" size="sm" />
                     {{ $t("Resume") }}
                 </button>
@@ -233,7 +233,7 @@ export default {
 
         stackListStyle() {
             //let listHeaderHeight = 107;
-            let listHeaderHeight = 60;
+            let listHeaderHeight = 48;
 
             if (this.selectMode) {
                 listHeaderHeight += 42;

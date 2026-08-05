@@ -45,7 +45,11 @@ export default {
 <style scoped>
 .badge {
     min-width: 62px;
+}
 
+/* bg-dark matches the stock dark-theme page background; keep the pill visible */
+.bg-dark {
+    border: 1px solid var(--bs-border-color);
 }
 
 .fixed-width {
