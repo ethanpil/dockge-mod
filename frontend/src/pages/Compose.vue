@@ -5,7 +5,9 @@
                 <h1 v-if="isAdd" class="fs-4 mb-0">{{ $t("compose") }}</h1>
                 <template v-else>
                     <Uptime :stack="globalStack" :pill="true" />
-                    <h1 class="fs-4 mb-0 title-name">{{ stack.name }} <span v-if="isDirty" class="dirty-dot" :title="$t('unsavedChanges')">&#9679;</span></h1>
+                    <h1 class="fs-4 mb-0 title-name">{{ stack.name }}</h1>
+                    <!-- Outside the title, which truncates with an ellipsis -->
+                    <span v-if="isDirty" class="dirty-dot" :title="$t('unsavedChanges')" role="img" :aria-label="$t('unsavedChanges')">&#9679;</span>
                     <span v-if="$root.agentCount > 1 && endpoint !== ''" class="agent-name">
                         ({{ endpointDisplay }})
                     </span>
@@ -143,7 +145,6 @@
                                     :key="name"
                                     :name="name"
                                     :is-edit-mode="isEditMode"
-                                    :first="name === Object.keys(jsonConfig.services)[0]"
                                     :default-open="serviceCount < 3"
                                 />
                             </div>
@@ -262,7 +263,7 @@
                             <div class="panel-head">
                                 <span class="panel-title">{{ $t("logs") }}</span>
                                 <span class="panel-note">{{ stack.name }}</span>
-                                <button class="expand-btn" :title="expandedPanel === 'logs' ? $t('cancel') : $t('expand')" @click="toggleExpand('logs')">
+                                <button class="mini-btn expand-btn" :title="expandedPanel === 'logs' ? $t('cancel') : $t('expand')" @click="toggleExpand('logs')">
                                     <font-awesome-icon :icon="expandedPanel === 'logs' ? 'compress' : 'expand'" />
                                 </button>
                             </div>
@@ -281,7 +282,7 @@
                         <div class="panel" :class="{ pop: expandedPanel === 'yaml' }">
                             <div class="panel-head">
                                 <span class="panel-title">{{ stack.composeFileName }}</span>
-                                <button class="expand-btn" :title="expandedPanel === 'yaml' ? $t('cancel') : $t('expand')" @click="toggleExpand('yaml')">
+                                <button class="mini-btn expand-btn" :title="expandedPanel === 'yaml' ? $t('cancel') : $t('expand')" @click="toggleExpand('yaml')">
                                     <font-awesome-icon :icon="expandedPanel === 'yaml' ? 'compress' : 'expand'" />
                                 </button>
                             </div>
@@ -380,21 +381,26 @@
             </Confirm>
 
             <!-- Unsaved changes dialog: shown when the user leaves edit mode
-                 with changes that are not saved -->
-            <div v-if="showLeaveConfirm" class="leave-backdrop"></div>
-            <div v-if="showLeaveConfirm" class="leave-modal">
-                <div class="leave-head">{{ $t("unsavedChanges") }}</div>
-                <div class="leave-body">
-                    <i18n-t keypath="unsavedChangesMsg" tag="span">
-                        <strong>{{ stack.name }}</strong>
-                    </i18n-t>
-                </div>
-                <div class="leave-actions">
-                    <button class="btn btn-secondary btn-sm" @click="resolveLeave('stay')">{{ $t("stay") }}</button>
-                    <button class="btn btn-outline-danger btn-sm" @click="resolveLeave('discard')">{{ $t("discardAndLeave") }}</button>
-                    <button class="btn btn-success btn-sm" :disabled="processing" @click="resolveLeave('save')">{{ $t("saveAndLeave") }}</button>
-                </div>
-            </div>
+                 with changes that are not saved. Escape, the backdrop, and
+                 the X button all mean "stay", so the pending navigation
+                 always gets an answer. -->
+            <Confirm
+                ref="confirmLeave"
+                :title="$t('unsavedChanges')"
+                btn-style="btn-success"
+                :yes-text="$t('saveAndLeave')"
+                :alt-text="$t('discardAndLeave')"
+                :no-text="$t('stay')"
+                :no-on-dismiss="true"
+                :busy="processing"
+                @yes="resolveLeave('save')"
+                @alt="resolveLeave('discard')"
+                @no="resolveLeave('stay')"
+            >
+                <i18n-t keypath="unsavedChangesMsg" tag="span">
+                    <strong>{{ stack.name }}</strong>
+                </i18n-t>
+            </Confirm>
         </div>
     </transition>
 </template>
@@ -535,8 +541,11 @@ export default {
             stopDockerStatsTimeout: false,
             expandedPanel: null,
             editSnapshot: null,
-            showLeaveConfirm: false,
+            leaveOpen: false,
             leaveNext: null,
+            // Increases each time the dialog is answered, so a save reply
+            // that arrives after another answer is ignored
+            leaveToken: 0,
         };
     },
     computed: {
@@ -589,8 +598,12 @@ export default {
             if (!this.isEditMode || !this.editSnapshot) {
                 return false;
             }
+            // The name and the endpoint exist only in add mode, but they hold
+            // work that the user must not lose without a question.
             return this.stack.composeYAML !== this.editSnapshot.yaml
-                || this.stack.composeENV !== this.editSnapshot.env;
+                || this.stack.composeENV !== this.editSnapshot.env
+                || (this.stack.name ?? "") !== this.editSnapshot.name
+                || (this.stack.endpoint ?? "") !== this.editSnapshot.endpoint;
         },
 
         serviceCount() {
@@ -777,6 +790,17 @@ export default {
         window.addEventListener("keydown", this.onComposeKeydown);
         window.addEventListener("beforeunload", this.onBeforeUnload);
     },
+    beforeUnmount() {
+        // The page can be destroyed without a route change, for example when
+        // a failed login hides the router view. A pending navigation must
+        // still get an answer, or it never finishes.
+        if (this.leaveNext) {
+            const next = this.leaveNext;
+            this.leaveNext = null;
+            this.leaveOpen = false;
+            next(false);
+        }
+    },
     unmounted() {
         window.removeEventListener("keydown", this.onComposeKeydown);
         window.removeEventListener("beforeunload", this.onBeforeUnload);
@@ -794,8 +818,8 @@ export default {
         },
 
         /**
-         * The router guard cannot catch a tab close or a page reload; the
-         * browser prompt covers that path when changes are not saved.
+         * The router does not see a tab close or a page reload. The browser
+         * shows its own prompt for those two conditions.
          * @param {BeforeUnloadEvent} e beforeunload event
          * @returns {void}
          */
@@ -942,10 +966,18 @@ export default {
         },
 
         exitConfirm(next) {
-            // Ask only when there is work to lose; a clean editor just leaves
+            // Ask only when there is work to lose. A clean editor leaves.
             if (this.isEditMode && this.isDirty) {
+                // A second navigation while the dialog is open must not
+                // replace the first callback, which would then never get an
+                // answer and would leave the address bar out of step.
+                if (this.leaveOpen) {
+                    next(false);
+                    return;
+                }
                 this.leaveNext = next;
-                this.showLeaveConfirm = true;
+                this.leaveOpen = true;
+                this.$refs.confirmLeave.show();
             } else {
                 this.exitAction();
                 next();
@@ -959,26 +991,31 @@ export default {
          */
         resolveLeave(choice) {
             const next = this.leaveNext;
+            // Each answer makes the token of any earlier answer out of date
+            const token = ++this.leaveToken;
 
             if (choice === "stay") {
-                this.showLeaveConfirm = false;
-                this.leaveNext = null;
+                this.closeLeaveDialog();
                 next?.(false);
                 return;
             }
 
             if (choice === "discard") {
-                this.showLeaveConfirm = false;
-                this.leaveNext = null;
+                this.closeLeaveDialog();
                 this.exitAction();
                 next?.();
                 return;
             }
 
-            // "save": leave only after the server accepts the file
+            // "save": leave only after the server accepts the file. The
+            // dialog stays open, with its buttons disabled, until the reply.
             this.saveStack((ok) => {
-                this.showLeaveConfirm = false;
-                this.leaveNext = null;
+                // The user answered again while the save ran. That answer
+                // owns the navigation now, so do nothing here.
+                if (token !== this.leaveToken) {
+                    return;
+                }
+                this.closeLeaveDialog();
                 if (ok) {
                     this.exitAction();
                     next?.();
@@ -986,6 +1023,16 @@ export default {
                     next?.(false);
                 }
             });
+        },
+
+        /**
+         * Hide the unsaved-changes dialog and forget its callback.
+         * @returns {void}
+         */
+        closeLeaveDialog() {
+            this.leaveOpen = false;
+            this.leaveNext = null;
+            this.$refs.confirmLeave?.hide();
         },
 
         exitAction() {
@@ -1064,13 +1111,40 @@ export default {
         saveStack(then = null) {
             this.processing = true;
 
-            this.$root.emitAgent(this.stack.endpoint, "saveStack", this.stack.name, this.stack.composeYAML, this.stack.composeENV, this.isAdd, (res) => {
+            // Hold the values that go to the server. The editors stay usable
+            // while the reply travels, so the buffer can change. A snapshot
+            // of the buffer would then mark unsent text as saved.
+            const sent = this.currentEditState();
+
+            let settled = false;
+
+            // An agent that is offline never answers, and the dialog and the
+            // buttons would stay disabled for ever.
+            const timer = setTimeout(() => {
+                if (settled) {
+                    return;
+                }
+                settled = true;
+                this.processing = false;
+                this.$root.toastError(this.$t("saveTimeout"));
+                if (then) {
+                    then(false);
+                }
+            }, 30000);
+
+            this.$root.emitAgent(this.stack.endpoint, "saveStack", this.stack.name, sent.yaml, sent.env, this.isAdd, (res) => {
+                if (settled) {
+                    return;
+                }
+                settled = true;
+                clearTimeout(timer);
+
                 this.processing = false;
                 this.$root.toastRes(res);
 
                 if (res.ok) {
-                    // The saved file is the new baseline
-                    this.takeEditSnapshot();
+                    // The baseline is what the server has, not the buffer
+                    this.editSnapshot = sent;
                     if (then) {
                         then(true);
                         return;
@@ -1204,21 +1278,30 @@ export default {
         /**
          * Record the current file contents. isDirty compares against this.
          *
-         * Entering edit mode makes the config cards write the parsed object
-         * back to YAML, which reformats the text (a flow sequence becomes a
-         * block sequence, for example). That rewrite is not a user change, so
-         * the snapshot is taken after it, on the next tick.
+         * The config cards write the parsed object back to YAML when edit
+         * mode opens. This changes the format of the text. It is not a user
+         * change. Thus this method waits for that write, then records the
+         * result.
          * @returns {void}
          */
-        takeEditSnapshot() {
-            const capture = () => {
-                this.editSnapshot = {
-                    yaml: this.stack.composeYAML,
-                    env: this.stack.composeENV,
-                };
+        async takeEditSnapshot() {
+            this.editSnapshot = this.currentEditState();
+            await this.$nextTick();
+            await this.$nextTick();
+            this.editSnapshot = this.currentEditState();
+        },
+
+        /**
+         * The values that isDirty compares.
+         * @returns {object} a copy of the editable state
+         */
+        currentEditState() {
+            return {
+                yaml: this.stack.composeYAML,
+                env: this.stack.composeENV,
+                name: this.stack.name ?? "",
+                endpoint: this.stack.endpoint ?? "",
             };
-            capture();
-            this.$nextTick(() => this.$nextTick(capture));
         },
 
         checkYAML() {
@@ -1346,20 +1429,9 @@ export default {
 }
 
 /* .panel family and .status-dot/.mono are global (main.scss) */
+/* .mini-btn (global) supplies the look; this adds the placement */
 .expand-btn {
     margin-left: auto;
-    border: 1px solid var(--bs-border-color);
-    background: transparent;
-    color: var(--bs-secondary-color);
-    border-radius: 2px;
-    font-size: 11px;
-    line-height: 1;
-    padding: 0.2rem 0.35rem;
-    cursor: pointer;
-
-    &:hover {
-        color: var(--bs-body-color);
-    }
 }
 
 /* Logs + yaml split: fills the remaining viewport height */
@@ -1441,53 +1513,9 @@ export default {
 /* ---------- unsaved changes ---------- */
 .dirty-dot {
     color: var(--bs-warning);
-    font-size: 0.55em;
-    vertical-align: middle;
-}
-
-.leave-backdrop {
-    position: fixed;
-    inset: 0;
-    z-index: 1060;
-    background: rgba(0, 0, 0, 0.55);
-    backdrop-filter: blur(2px);
-}
-
-.leave-modal {
-    position: fixed;
-    top: 15vh;
-    left: 50%;
-    transform: translateX(-50%);
-    width: min(440px, calc(100vw - 2rem));
-    z-index: 1061;
-    background: var(--bs-body-bg);
-    border: 1px solid var(--bs-border-color);
-    border-radius: 6px;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
-}
-
-.leave-head {
-    padding: 0.6rem 0.8rem;
-    border-bottom: 1px solid var(--bs-border-color);
-    font-weight: 600;
-}
-
-.leave-body {
-    padding: 0.8rem;
-    color: var(--bs-secondary-color);
-
-    strong {
-        color: var(--bs-body-color);
-    }
-}
-
-.leave-actions {
-    padding: 0.6rem 0.8rem;
-    border-top: 1px solid var(--bs-border-color);
-    display: flex;
-    gap: 0.4rem;
-    justify-content: flex-end;
-    flex-wrap: wrap;
+    font-size: 0.7rem;
+    line-height: 1;
+    flex: 0 0 auto;
 }
 
 /* ---------- containers table ----------
