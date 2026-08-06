@@ -1,28 +1,17 @@
 # dockge-mod
 
-dockge-mod is a self-hosted manager for Docker Compose stacks. It shows your stacks in a web page. You can start, stop, edit, and monitor each stack from a browser.
+dockge-mod is a drop-in replacement for [Dockge](https://github.com/louislam/dockge) by Louis Lam. This fork changes only the interface and adds some quality of life improvements.
 
-dockge-mod keeps your compose files on your disk. It does not move them into a database. You can also use normal `docker compose` commands on the same files.
+dockge is a self-hosted manager for Docker Compose stacks. dockge keeps your compose files on your disk and does not move them into a database, unlike other solutions. You can still edit your compose files and use normal `docker compose` commands from the CLI.
 
-## About This Fork
+For a detailed list of changes from dockge, please see the [dockge-mod changelog](https://github.com/ethanpil/dockge-mod/blob/master/CHANGELOG.md).
 
-dockge-mod is a fork of [Dockge](https://github.com/louislam/dockge) by Louis Lam. The upstream project does the primary work. This fork changes only the interface.
+<img width="1550" height="819" alt="image" src="https://github.com/user-attachments/assets/b30646a2-6c8f-472b-b47f-f89338af6b2c" />
 
-### What Is Different
 
-- The interface uses standard Bootstrap 5.3. The custom theme is removed.
-- The layout is more compact. More layout changes are planned.
-- The web terminal uses a more flexible xterm.js configuration.
+## dockge Compatibility
 
-There are no other changes. The backend code is the same as the upstream code.
-
-### Plans
-
-I plan to copy critical fixes and security fixes from the upstream project. I do not plan to add large new features.
-
-## Compatibility
-
-dockge-mod is a drop-in replacement for Dockge. The backend code is unchanged, so the two programs work in the same way:
+dockge and dockge-mod work in the same way:
 
 - The environment variables have the same names.
 - The `data` directory and the database have the same format.
@@ -30,7 +19,7 @@ dockge-mod is a drop-in replacement for Dockge. The backend code is unchanged, s
 - The default port is 5001.
 - An agent connection works between dockge-mod and Dockge in both directions.
 
-You can point dockge-mod at the data directory of an existing Dockge installation. You can also go back to Dockge later. There is no migration step.
+You can point dockge-mod at the data directory of an existing Dockge installation. You can also go back to Dockge later. There is no migration step. This is a primary goal of the project.
 
 ## Features
 
