@@ -381,6 +381,7 @@ import { yaml } from "@codemirror/lang-yaml";
 import { python } from "@codemirror/lang-python";
 import { dracula as editorTheme } from "thememirror";
 import { lineNumbers, EditorView } from "@codemirror/view";
+import { linter, lintGutter } from "@codemirror/lint";
 import { parseDocument, Document } from "yaml";
 
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
@@ -445,10 +446,34 @@ export default {
             return null;
         };
 
+        // Marks each YAML syntax error at its position, with a gutter icon
+        // and an underline. The message shows on hover.
+        const yamlLinter = linter((view) => {
+            const max = view.state.doc.length;
+            const doc = parseDocument(view.state.doc.toString());
+            return doc.errors.map((e) => {
+                const from = Math.min(e.pos?.[0] ?? 0, max);
+                let to = Math.min(e.pos?.[1] ?? max, max);
+                if (to <= from) {
+                    // A zero-width range would not show an underline
+                    to = Math.min(from + 1, max);
+                }
+                return {
+                    from,
+                    to,
+                    severity: "error",
+                    // The first line has the summary; the rest is a code frame
+                    message: e.message.split("\n")[0],
+                };
+            });
+        });
+
         const extensions = [
             editorTheme,
             yaml(),
             lineNumbers(),
+            lintGutter(),
+            yamlLinter,
             EditorView.focusChangeEffect.of(focusEffectHandler)
         ];
 

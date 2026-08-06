@@ -24,6 +24,7 @@ The base is dockge commit [f809ae1](https://github.com/louislam/dockge/commit/f8
 - The terminal width follows the browser window. Each client reports its size. The server applies the smallest size of all connected clients.
 - The additive "hostStats" socket event supplies host memory, load average, and Docker disk usage. An agent without this event shows only the stack tiles.
 - The service status data includes uptime, ports, and IP. The IP values come from one batched `docker inspect` call, cached by container ID.
+- The compose editor marks each YAML syntax error at its position, with a gutter icon and an underline. The error message shows on hover.
 
 ## Fixes
 

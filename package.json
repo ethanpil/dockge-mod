@@ -60,6 +60,7 @@
         "@actions/github": "^6.0.0",
         "@codemirror/lang-python": "^6.1.7",
         "@codemirror/lang-yaml": "^6.1.2",
+        "@codemirror/lint": "^6.9.7",
         "@fontsource/jetbrains-mono": "^5.2.5",
         "@fortawesome/fontawesome-svg-core": "6.4.2",
         "@fortawesome/free-regular-svg-icons": "6.4.2",
