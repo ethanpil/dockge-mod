@@ -86,3 +86,11 @@ export default {
 };
 </script>
 
+<style scoped>
+/* Keep the editor's original breathing room after the global .shadow-box
+   padding was tightened for the stack page's density. */
+.shadow-box {
+    padding: 0.75rem;
+}
+</style>
+

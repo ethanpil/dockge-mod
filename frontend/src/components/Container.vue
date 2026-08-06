@@ -1,59 +1,11 @@
 <template>
     <div class="container-card mb-2">
-        <div class="row">
-            <div class="col-5">
-                <h4 class="fs-6 fw-semibold mb-1">{{ name }}</h4>
-                <div class="image mb-2">
-                    <span class="me-1">{{ imageName }}:</span><span class="tag">{{ imageTag }}</span>
-                </div>
-                <div v-if="!isEditMode">
-                    <span class="badge me-1" :class="bgStyle">{{ status }}</span>
-
-                    <a v-for="port in (ports ?? envsubstService.ports)" :key="port" :href="parsePort(port).url" target="_blank" class="text-decoration-none">
-                        <span class="badge me-1 bg-secondary">{{ parsePort(port).display }}</span>
-                    </a>
-                </div>
-            </div>
-            <div class="col-7">
-                <div class="function">
-                    <div class="btn-group btn-group-sm me-2" role="group">
-                        <router-link v-if="!isEditMode && (status === 'running' || status === 'healthy')" class="btn btn-normal" :to="terminalRouteLink" disabled="">
-                            <font-awesome-icon icon="terminal" />
-                            Bash
-                        </router-link>
-                        <button
-                            v-if="serviceCount > 1 && !isEditMode && status !== 'running' && status !== 'healthy'"
-                            class="btn btn-primary"
-                            :disabled="processing"
-                            @click="startService"
-                        >
-                            <font-awesome-icon icon="play" class="me-1" />
-                            {{ $t("startStack") }}
-                        </button>
-                        <button
-                            v-if="serviceCount > 1 && !isEditMode && (status === 'running' || status === 'healthy' || status === 'unhealthy')"
-                            class="btn btn-normal"
-                            :disabled="processing"
-                            @click="restartService"
-                        >
-                            <font-awesome-icon icon="rotate" class="me-1" />
-                            {{ $t("restartStack") }}
-                        </button>
-                        <button
-                            v-if="serviceCount > 1 && !isEditMode && (status === 'running' || status === 'healthy' || status === 'unhealthy')"
-                            class="btn btn-normal"
-                            :disabled="processing"
-                            @click="stopService"
-                        >
-                            <font-awesome-icon icon="stop" class="me-1" />
-                            {{ $t("stopStack") }}
-                        </button>
-                    </div>
-                </div>
-            </div>
+        <h4 class="fs-6 fw-semibold mb-1">{{ name }}</h4>
+        <div class="image mb-2">
+            <span class="me-1">{{ imageName }}:</span><span class="tag">{{ imageTag }}</span>
         </div>
 
-        <div v-if="isEditMode" class="mt-2">
+        <div class="mt-2">
             <button class="btn btn-sm btn-normal me-2" @click="showConfig = !showConfig">
                 <font-awesome-icon icon="edit" />
                 {{ $t("Edit") }}
@@ -64,18 +16,9 @@
                 {{ $t("deleteContainer") }}
             </button>
         </div>
-        <div v-else-if="instances.length > 0" class="d-flex flex-column gap-3 mt-2">
-            <DockerStat
-                v-for="instance in instances"
-                :key="instance.name"
-                :name="instance.name"
-                :stat="instance.stat"
-                :info="instance"
-            />
-        </div>
 
         <transition name="slide-fade" appear>
-            <div v-if="isEditMode && showConfig" class="config mt-3">
+            <div v-if="showConfig" class="config mt-3">
                 <!-- Image -->
                 <div class="mb-3">
                     <label class="form-label">
@@ -175,15 +118,16 @@
 <script>
 import { defineComponent } from "vue";
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
-import { parseDockerPort } from "../../../common/util-common";
-import DockerStat from "./DockerStat.vue";
 import ArrayInput from "./ArrayInput.vue";
 import ArraySelect from "./ArraySelect.vue";
 
+/**
+ * The editable per-service card of edit mode. View mode renders the
+ * containers table in Compose.vue instead.
+ */
 export default defineComponent({
     components: {
         FontAwesomeIcon,
-        DockerStat,
         ArrayInput,
         ArraySelect,
     },
@@ -200,20 +144,7 @@ export default defineComponent({
             type: Boolean,
             default: false,
         },
-        serviceStatus: {
-            type: Object,
-            default: null,
-        },
-        dockerStats: {
-            type: Object,
-            default: null
-        }
     },
-    emits: [
-        "start-service",
-        "stop-service",
-        "restart-service"
-    ],
     data() {
         return {
             showConfig: false,
@@ -229,60 +160,11 @@ export default defineComponent({
             return list;
         },
 
-        bgStyle() {
-            if (this.status === "running" || this.status === "healthy") {
-                return "bg-success";
-            } else if (this.status === "unhealthy") {
-                return "bg-danger";
-            } else {
-                return "bg-secondary";
-            }
-        },
-
-        terminalRouteLink() {
-            if (this.endpoint) {
-                return {
-                    name: "containerTerminalEndpoint",
-                    params: {
-                        endpoint: this.endpoint,
-                        stackName: this.stackName,
-                        serviceName: this.name,
-                        type: "bash",
-                    },
-                };
-            } else {
-                return {
-                    name: "containerTerminal",
-                    params: {
-                        stackName: this.stackName,
-                        serviceName: this.name,
-                        type: "bash",
-                    },
-                };
-            }
-        },
-
-        endpoint() {
-            return this.$parent.$parent.endpoint;
-        },
-
-        stack() {
-            return this.$parent.$parent.stack;
-        },
-
-        stackName() {
-            return this.$parent.$parent.stack.name;
-        },
-
         service() {
             if (!this.jsonObject.services[this.name]) {
                 return {};
             }
             return this.jsonObject.services[this.name];
-        },
-
-        serviceCount() {
-            return Object.keys(this.jsonObject.services).length;
         },
 
         jsonObject() {
@@ -321,31 +203,6 @@ export default defineComponent({
                 return "";
             }
         },
-        /**
-         * One entry per running or stopped container of this service, each carrying
-         * its uptime/address/ports plus the docker stats when the container is up.
-         */
-        instances() {
-            if (!this.serviceStatus) {
-                return [];
-            }
-
-            return this.serviceStatus
-                .map(s => ({
-                    name: s.name,
-                    uptime: s.uptime ?? "",
-                    ip: s.ip ?? "",
-                    ports: s.ports ?? "",
-                    stat: this.dockerStats?.[s.name] ?? null,
-                }))
-                .sort((a, b) => a.name.localeCompare(b.name));
-        },
-        status() {
-            if (!this.serviceStatus) {
-                return "N/A";
-            }
-            return this.serviceStatus[0].status;
-        }
     },
     mounted() {
         if (this.first) {
@@ -353,27 +210,9 @@ export default defineComponent({
         }
     },
     methods: {
-        parsePort(port) {
-            if (this.stack.endpoint) {
-                return parseDockerPort(port, this.stack.primaryHostname);
-            } else {
-                let hostname = this.$root.info.primaryHostname || location.hostname;
-                return parseDockerPort(port, hostname);
-            }
-        },
         remove() {
             delete this.jsonObject.services[this.name];
         },
-        startService() {
-            this.$emit("start-service", this.name);
-        },
-        stopService() {
-            this.$emit("stop-service", this.name);
-        },
-        restartService() {
-            this.$emit("restart-service", this.name);
-        }
-
     }
 });
 </script>
@@ -391,20 +230,6 @@ export default defineComponent({
         .tag {
             color: var(--bs-body-color);
         }
-    }
-
-    .function {
-        align-content: center;
-        display: flex;
-        height: 100%;
-        width: 100%;
-        align-items: center;
-        justify-content: end;
-    }
-
-    .stats {
-        font-size: 0.8rem;
-        color: var(--bs-secondary-color);
     }
 }
 </style>

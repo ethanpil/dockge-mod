@@ -516,11 +516,7 @@ export default {
     border-radius: 2px;
 }
 
-.state-badge {
-    font-size: 10.5px;
-    font-weight: 600;
-    border-radius: 2px;
-}
+// .state-badge is global (main.scss)
 
 .docker-run {
     font-family: 'JetBrains Mono', monospace;

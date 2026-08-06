@@ -1,5 +1,5 @@
 <template>
-    <span v-if="dot" class="status-dot" :class="'dot-' + dotColor" :title="statusName"></span>
+    <span v-if="dot" class="status-dot" :class="'dot-' + dotColor" :title="statusName" role="img" :aria-label="statusName"></span>
     <span v-else :class="className">{{ statusName }}</span>
 </template>
 
@@ -11,10 +11,6 @@ export default {
         stack: {
             type: Object,
             default: null,
-        },
-        fixedWidth: {
-            type: Boolean,
-            default: false,
         },
         /** Render as a small status dot instead of a pill */
         dot: {
@@ -57,12 +53,7 @@ export default {
                 dark: "bg-secondary-subtle text-secondary-emphasis border",
             }[this.color] ?? `bg-${this.color}`;
 
-            let className = `badge rounded-pill ${variant}`;
-
-            if (this.fixedWidth) {
-                className += " fixed-width";
-            }
-            return className;
+            return `badge rounded-pill ${variant}`;
         },
     },
 };
@@ -73,29 +64,5 @@ export default {
     min-width: 62px;
 }
 
-.fixed-width {
-    width: 62px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.status-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    display: inline-block;
-    flex: 0 0 8px;
-}
-
-.dot-success {
-    background-color: var(--bs-success);
-}
-
-.dot-danger {
-    background-color: var(--bs-danger);
-}
-
-.dot-secondary {
-    background-color: var(--bs-secondary-color);
-}
+/* .status-dot / .dot-* are global (main.scss) */
 </style>

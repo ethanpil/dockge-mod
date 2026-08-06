@@ -9,7 +9,6 @@ import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
 import {
     faExpand,
     faCompress,
-    faArrowAltCircleUp,
     faCog,
     faEdit,
     faEye,
@@ -64,7 +63,6 @@ import {
 library.add(
     faExpand,
     faCompress,
-    faArrowAltCircleUp,
     faCog,
     faEdit,
     faEye,

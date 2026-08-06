@@ -138,18 +138,13 @@
                                     :name="name"
                                     :is-edit-mode="isEditMode"
                                     :first="name === Object.keys(jsonConfig.services)[0]"
-                                    :serviceStatus="serviceStatusList[name]"
-                                    :dockerStats="dockerStats"
-                                    @start-service="startService"
-                                    @stop-service="stopService"
-                                    @restart-service="restartService"
                                 />
                             </div>
                         </div>
                     </div>
 
                     <!-- Containers (view mode): dense table, stacked cards on mobile -->
-                    <div v-if="!isEditMode && hasContainers" class="panel containers-panel">
+                    <div v-if="!isEditMode && hasContainers" class="panel">
                         <div class="panel-head">
                             <span class="panel-title">{{ $tc("container", 2) }}</span>
                             <span class="panel-note">{{ containerRows.length }}</span>
@@ -174,7 +169,7 @@
                             <tbody>
                                 <tr v-for="row in containerRows" :key="row.key">
                                     <td class="c-svc">
-                                        <span class="status-dot me-2" :class="'dot-' + row.color"></span><strong>{{ row.service }}</strong>
+                                        <span class="status-dot me-2" :class="'dot-' + row.color"></span><strong class="svc-name" :title="row.service">{{ row.service }}</strong>
                                         <div v-if="row.showInstanceName" class="cell-sub">{{ row.instanceName }}</div>
                                     </td>
                                     <td class="c-img cell-muted">{{ imageOf(row.service) }}</td>
@@ -187,34 +182,18 @@
                                     <td class="c-num c-net mono cell-muted">{{ row.stat?.NetIO ?? "—" }}</td>
                                     <td class="c-num c-blk mono cell-muted">{{ row.stat?.BlockIO ?? "—" }}</td>
                                     <td class="c-act">
-                                        <div v-if="hasActions(row)" class="dropdown">
-                                            <button class="btn btn-secondary btn-sm dropdown-toggle actions-btn" data-bs-toggle="dropdown" aria-expanded="false">
-                                                {{ $t("actions") }}
-                                            </button>
-                                            <ul class="dropdown-menu dropdown-menu-end">
-                                                <li v-if="isRowRunning(row)">
-                                                    <router-link class="dropdown-item" :to="bashLink(row.service)">
-                                                        <font-awesome-icon icon="terminal" class="me-1" /> Bash
-                                                    </router-link>
-                                                </li>
-                                                <li v-if="isRowRunning(row) && serviceCount > 1"><hr class="dropdown-divider"></li>
-                                                <li v-if="!isRowRunning(row) && serviceCount > 1">
-                                                    <button class="dropdown-item" :disabled="processing" @click="startService(row.service)">
-                                                        <font-awesome-icon icon="play" class="me-1" /> {{ $t("startStack") }}
-                                                    </button>
-                                                </li>
-                                                <li v-if="isRowRunning(row) && serviceCount > 1">
-                                                    <button class="dropdown-item" :disabled="processing" @click="restartService(row.service)">
-                                                        <font-awesome-icon icon="rotate" class="me-1" /> {{ $t("restartStack") }}
-                                                    </button>
-                                                </li>
-                                                <li v-if="isRowRunning(row) && serviceCount > 1">
-                                                    <button class="dropdown-item" :disabled="processing" @click="stopService(row.service)">
-                                                        <font-awesome-icon icon="stop" class="me-1" /> {{ $t("stopStack") }}
-                                                    </button>
-                                                </li>
-                                            </ul>
-                                        </div>
+                                        <!-- Actions are service-scoped (docker compose has no per-replica
+                                             stop), so they render once per service, on its first row. -->
+                                        <ContainerActions
+                                            v-if="row.first"
+                                            :status="row.status"
+                                            :service-count="serviceCount"
+                                            :processing="processing"
+                                            :bash-to="bashLink(row.service)"
+                                            @start="startService(row.service)"
+                                            @restart="restartService(row.service)"
+                                            @stop="stopService(row.service)"
+                                        />
                                         <span v-else class="cell-muted">—</span>
                                     </td>
                                 </tr>
@@ -228,34 +207,17 @@
                                     <span class="status-dot" :class="'dot-' + row.color"></span>
                                     <strong class="text-truncate">{{ row.service }}</strong>
                                     <span class="badge state-badge" :class="stateBadgeClass(row.status)">{{ row.status }}</span>
-                                    <div v-if="hasActions(row)" class="dropdown ms-auto">
-                                        <button class="btn btn-secondary btn-sm dropdown-toggle actions-btn" data-bs-toggle="dropdown" aria-expanded="false">
-                                            {{ $t("actions") }}
-                                        </button>
-                                        <ul class="dropdown-menu dropdown-menu-end">
-                                            <li v-if="isRowRunning(row)">
-                                                <router-link class="dropdown-item" :to="bashLink(row.service)">
-                                                    <font-awesome-icon icon="terminal" class="me-1" /> Bash
-                                                </router-link>
-                                            </li>
-                                            <li v-if="isRowRunning(row) && serviceCount > 1"><hr class="dropdown-divider"></li>
-                                            <li v-if="!isRowRunning(row) && serviceCount > 1">
-                                                <button class="dropdown-item" :disabled="processing" @click="startService(row.service)">
-                                                    <font-awesome-icon icon="play" class="me-1" /> {{ $t("startStack") }}
-                                                </button>
-                                            </li>
-                                            <li v-if="isRowRunning(row) && serviceCount > 1">
-                                                <button class="dropdown-item" :disabled="processing" @click="restartService(row.service)">
-                                                    <font-awesome-icon icon="rotate" class="me-1" /> {{ $t("restartStack") }}
-                                                </button>
-                                            </li>
-                                            <li v-if="isRowRunning(row) && serviceCount > 1">
-                                                <button class="dropdown-item" :disabled="processing" @click="stopService(row.service)">
-                                                    <font-awesome-icon icon="stop" class="me-1" /> {{ $t("stopStack") }}
-                                                </button>
-                                            </li>
-                                        </ul>
-                                    </div>
+                                    <ContainerActions
+                                        v-if="row.first"
+                                        class="ms-auto"
+                                        :status="row.status"
+                                        :service-count="serviceCount"
+                                        :processing="processing"
+                                        :bash-to="bashLink(row.service)"
+                                        @start="startService(row.service)"
+                                        @restart="restartService(row.service)"
+                                        @stop="stopService(row.service)"
+                                    />
                                 </div>
                                 <div class="mcard-img cell-muted">{{ imageOf(row.service) }}</div>
                                 <div class="mcard-grid">
@@ -289,7 +251,7 @@
 
                     <!-- Logs + compose.yaml, side by side, filling the rest of the viewport -->
                     <div v-show="!isEditMode" class="panel-split">
-                        <div class="panel fill-panel" :class="{ pop: expandedPanel === 'logs' }">
+                        <div class="panel" :class="{ pop: expandedPanel === 'logs' }">
                             <div class="panel-head">
                                 <span class="panel-title">{{ $t("logs") }}</span>
                                 <span class="panel-note">{{ stack.name }}</span>
@@ -309,7 +271,7 @@
                             </div>
                         </div>
 
-                        <div class="panel fill-panel" :class="{ pop: expandedPanel === 'yaml' }">
+                        <div class="panel" :class="{ pop: expandedPanel === 'yaml' }">
                             <div class="panel-head">
                                 <span class="panel-title">{{ stack.composeFileName }}</span>
                                 <button class="expand-btn" :title="expandedPanel === 'yaml' ? $t('cancel') : $t('expand')" @click="toggleExpand('yaml')">
@@ -375,6 +337,13 @@
                         </div>
                     </div>
 
+                    <!-- Volumes -->
+                    <div v-if="false">
+                        <h4 class="fs-5 mb-2">{{ $tc("volume", 2) }}</h4>
+                        <div class="shadow-box big-padding mb-3">
+                        </div>
+                    </div>
+
                     <!-- Networks -->
                     <div class="panel">
                         <div class="panel-head"><span class="panel-title">{{ $tc("network", 2) }}</span></div>
@@ -428,6 +397,7 @@ import { formatPorts, formatUptime } from "../util-frontend";
 import NetworkInput from "../components/NetworkInput.vue";
 import Confirm from "../components/Confirm.vue";
 import Container from "../components/Container.vue";
+import ContainerActions from "../components/ContainerActions.vue";
 import Terminal from "../components/Terminal.vue";
 import Uptime from "../components/Uptime.vue";
 import ArrayInput from "../components/ArrayInput.vue";
@@ -456,6 +426,7 @@ export default {
         CodeMirror,
         Confirm,
         Container,
+        ContainerActions,
         Terminal,
         Uptime,
         ArrayInput,
@@ -575,6 +546,8 @@ export default {
                         rows.push({
                             key: `${service}#${i}`,
                             service,
+                            // Actions are service-wide, so only the first row carries them
+                            first: i === 0,
                             instanceName: instance.name,
                             showInstanceName: instances.length > 1,
                             status: instance.status ?? "N/A",
@@ -589,6 +562,7 @@ export default {
                     rows.push({
                         key: `${service}#none`,
                         service,
+                        first: true,
                         instanceName: "",
                         showInstanceName: false,
                         status: "N/A",
@@ -759,9 +733,14 @@ export default {
          */
         toggleExpand(which) {
             this.expandedPanel = (this.expandedPanel === which) ? null : which;
-            this.$nextTick(() => {
-                window.dispatchEvent(new Event("resize"));
-            });
+            // Only the logs panel holds a terminal, and only its own geometry
+            // changes — a global resize event would make every mounted
+            // terminal refit and re-message the backend.
+            if (which === "logs") {
+                this.$nextTick(() => {
+                    this.$refs.combinedTerminal?.onResizeEvent?.();
+                });
+            }
         },
 
         /**
@@ -809,25 +788,6 @@ export default {
         stateBadgeClass(status) {
             const color = this.rowColor(status);
             return `bg-${color}-subtle text-${color}-emphasis`;
-        },
-
-        /**
-         * Whether the row's container is running or healthy.
-         * @param {object} row container row
-         * @returns {boolean} true when running
-         */
-        isRowRunning(row) {
-            return row.status === "running" || row.status === "healthy";
-        },
-
-        /**
-         * Whether the Actions dropdown has at least one entry for this row.
-         * Mirrors the per-service button rules of the old card layout.
-         * @param {object} row container row
-         * @returns {boolean} true when the dropdown should render
-         */
-        hasActions(row) {
-            return this.isRowRunning(row) || this.serviceCount > 1;
         },
 
         /**
@@ -1110,6 +1070,9 @@ export default {
         },
 
         enableEditMode() {
+            // The expanded overlay lives in view mode; leaving it set would
+            // strand a full-viewport backdrop over the edit form.
+            this.expandedPanel = null;
             this.isEditMode = true;
         },
 
@@ -1330,7 +1293,8 @@ export default {
     background: rgba(0, 0, 0, 0.55);
 }
 
-/* ---------- containers table ---------- */
+/* ---------- containers table ----------
+   .state-badge is global (main.scss); .actions-btn lives in ContainerActions. */
 .cell-muted {
     color: var(--bs-secondary-color);
 }
@@ -1340,17 +1304,18 @@ export default {
     color: var(--bs-secondary-color);
 }
 
-.state-badge {
-    font-size: 10.5px;
-    font-weight: 600;
-    border-radius: 2px;
-}
+// A very long service name must not widen the nowrap column past the panel;
+// the full name is in the cell tooltip.
+.svc-name {
+    display: inline-block;
+    max-width: 220px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    vertical-align: bottom;
 
-.actions-btn {
-    padding: 0.05rem 0.4rem;
-    font-size: 11.5px;
-    border-radius: 2px;
-    white-space: nowrap;
+    @media (max-width: 1400px) {
+        max-width: 140px;
+    }
 }
 
 .ctable {
