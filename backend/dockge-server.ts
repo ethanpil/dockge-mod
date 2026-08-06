@@ -1,6 +1,7 @@
 import "dotenv/config";
 import { MainRouter } from "./routers/main-router";
 import * as fs from "node:fs";
+import * as os from "node:os";
 import { PackageJson } from "type-fest";
 import { Database } from "./database";
 import packageJSON from "../package.json";
@@ -658,6 +659,62 @@ export class DockgeServer {
             log.error("getDockerStats", e);
             return stats;
         }
+    }
+
+    /**
+     * Host level statistics for the dashboard. Additive and best effort: every
+     * section that cannot be read is simply omitted, and the frontend hides the
+     * matching tile, so an older agent without this event degrades cleanly.
+     *
+     * Memory and load come from /proc, which is the host's because containers
+     * share the host kernel. Disk usage comes from `docker system df`.
+     */
+    async getHostStats() : Promise<object> {
+        const stats : { mem ?: object, load ?: string, cpus ?: number, df ?: object[] } = {};
+
+        try {
+            const meminfo = await fs.promises.readFile("/proc/meminfo", "utf-8");
+            const kb = (key : string) => Number(meminfo.match(new RegExp("^" + key + ":\\s+(\\d+)", "m"))?.[1] ?? 0);
+            const total = kb("MemTotal") * 1024;
+            const available = kb("MemAvailable") * 1024;
+            if (total > 0) {
+                stats.mem = {
+                    total,
+                    used: total - available,
+                };
+            }
+        } catch (e) {
+            log.debug("hostStats", "Cannot read /proc/meminfo");
+        }
+
+        try {
+            const loadavg = await fs.promises.readFile("/proc/loadavg", "utf-8");
+            stats.load = loadavg.split(" ").slice(0, 3).join(" ");
+            stats.cpus = os.cpus().length;
+        } catch (e) {
+            log.debug("hostStats", "Cannot read /proc/loadavg");
+        }
+
+        try {
+            const res = await childProcessAsync.spawn("docker", [ "system", "df", "--format", "{{json .}}" ], {
+                encoding: "utf-8",
+            });
+            if (res.stdout) {
+                const rows = [];
+                for (const line of res.stdout.toString().split("\n")) {
+                    try {
+                        rows.push(JSON.parse(line));
+                    } catch (e) {
+                        // Skip non-JSON lines
+                    }
+                }
+                stats.df = rows;
+            }
+        } catch (e) {
+            log.error("hostStats", e);
+        }
+
+        return stats;
     }
 
     get stackDirFullPath() {

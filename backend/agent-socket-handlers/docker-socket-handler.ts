@@ -256,6 +256,21 @@ export class DockerSocketHandler extends AgentSocketHandler {
             }
         });
 
+        // Host stats for the dashboard (additive event; upstream agents
+        // simply never answer it and the frontend hides the tiles)
+        agentSocket.on("hostStats", async (callback) => {
+            try {
+                checkLogin(socket);
+
+                callbackResult({
+                    ok: true,
+                    hostStats: await server.getHostStats(),
+                }, callback);
+            } catch (e) {
+                callbackError(e, callback);
+            }
+        });
+
         // Start a service
         agentSocket.on("startService", async (stackName: unknown, serviceName: unknown, callback) => {
             try {

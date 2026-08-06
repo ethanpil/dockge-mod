@@ -186,7 +186,6 @@ export function getToastErrorTimeout() {
     return errorTimeout;
 }
 
-
 /**
  * Convert docker's human readable container status ("Up 55 minutes (healthy)",
  * "Up 3 days", "Up About an hour") into the fixed "0d 0h 55m" form.
@@ -244,4 +243,42 @@ export function formatPorts(ports : string) : string {
         }
     }
     return [ ...seen ].join(", ");
+}
+
+/**
+ * Format a byte count for display, e.g. 2147483648 -> "2.0 GiB".
+ * @param {number} bytes Byte count
+ * @returns {string} Human readable size
+ */
+export function formatBytes(bytes : number) : string {
+    if (!Number.isFinite(bytes) || bytes < 0) {
+        return "-";
+    }
+    const units = [ "B", "KiB", "MiB", "GiB", "TiB" ];
+    let i = 0;
+    let v = bytes;
+    while (v >= 1024 && i < units.length - 1) {
+        v /= 1024;
+        i++;
+    }
+    return `${v.toFixed(v >= 100 || i === 0 ? 0 : 1)} ${units[i]}`;
+}
+
+/**
+ * Parse docker's human readable sizes ("1.53GB", "250.7MB", "0B") to bytes.
+ * Docker prints decimal units.
+ * @param {string} size Size string from docker
+ * @returns {number} Byte count, 0 when unparsable
+ */
+export function parseDockerSize(size : string) : number {
+    const m = (size ?? "").trim().match(/^([\d.]+)\s*([kKmMgGtT]?)B?$/);
+    if (!m) {
+        return 0;
+    }
+    const mult : Record<string, number> = { "": 1,
+        k: 1e3,
+        m: 1e6,
+        g: 1e9,
+        t: 1e12 };
+    return parseFloat(m[1]) * (mult[m[2].toLowerCase()] ?? 1);
 }
