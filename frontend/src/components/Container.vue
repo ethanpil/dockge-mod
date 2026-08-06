@@ -1,5 +1,5 @@
 <template>
-    <div class="shadow-box big-padding mb-3 container">
+    <div class="shadow-box big-padding mb-3 container-card">
         <div class="row">
             <div class="col-5">
                 <h4 class="fs-6 fw-semibold mb-1">{{ name }}</h4>
@@ -379,7 +379,7 @@ export default defineComponent({
 </script>
 
 <style scoped lang="scss">
-.container {
+.container-card {
     .image {
         font-size: 0.8rem;
         color: var(--bs-secondary-color);

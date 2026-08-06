@@ -186,3 +186,62 @@ export function getToastErrorTimeout() {
     return errorTimeout;
 }
 
+
+/**
+ * Convert docker's human readable container status ("Up 55 minutes (healthy)",
+ * "Up 3 days", "Up About an hour") into the fixed "0d 0h 55m" form.
+ * Docker only reports one coarse unit, so the other two positions are zero.
+ * @param {string} status Status column of `docker compose ps`
+ * @returns {string|null} Shorthand uptime, or null when the container is not up
+ */
+export function formatUptime(status : string) : string | null {
+    if (!status || !status.startsWith("Up")) {
+        return null;
+    }
+
+    // "Up 55 minutes (healthy)" -> "55 minutes"
+    const body = status.replace(/^Up\s*/, "").replace(/\s*\([^)]*\)\s*$/, "").trim();
+
+    let minutes = 0;
+    const m = body.match(/^(About\s+an?|Less\s+than\s+an?|\d+)\s+(second|minute|hour|day|week|month|year)s?$/i);
+    if (m) {
+        const n = /^\d+$/.test(m[1]) ? parseInt(m[1]) : (/^Less/i.test(m[1]) ? 0 : 1);
+        const unit = m[2].toLowerCase();
+        const perUnit : Record<string, number> = {
+            second: 0,
+            minute: 1,
+            hour: 60,
+            day: 1440,
+            week: 10080,
+            month: 43200,
+            year: 525600,
+        };
+        minutes = n * (perUnit[unit] ?? 0);
+    }
+
+    const d = Math.floor(minutes / 1440);
+    const h = Math.floor((minutes % 1440) / 60);
+    const min = minutes % 60;
+    return `${d}d ${h}h ${min}m`;
+}
+
+/**
+ * Compact docker's Ports column by dropping the published host address
+ * ("0.0.0.0:", "[::]:", ...) and deduplicating the IPv4/IPv6 twins that
+ * stripping produces.
+ * @param {string} ports Ports column of `docker compose ps`
+ * @returns {string} e.g. "18080->80/tcp"
+ */
+export function formatPorts(ports : string) : string {
+    if (!ports) {
+        return "";
+    }
+    const seen = new Set<string>();
+    for (const part of ports.split(",")) {
+        const cleaned = part.trim().replace(/^(\d{1,3}(?:\.\d{1,3}){3}|\[[^\]]*\]|\*):/, "");
+        if (cleaned) {
+            seen.add(cleaned);
+        }
+    }
+    return [ ...seen ].join(", ");
+}
