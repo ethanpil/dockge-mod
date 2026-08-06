@@ -8,7 +8,7 @@
                 </li>
             </ul>
 
-            <button class="btn btn-normal btn-sm mt-3" @click="addField">{{ $t("addListItem", [ displayName ]) }}</button>
+            <button v-if="!compact" class="btn btn-normal btn-sm mt-3" @click="addField">{{ $t("addListItem", [ displayName ]) }}</button>
         </div>
         <div v-else>
             {{ $t("LongSyntaxNotSupported") }}
@@ -34,7 +34,12 @@ export default {
         objectType: {
             type: String,
             default: "service",
-        }
+        },
+        /** Hide the internal add button; the parent calls addField() via a ref */
+        compact: {
+            type: Boolean,
+            default: false,
+        },
     },
     data() {
         return {
