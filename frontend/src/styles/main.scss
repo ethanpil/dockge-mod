@@ -77,6 +77,23 @@
     padding: 0.5rem;
 }
 
+// Small outline control used in panel headers and field labels
+.mini-btn {
+    border: 1px solid var(--bs-border-color);
+    background: transparent;
+    color: var(--bs-secondary-color);
+    border-radius: 3px;
+    font-size: 10.5px;
+    line-height: 1.4;
+    padding: 0.15rem 0.4rem;
+    min-height: 24px;
+    cursor: pointer;
+
+    &:hover {
+        color: var(--bs-body-color);
+    }
+}
+
 .mono {
     font-family: ui-monospace, "JetBrains Mono", Menlo, Consolas, monospace;
     font-variant-numeric: tabular-nums;
