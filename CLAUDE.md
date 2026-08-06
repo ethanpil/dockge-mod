@@ -2,4 +2,6 @@ A primary goal of this project is to retain drop-in compatibility with the origi
 
 When writing readme files, commit messages, changelogs, documentation and comments, use ONLY ASD-STE100 Simplified Technical English.
 
+Maintain the changelog as we progress over time.
+
 When sending commits, always group logal work together in a commit and then push. Dont just sent it all in one big spaghetti commit.
