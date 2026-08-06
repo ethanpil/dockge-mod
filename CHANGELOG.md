@@ -25,6 +25,9 @@ The base is dockge commit [f809ae1](https://github.com/louislam/dockge/commit/f8
 - The additive "hostStats" socket event supplies host memory, load average, and Docker disk usage. An agent without this event shows only the stack tiles.
 - The service status data includes uptime, ports, and IP. The IP values come from one batched `docker inspect` call, cached by container ID.
 - The compose editor marks each YAML syntax error at its position, with a gutter icon and an underline. The error message shows on hover.
+- The container editor uses a two-column grid. The card header shows the name, the image, and the item counts. The Edit button changes to Close when the card is open. Cards start closed when a stack has three or more services.
+- The Save button becomes green when there are changes to save. A dot also shows next to the stack name.
+- A dialog shows when you leave with changes that are not saved. The dialog gives three choices: stay, discard and leave, or save and leave. The dialog shows only when changes exist. A browser prompt gives the same protection if you close the tab.
 
 ## Fixes
 

@@ -5,7 +5,7 @@
                 <h1 v-if="isAdd" class="fs-4 mb-0">{{ $t("compose") }}</h1>
                 <template v-else>
                     <Uptime :stack="globalStack" :pill="true" />
-                    <h1 class="fs-4 mb-0 title-name">{{ stack.name }}</h1>
+                    <h1 class="fs-4 mb-0 title-name">{{ stack.name }} <span v-if="isDirty" class="dirty-dot" :title="$t('unsavedChanges')">&#9679;</span></h1>
                     <span v-if="$root.agentCount > 1 && endpoint !== ''" class="agent-name">
                         ({{ endpointDisplay }})
                     </span>
@@ -19,9 +19,15 @@
                             {{ $t("deployStack") }}
                         </button>
 
-                        <button v-if="isEditMode" class="btn btn-normal" :disabled="processing" @click="saveStack">
+                        <button
+                            v-if="isEditMode"
+                            class="btn"
+                            :class="isDirty ? 'btn-success' : 'btn-normal'"
+                            :disabled="processing || (!isDirty && !isAdd)"
+                            @click="saveStack()"
+                        >
                             <font-awesome-icon icon="save" class="me-1" />
-                            {{ $t("saveStackDraft") }}
+                            {{ $t("saveStackDraft") }}<template v-if="isDirty"> &#9679;</template>
                         </button>
 
                         <button v-if="!isEditMode" class="btn btn-secondary" :disabled="processing" @click="enableEditMode">
@@ -138,6 +144,7 @@
                                     :name="name"
                                     :is-edit-mode="isEditMode"
                                     :first="name === Object.keys(jsonConfig.services)[0]"
+                                    :default-open="serviceCount < 3"
                                 />
                             </div>
                         </div>
@@ -371,6 +378,23 @@
             <Confirm ref="confirmDeleteStack" btn-style="btn-danger" :yes-text="$t('deleteStack')" :no-text="$t('cancel')" @yes="deleteDialog">
                 {{ $t("deleteStackMsg") }}
             </Confirm>
+
+            <!-- Unsaved changes dialog: shown when the user leaves edit mode
+                 with changes that are not saved -->
+            <div v-if="showLeaveConfirm" class="leave-backdrop"></div>
+            <div v-if="showLeaveConfirm" class="leave-modal">
+                <div class="leave-head">{{ $t("unsavedChanges") }}</div>
+                <div class="leave-body">
+                    <i18n-t keypath="unsavedChangesMsg" tag="span">
+                        <strong>{{ stack.name }}</strong>
+                    </i18n-t>
+                </div>
+                <div class="leave-actions">
+                    <button class="btn btn-secondary btn-sm" @click="resolveLeave('stay')">{{ $t("stay") }}</button>
+                    <button class="btn btn-outline-danger btn-sm" @click="resolveLeave('discard')">{{ $t("discardAndLeave") }}</button>
+                    <button class="btn btn-success btn-sm" :disabled="processing" @click="resolveLeave('save')">{{ $t("saveAndLeave") }}</button>
+                </div>
+            </div>
         </div>
     </transition>
 </template>
@@ -510,6 +534,9 @@ export default {
             stopServiceStatusTimeout: false,
             stopDockerStatsTimeout: false,
             expandedPanel: null,
+            editSnapshot: null,
+            showLeaveConfirm: false,
+            leaveNext: null,
         };
     },
     computed: {
@@ -550,6 +577,20 @@ export default {
 
         hasContainers() {
             return Object.keys(this.jsonConfig.services ?? {}).length > 0;
+        },
+
+        /**
+         * True when edit mode holds changes that are not saved. Form edits
+         * write back into composeYAML, so the two strings cover both the
+         * editors and the config cards.
+         * @return {boolean}
+         */
+        isDirty() {
+            if (!this.isEditMode || !this.editSnapshot) {
+                return false;
+            }
+            return this.stack.composeYAML !== this.editSnapshot.yaml
+                || this.stack.composeENV !== this.editSnapshot.env;
         },
 
         serviceCount() {
@@ -723,6 +764,7 @@ export default {
             };
 
             this.yamlCodeChange();
+            this.takeEditSnapshot();
 
         } else {
             this.stack.name = this.$route.params.stackName;
@@ -733,9 +775,11 @@ export default {
         this.requestDockerStats();
 
         window.addEventListener("keydown", this.onComposeKeydown);
+        window.addEventListener("beforeunload", this.onBeforeUnload);
     },
     unmounted() {
         window.removeEventListener("keydown", this.onComposeKeydown);
+        window.removeEventListener("beforeunload", this.onBeforeUnload);
     },
     methods: {
         /**
@@ -746,6 +790,20 @@ export default {
         onComposeKeydown(e) {
             if (e.key === "Escape" && this.expandedPanel) {
                 this.toggleExpand(this.expandedPanel);
+            }
+        },
+
+        /**
+         * The router guard cannot catch a tab close or a page reload; the
+         * browser prompt covers that path when changes are not saved.
+         * @param {BeforeUnloadEvent} e beforeunload event
+         * @returns {void}
+         */
+        onBeforeUnload(e) {
+            if (this.isEditMode && this.isDirty) {
+                e.preventDefault();
+                // Chrome requires returnValue to be set
+                e.returnValue = "";
             }
         },
 
@@ -884,17 +942,50 @@ export default {
         },
 
         exitConfirm(next) {
-            if (this.isEditMode) {
-                if (confirm(this.$t("confirmLeaveStack"))) {
-                    this.exitAction();
-                    next();
-                } else {
-                    next(false);
-                }
+            // Ask only when there is work to lose; a clean editor just leaves
+            if (this.isEditMode && this.isDirty) {
+                this.leaveNext = next;
+                this.showLeaveConfirm = true;
             } else {
                 this.exitAction();
                 next();
             }
+        },
+
+        /**
+         * Close the unsaved-changes dialog with one of its three choices.
+         * @param {string} choice "stay", "discard" or "save"
+         * @returns {void}
+         */
+        resolveLeave(choice) {
+            const next = this.leaveNext;
+
+            if (choice === "stay") {
+                this.showLeaveConfirm = false;
+                this.leaveNext = null;
+                next?.(false);
+                return;
+            }
+
+            if (choice === "discard") {
+                this.showLeaveConfirm = false;
+                this.leaveNext = null;
+                this.exitAction();
+                next?.();
+                return;
+            }
+
+            // "save": leave only after the server accepts the file
+            this.saveStack((ok) => {
+                this.showLeaveConfirm = false;
+                this.leaveNext = null;
+                if (ok) {
+                    this.exitAction();
+                    next?.();
+                } else {
+                    next?.(false);
+                }
+            });
         },
 
         exitAction() {
@@ -970,7 +1061,7 @@ export default {
             });
         },
 
-        saveStack() {
+        saveStack(then = null) {
             this.processing = true;
 
             this.$root.emitAgent(this.stack.endpoint, "saveStack", this.stack.name, this.stack.composeYAML, this.stack.composeENV, this.isAdd, (res) => {
@@ -978,8 +1069,16 @@ export default {
                 this.$root.toastRes(res);
 
                 if (res.ok) {
+                    // The saved file is the new baseline
+                    this.takeEditSnapshot();
+                    if (then) {
+                        then(true);
+                        return;
+                    }
                     this.isEditMode = false;
                     this.$router.push(this.url);
+                } else if (then) {
+                    then(false);
                 }
             });
         },
@@ -1099,6 +1198,27 @@ export default {
             // strand a full-viewport backdrop over the edit form.
             this.expandedPanel = null;
             this.isEditMode = true;
+            this.takeEditSnapshot();
+        },
+
+        /**
+         * Record the current file contents. isDirty compares against this.
+         *
+         * Entering edit mode makes the config cards write the parsed object
+         * back to YAML, which reformats the text (a flow sequence becomes a
+         * block sequence, for example). That rewrite is not a user change, so
+         * the snapshot is taken after it, on the next tick.
+         * @returns {void}
+         */
+        takeEditSnapshot() {
+            const capture = () => {
+                this.editSnapshot = {
+                    yaml: this.stack.composeYAML,
+                    env: this.stack.composeENV,
+                };
+            };
+            capture();
+            this.$nextTick(() => this.$nextTick(capture));
         },
 
         checkYAML() {
@@ -1316,6 +1436,58 @@ export default {
     inset: 0;
     z-index: 1050;
     background: rgba(0, 0, 0, 0.55);
+}
+
+/* ---------- unsaved changes ---------- */
+.dirty-dot {
+    color: var(--bs-warning);
+    font-size: 0.55em;
+    vertical-align: middle;
+}
+
+.leave-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 1060;
+    background: rgba(0, 0, 0, 0.55);
+    backdrop-filter: blur(2px);
+}
+
+.leave-modal {
+    position: fixed;
+    top: 15vh;
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(440px, calc(100vw - 2rem));
+    z-index: 1061;
+    background: var(--bs-body-bg);
+    border: 1px solid var(--bs-border-color);
+    border-radius: 6px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+}
+
+.leave-head {
+    padding: 0.6rem 0.8rem;
+    border-bottom: 1px solid var(--bs-border-color);
+    font-weight: 600;
+}
+
+.leave-body {
+    padding: 0.8rem;
+    color: var(--bs-secondary-color);
+
+    strong {
+        color: var(--bs-body-color);
+    }
+}
+
+.leave-actions {
+    padding: 0.6rem 0.8rem;
+    border-top: 1px solid var(--bs-border-color);
+    display: flex;
+    gap: 0.4rem;
+    justify-content: flex-end;
+    flex-wrap: wrap;
 }
 
 /* ---------- containers table ----------

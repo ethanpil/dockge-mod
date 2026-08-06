@@ -155,5 +155,11 @@
     "rmCode": "rm",
     "rmRfCode": "rm -rf",
     "envVarCode": "DOCKGE_ENABLE_CONSOLE=true",
-    "confirmLeaveStack": "You are currently editing a stack. Are you sure you want to leave?"
+    "confirmLeaveStack": "You are currently editing a stack. Are you sure you want to leave?",
+    "closeEdit": "Close",
+    "unsavedChanges": "Unsaved changes",
+    "unsavedChangesMsg": "You have unsaved changes in {0}. If you leave now, the changes are lost.",
+    "stay": "Stay",
+    "discardAndLeave": "Discard and leave",
+    "saveAndLeave": "Save and leave"
 }
