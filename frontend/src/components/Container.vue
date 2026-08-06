@@ -1,20 +1,27 @@
 <template>
     <div class="container-card mb-2">
-        <div class="ccard-head" :class="{ closed: !showConfig }">
-            <span class="svc-title">{{ name }}</span>
+        <div class="panel-head ccard-head" :class="{ closed: !showConfig }">
+            <span class="svc-title" :title="name">{{ name }}</span>
             <span class="img-note"><span class="img-name">{{ imageName }}</span><template v-if="imageTag">:{{ imageTag }}</template></span>
             <span class="counts d-none d-sm-inline">{{ countsSummary }}</span>
             <div class="head-actions">
-                <button class="btn btn-secondary btn-sm head-btn" @click="showConfig = !showConfig">
+                <button class="btn btn-secondary btn-sm head-btn" :aria-expanded="showConfig ? 'true' : 'false'" @click="showConfig = !showConfig">
                     <template v-if="showConfig"><font-awesome-icon icon="chevron-up" /> {{ $t("closeEdit") }}</template>
                     <template v-else><font-awesome-icon icon="edit" /> {{ $t("Edit") }}</template>
                 </button>
-                <button class="btn btn-outline-danger btn-sm head-btn" @click="remove">
+                <button class="btn btn-outline-danger btn-sm head-btn" @click="$refs.confirmRemove.show()">
                     <font-awesome-icon icon="trash" />
                     {{ $t("deleteContainer") }}
                 </button>
             </div>
         </div>
+
+        <!-- Delete removes the service from the file immediately, so ask first -->
+        <Confirm ref="confirmRemove" btn-style="btn-danger" :yes-text="$t('deleteContainer')" :no-text="$t('cancel')" @yes="remove">
+            <i18n-t keypath="deleteContainerMsg" tag="span">
+                <strong>{{ name }}</strong>
+            </i18n-t>
+        </Confirm>
 
         <transition name="slide-fade" appear>
             <div v-if="showConfig" class="config">
@@ -25,9 +32,9 @@
                         <input
                             v-model="service.image"
                             class="form-control form-control-sm mono"
-                            list="image-datalist"
+                            :list="datalistId"
                         />
-                        <datalist id="image-datalist">
+                        <datalist :id="datalistId">
                             <option value="louislam/uptime-kuma:1" />
                         </datalist>
                     </div>
@@ -49,7 +56,7 @@
                     <div class="field">
                         <div class="f-label">
                             {{ $tc("port", 2) }}
-                            <button class="add-btn" @click="$refs.portsInput.addField()">+ {{ $t("add") }}</button>
+                            <button v-if="canAdd.ports" class="mini-btn add-btn" @click="$refs.portsInput?.addField()">+ {{ $t("add") }}</button>
                         </div>
                         <ArrayInput ref="portsInput" name="ports" :display-name="$t('port')" placeholder="HOST:CONTAINER" :compact="true" />
                     </div>
@@ -58,7 +65,7 @@
                     <div class="field">
                         <div class="f-label">
                             {{ $tc("volume", 2) }}
-                            <button class="add-btn" @click="$refs.volumesInput.addField()">+ {{ $t("add") }}</button>
+                            <button v-if="canAdd.volumes" class="mini-btn add-btn" @click="$refs.volumesInput?.addField()">+ {{ $t("add") }}</button>
                         </div>
                         <ArrayInput ref="volumesInput" name="volumes" :display-name="$t('volume')" placeholder="HOST:CONTAINER" :compact="true" />
                     </div>
@@ -67,7 +74,7 @@
                     <div class="field">
                         <div class="f-label">
                             {{ $tc("environmentVariable", 2) }}
-                            <button class="add-btn" @click="$refs.envInput.addField()">+ {{ $t("add") }}</button>
+                            <button v-if="canAdd.env" class="mini-btn add-btn" @click="$refs.envInput?.addField()">+ {{ $t("add") }}</button>
                         </div>
                         <ArrayInput ref="envInput" name="environment" :display-name="$t('environmentVariable')" placeholder="KEY=VALUE" :compact="true" />
                     </div>
@@ -76,7 +83,7 @@
                     <div class="field">
                         <div class="f-label">
                             {{ $tc("network", 2) }}
-                            <button class="add-btn" @click="$refs.networksInput.addField()">+ {{ $t("add") }}</button>
+                            <button v-if="canAdd.networks" class="mini-btn add-btn" @click="$refs.networksInput?.addField()">+ {{ $t("add") }}</button>
                         </div>
                         <div v-if="networkList.length === 0 && service.networks && service.networks.length > 0" class="text-warning small mb-1">
                             {{ $t("NoNetworksAvailable") }}
@@ -85,7 +92,7 @@
 
                         <div class="f-label mt-2">
                             {{ $t("dependsOn") }}
-                            <button class="add-btn" @click="$refs.dependsInput.addField()">+ {{ $t("add") }}</button>
+                            <button v-if="canAdd.depends" class="mini-btn add-btn" @click="$refs.dependsInput?.addField()">+ {{ $t("add") }}</button>
                         </div>
                         <ArrayInput ref="dependsInput" name="depends_on" :display-name="$t('dependsOn')" :placeholder="$t(`containerName`)" :compact="true" />
                     </div>
@@ -100,6 +107,23 @@ import { defineComponent } from "vue";
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
 import ArrayInput from "./ArrayInput.vue";
 import ArraySelect from "./ArraySelect.vue";
+import Confirm from "./Confirm.vue";
+
+/**
+ * True when a compose field holds a simple list that the form can edit.
+ * A map, or a list of objects (the long syntax), must go to the YAML editor.
+ * @param {*} value the field value
+ * @returns {boolean} true if the form can add an item
+ */
+function isSimpleList(value) {
+    if (value === undefined || value === null) {
+        return true;
+    }
+    if (!Array.isArray(value)) {
+        return false;
+    }
+    return !value.some((item) => typeof item === "object" && item !== null);
+}
 
 /**
  * The editable per-service card of edit mode. View mode renders the
@@ -110,6 +134,7 @@ export default defineComponent({
         FontAwesomeIcon,
         ArrayInput,
         ArraySelect,
+        Confirm,
     },
     props: {
         name: {
@@ -117,10 +142,6 @@ export default defineComponent({
             required: true,
         },
         isEditMode: {
-            type: Boolean,
-            default: false,
-        },
-        first: {
             type: Boolean,
             default: false,
         },
@@ -132,10 +153,45 @@ export default defineComponent({
     },
     data() {
         return {
-            showConfig: this.defaultOpen,
+            // null means "follow defaultOpen"; a click sets an explicit choice
+            openChoice: null,
         };
     },
     computed: {
+
+        /**
+         * Open state of the config. A card that the user did not touch
+         * follows the defaultOpen property, so a card added to a small stack
+         * opens even when the new service count crosses the limit.
+         */
+        showConfig: {
+            get() {
+                return this.openChoice ?? this.defaultOpen;
+            },
+            set(value) {
+                this.openChoice = value;
+            },
+        },
+
+        /**
+         * Which lists the form can add an item to. The list editors show
+         * "long syntax is not supported" for the other forms, and their add
+         * button must not write into a value they cannot show.
+         */
+        canAdd() {
+            return {
+                ports: isSimpleList(this.service.ports),
+                volumes: isSimpleList(this.service.volumes),
+                env: isSimpleList(this.service.environment),
+                networks: isSimpleList(this.service.networks),
+                depends: isSimpleList(this.service.depends_on),
+            };
+        },
+
+        /** Unique per card, because several cards can be open at once */
+        datalistId() {
+            return `image-datalist-${this.name}`;
+        },
 
         networkList() {
             let list = [];
@@ -190,8 +246,9 @@ export default defineComponent({
         },
 
         /**
-         * Item counts for the closed card, e.g. "2 ports, 1 volume, 2 env".
-         * The environment can be a list or a map in compose files.
+         * Item counts for the card header, for example
+         * "2 ports · 1 volume · 2 env". A compose file can give the
+         * environment as a list or as a map.
          */
         countsSummary() {
             const len = (v) => {
@@ -203,13 +260,16 @@ export default defineComponent({
                 }
                 return 0;
             };
+            // Only the count 1 is singular. $tc with 0 selects the singular
+            // form in some rules, which gives "0 port".
+            const label = (key, n) => this.$tc(key, n === 1 ? 1 : 2).toLowerCase();
             const ports = len(this.service.ports);
             const volumes = len(this.service.volumes);
             const env = len(this.service.environment);
             return [
-                `${ports} ${this.$tc("port", ports).toLowerCase()}`,
-                `${volumes} ${this.$tc("volume", volumes).toLowerCase()}`,
-                `${env} env`,
+                `${ports} ${label("port", ports)}`,
+                `${volumes} ${label("volume", volumes)}`,
+                `${env} ${this.$t("envAbbrev")}`,
             ].join(" · ");
         },
     },
@@ -222,20 +282,17 @@ export default defineComponent({
 </script>
 
 <style scoped lang="scss">
+/* .panel-head, .panel-title, .mini-btn and .mono are global (main.scss) */
 .container-card {
     border: 1px solid var(--bs-border-color);
     border-radius: 4px;
 }
 
+/* Only the differences from the global .panel-head */
 .ccard-head {
-    display: flex;
-    align-items: center;
     gap: 0.6rem;
-    padding: 0.3rem 0.5rem;
-    background-color: var(--bs-tertiary-bg);
-    border-bottom: 1px solid var(--bs-border-color);
-    border-radius: 4px 4px 0 0;
     min-width: 0;
+    flex-wrap: wrap;
 
     &.closed {
         border-bottom: 0;
@@ -246,6 +303,9 @@ export default defineComponent({
 .svc-title {
     font-weight: 600;
     white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
 }
 
 .img-note {
@@ -254,6 +314,7 @@ export default defineComponent({
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    min-width: 0;
 
     .img-name {
         color: var(--bs-body-color);
@@ -265,17 +326,25 @@ export default defineComponent({
     font-size: 11px;
     color: var(--bs-secondary-color);
     white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
 }
 
 .head-actions {
     margin-left: auto;
     display: flex;
-    gap: 0.3rem;
+    gap: 0.5rem;
+    flex: 0 0 auto;
 }
 
+// Keep the touch target at the 24px minimum; Delete is destructive and
+// sits beside Close.
 .head-btn {
-    padding: 0.1rem 0.45rem;
+    padding: 0.15rem 0.5rem;
     font-size: 11.5px;
+    line-height: 1.5;
+    min-height: 24px;
     border-radius: 3px;
     white-space: nowrap;
 }
@@ -284,6 +353,7 @@ export default defineComponent({
     padding: 0.5rem;
 }
 
+/* .panel-title supplies the type; this adds the row layout */
 .f-label {
     display: flex;
     align-items: center;
@@ -294,26 +364,12 @@ export default defineComponent({
     letter-spacing: 0.05em;
     color: var(--bs-secondary-color);
     margin-bottom: 0.2rem;
+    min-height: 24px;
 }
 
+/* .mini-btn (global) supplies the look; this adds the placement */
 .add-btn {
     margin-left: auto;
-    border: 1px solid var(--bs-border-color);
-    background: transparent;
-    color: var(--bs-secondary-color);
-    border-radius: 3px;
-    font-size: 10.5px;
-    line-height: 1.4;
-    padding: 0 0.35rem;
-    cursor: pointer;
-
-    &:hover {
-        color: var(--bs-body-color);
-    }
-}
-
-.mono {
-    font-family: ui-monospace, "JetBrains Mono", Menlo, Consolas, monospace;
 }
 
 /* Image wide, restart policy narrow */

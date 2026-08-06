@@ -35,7 +35,7 @@ export default {
             type: String,
             default: "service",
         },
-        /** Hide the internal add button; the parent calls addField() via a ref */
+        /** Hide the add button. The parent then calls addField() with a ref. */
         compact: {
             type: Boolean,
             default: false,
