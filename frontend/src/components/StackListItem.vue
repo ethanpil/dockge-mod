@@ -1,6 +1,6 @@
 <template>
-    <router-link :to="url" :class="{ 'dim' : !stack.isManagedByDockge }" class="item">
-        <Uptime :stack="stack" :fixed-width="true" class="me-2" />
+    <router-link :to="url" :class="{ 'dim' : !stack.isManagedByDockge }" class="item" :title="stackName">
+        <Uptime :stack="stack" :dot="true" class="me-2" />
         <div class="title">
             <span>{{ stackName }}</span>
         </div>
@@ -120,5 +120,14 @@ export default {
 
 .dim {
     opacity: 0.5;
+}
+
+// Long names truncate with an ellipsis (full name in the title tooltip)
+// instead of wrapping to several lines in the narrow sidebar.
+.title {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 </style>
