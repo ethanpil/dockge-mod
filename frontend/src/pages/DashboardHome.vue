@@ -11,17 +11,17 @@
                     <div class="tile">
                         <div class="tile-label">{{ $t("active") }}</div>
                         <div class="tile-value text-success">{{ activeNum }}</div>
-                        <div class="tile-sub">{{ $tc("stacksCount", 2) }}</div>
+                        <div class="tile-sub">{{ $tc("stacksCount", activeNum) }}</div>
                     </div>
                     <div class="tile">
                         <div class="tile-label">{{ $t("exited") }}</div>
                         <div class="tile-value" :class="exitedNum > 0 ? 'text-danger' : ''">{{ exitedNum }}</div>
-                        <div class="tile-sub">{{ $tc("stacksCount", 2) }}</div>
+                        <div class="tile-sub">{{ $tc("stacksCount", exitedNum) }}</div>
                     </div>
                     <div class="tile">
                         <div class="tile-label">{{ $t("inactive") }}</div>
                         <div class="tile-value text-secondary">{{ inactiveNum }}</div>
-                        <div class="tile-sub">{{ $tc("stacksCount", 2) }}</div>
+                        <div class="tile-sub">{{ $tc("stacksCount", inactiveNum) }}</div>
                     </div>
                     <div v-if="dfContainers" class="tile">
                         <div class="tile-label">{{ $tc("container", 2) }}</div>
@@ -156,8 +156,6 @@ import { statusNameShort } from "../../../common/util-common";
 import { formatBytes, parseDockerSize } from "../util-frontend";
 import Confirm from "../components/Confirm.vue";
 
-let hostStatsTimeout = null;
-
 export default {
     components: {
         Confirm,
@@ -192,6 +190,7 @@ export default {
                 updatedName: "",
             },
             hostStats: {},
+            hostStatsTimer: null,
         };
     },
 
@@ -256,12 +255,18 @@ export default {
         window.addEventListener("resize", this.updatePerPage);
         this.updatePerPage();
 
-        this.requestHostStats();
+        // This component is the PARENT route of /compose/*, and the keyed
+        // router-view remounts it on every navigation — without the guard,
+        // every stack click would run a `docker system df` for tiles that
+        // are not even rendered.
+        if (this.$route.name === "DashboardHome") {
+            this.requestHostStats();
+        }
     },
 
     beforeUnmount() {
         window.removeEventListener("resize", this.updatePerPage);
-        clearTimeout(hostStatsTimeout);
+        clearTimeout(this.hostStatsTimer);
     },
 
     methods: {
@@ -286,13 +291,16 @@ export default {
                 if (res.ok && res.hostStats) {
                     this.hostStats = res.hostStats;
                 }
+                // Re-arm only after the response, like the other polls in this
+                // app — re-arming at emit time lets slow responses overlap
+                // and pile up docker system df processes.
+                clearTimeout(this.hostStatsTimer);
+                this.hostStatsTimer = setTimeout(() => {
+                    if (this.$route.name === "DashboardHome") {
+                        this.requestHostStats();
+                    }
+                }, 15000);
             });
-            clearTimeout(hostStatsTimeout);
-            hostStatsTimeout = setTimeout(() => {
-                if (this.$route.name === "DashboardHome") {
-                    this.requestHostStats();
-                }
-            }, 15000);
         },
 
         showEditAgentName(agentItem) {

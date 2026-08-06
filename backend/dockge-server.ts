@@ -76,6 +76,10 @@ export class DockgeServer {
      */
     needSetup = false;
 
+    /** Cached host statistics shared by every client (see getHostStats) */
+    private hostStatsCache : { time : number, data : object } | null = null;
+    private hostStatsPromise : Promise<object> | null = null;
+
     jwtSecret : string = "";
 
     stacksDir : string = "";
@@ -674,30 +678,53 @@ export class DockgeServer {
      * share the host kernel. Disk usage comes from `docker system df`.
      */
     async getHostStats() : Promise<object> {
+        // One collection serves every client: `docker system df` walks the
+        // whole image/volume store, so it must not run once per open tab, and
+        // an in-flight guard stops slow responses from piling up.
+        const now = Date.now();
+        if (this.hostStatsCache && now - this.hostStatsCache.time < 60 * 1000) {
+            return this.hostStatsCache.data;
+        }
+        if (this.hostStatsPromise) {
+            return this.hostStatsPromise;
+        }
+
+        this.hostStatsPromise = this.collectHostStats().then((data) => {
+            this.hostStatsCache = {
+                time: Date.now(),
+                data,
+            };
+            this.hostStatsPromise = null;
+            return data;
+        });
+        return this.hostStatsPromise;
+    }
+
+    private async collectHostStats() : Promise<object> {
         const stats : { mem ?: object, load ?: string, cpus ?: number, df ?: object[] } = {};
 
         try {
             const meminfo = await fs.promises.readFile("/proc/meminfo", "utf-8");
             const kb = (key : string) => Number(meminfo.match(new RegExp("^" + key + ":\\s+(\\d+)", "m"))?.[1] ?? 0);
             const total = kb("MemTotal") * 1024;
-            const available = kb("MemAvailable") * 1024;
-            if (total > 0) {
+            // Absent MemAvailable must hide the tile, not render as 100% used
+            if (total > 0 && /^MemAvailable:/m.test(meminfo)) {
                 stats.mem = {
                     total,
-                    used: total - available,
+                    used: total - kb("MemAvailable") * 1024,
                 };
             }
         } catch (e) {
             log.debug("hostStats", "Cannot read /proc/meminfo");
         }
 
-        try {
-            const loadavg = await fs.promises.readFile("/proc/loadavg", "utf-8");
-            stats.load = loadavg.split(" ").slice(0, 3).join(" ");
-            stats.cpus = os.cpus().length;
-        } catch (e) {
-            log.debug("hostStats", "Cannot read /proc/loadavg");
+        // os.loadavg() cannot throw and works without /proc (it reports zeros
+        // on platforms with no load concept, which the frontend hides)
+        const load = os.loadavg();
+        if (load.some((n) => n > 0)) {
+            stats.load = load.map((n) => n.toFixed(2)).join(" ");
         }
+        stats.cpus = os.cpus().length;
 
         try {
             const res = await childProcessAsync.spawn("docker", [ "system", "df", "--format", "{{json .}}" ], {
@@ -715,7 +742,9 @@ export class DockgeServer {
                 stats.df = rows;
             }
         } catch (e) {
-            log.error("hostStats", e);
+            // Expected whenever the docker CLI or daemon is unavailable; the
+            // frontend hides the tiles, so this must not spam the error log
+            log.debug("hostStats", "docker system df failed: " + (e instanceof Error ? e.message : String(e)));
         }
 
         return stats;

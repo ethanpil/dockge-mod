@@ -513,42 +513,71 @@ export class Stack {
     }
 
     /**
-     * Resolve container IP addresses with a single batched `docker inspect`.
+     * IPs by container ID. A container's address is fixed for its lifetime and
+     * a recreate produces a new ID, so entries never go stale — this reduces
+     * the steady state of the 5-second status poll to zero inspect processes.
+     */
+    protected static ipCache : Map<string, string> = new Map();
+
+    /**
+     * Resolve container IP addresses with a single batched `docker inspect`
+     * for the containers not already cached by ID.
      * `docker compose ps` only reports the network name, not the address.
      * Addresses are best effort: a stopped container simply has none.
-     * @param names container names to inspect
+     * @param containers name/id pairs from `docker compose ps`
      */
-    static async getContainerIPs(names : string[]) : Promise<Map<string, string>> {
+    static async getContainerIPs(containers : { name : string, id : string }[]) : Promise<Map<string, string>> {
         const map = new Map<string, string>();
 
-        if (names.length === 0) {
-            return map;
+        // Runaway backstop; entries are tiny but hosts churn containers
+        if (Stack.ipCache.size > 2000) {
+            Stack.ipCache.clear();
         }
 
-        const parse = (out : string) => {
-            for (const line of out.split("\n")) {
-                const [ rawName, rawIPs ] = line.split("\t");
-                if (!rawName) {
-                    continue;
+        const uncached = containers.filter((c) => !c.id || !Stack.ipCache.has(c.id));
+
+        if (uncached.length > 0) {
+            const parse = (out : string) => {
+                for (const line of out.split("\n")) {
+                    const [ rawName, rawIPs ] = line.split("\t");
+                    if (!rawName) {
+                        continue;
+                    }
+                    const ip = (rawIPs ?? "").trim().split(/\s+/).filter(Boolean)[0] ?? "";
+                    map.set(rawName.replace(/^\//, ""), ip);
                 }
-                const ip = (rawIPs ?? "").trim().split(/\s+/).filter(Boolean)[0] ?? "";
-                map.set(rawName.replace(/^\//, ""), ip);
+            };
+
+            const format = "{{.Name}}\t{{range .NetworkSettings.Networks}}{{.IPAddress}} {{end}}";
+
+            try {
+                const res = await childProcessAsync.spawn("docker", [ "inspect", "--type", "container", "--format", format, ...uncached.map((c) => c.name) ], {
+                    encoding: "utf-8",
+                });
+                parse(res.stdout?.toString() ?? "");
+            } catch (e) {
+                // A container removed between `ps` and `inspect` makes inspect exit
+                // non-zero, but the surviving containers are still printed.
+                const partial = (e as { stdout ?: string | Buffer })?.stdout;
+                if (partial) {
+                    parse(partial.toString());
+                } else {
+                    // e.g. docker CLI missing or daemon unreachable — without this
+                    // the IP column shows dashes with zero diagnostics anywhere
+                    log.debug("getContainerIPs", "docker inspect failed: " + (e instanceof Error ? e.message : String(e)));
+                }
             }
-        };
 
-        const format = "{{.Name}}\t{{range .NetworkSettings.Networks}}{{.IPAddress}} {{end}}";
+            for (const c of uncached) {
+                if (c.id && map.has(c.name)) {
+                    Stack.ipCache.set(c.id, map.get(c.name) ?? "");
+                }
+            }
+        }
 
-        try {
-            const res = await childProcessAsync.spawn("docker", [ "inspect", "--format", format, ...names ], {
-                encoding: "utf-8",
-            });
-            parse(res.stdout?.toString() ?? "");
-        } catch (e) {
-            // A container removed between `ps` and `inspect` makes inspect exit
-            // non-zero, but the surviving containers are still printed.
-            const partial = (e as { stdout ?: string | Buffer })?.stdout;
-            if (partial) {
-                parse(partial.toString());
+        for (const c of containers) {
+            if (!map.has(c.name) && c.id) {
+                map.set(c.name, Stack.ipCache.get(c.id) ?? "");
             }
         }
 
@@ -570,9 +599,9 @@ export class Stack {
 
             let lines = res.stdout?.toString().split("\n");
 
-            const names : string[] = [];
+            const containers : { name : string, id : string }[] = [];
 
-            const addLine = (obj: { Service: string, State: string, Name: string, Health: string, Status: string, Ports: string }) => {
+            const addLine = (obj: { Service: string, State: string, Name: string, Health: string, Status: string, Ports: string, ID: string }) => {
                 if (!statusList.has(obj.Service)) {
                     statusList.set(obj.Service, []);
                 }
@@ -585,7 +614,10 @@ export class Stack {
                     ip: "",
                 });
                 if (obj.Name) {
-                    names.push(obj.Name);
+                    containers.push({
+                        name: obj.Name,
+                        id: obj.ID ?? "",
+                    });
                 }
             };
 
@@ -603,7 +635,7 @@ export class Stack {
 
             // `docker compose ps` reports the network name but not the address, so the
             // addresses come from a single batched inspect rather than one call each.
-            const ipMap = await Stack.getContainerIPs(names);
+            const ipMap = await Stack.getContainerIPs(containers);
             for (const entries of statusList.values()) {
                 for (const entry of entries) {
                     const e = entry as { name : string, ip : string };

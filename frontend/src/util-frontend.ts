@@ -201,22 +201,24 @@ export function formatUptime(status : string) : string | null {
     // "Up 55 minutes (healthy)" -> "55 minutes"
     const body = status.replace(/^Up\s*/, "").replace(/\s*\([^)]*\)\s*$/, "").trim();
 
-    let minutes = 0;
     const m = body.match(/^(About\s+an?|Less\s+than\s+an?|\d+)\s+(second|minute|hour|day|week|month|year)s?$/i);
-    if (m) {
-        const n = /^\d+$/.test(m[1]) ? parseInt(m[1]) : (/^Less/i.test(m[1]) ? 0 : 1);
-        const unit = m[2].toLowerCase();
-        const perUnit : Record<string, number> = {
-            second: 0,
-            minute: 1,
-            hour: 60,
-            day: 1440,
-            week: 10080,
-            month: 43200,
-            year: 525600,
-        };
-        minutes = n * (perUnit[unit] ?? 0);
+    if (!m) {
+        // Unrecognised phrasing: better no value than a fabricated "0d 0h 0m"
+        return null;
     }
+
+    const n = /^\d+$/.test(m[1]) ? parseInt(m[1]) : (/^Less/i.test(m[1]) ? 0 : 1);
+    const unit = m[2].toLowerCase();
+    const perUnit : Record<string, number> = {
+        second: 0,
+        minute: 1,
+        hour: 60,
+        day: 1440,
+        week: 10080,
+        month: 43200,
+        year: 525600,
+    };
+    const minutes = n * (perUnit[unit] ?? 0);
 
     const d = Math.floor(minutes / 1440);
     const h = Math.floor((minutes % 1440) / 60);
@@ -225,9 +227,10 @@ export function formatUptime(status : string) : string | null {
 }
 
 /**
- * Compact docker's Ports column by dropping the published host address
- * ("0.0.0.0:", "[::]:", ...) and deduplicating the IPv4/IPv6 twins that
- * stripping produces.
+ * Compact docker's Ports column by dropping the WILDCARD published host
+ * ("0.0.0.0:", "[::]:", ":::", "*:") and deduplicating the IPv4/IPv6 twins
+ * that stripping produces. A specific bind address (127.0.0.1, a LAN IP) is
+ * meaningful — the user restricted the port on purpose — so it is kept.
  * @param {string} ports Ports column of `docker compose ps`
  * @returns {string} e.g. "18080->80/tcp"
  */
@@ -237,7 +240,8 @@ export function formatPorts(ports : string) : string {
     }
     const seen = new Set<string>();
     for (const part of ports.split(",")) {
-        const cleaned = part.trim().replace(/^(\d{1,3}(?:\.\d{1,3}){3}|\[[^\]]*\]|\*):/, "");
+        // ":::8080" is docker's bracket-less IPv6 wildcard form
+        const cleaned = part.trim().replace(/^(0\.0\.0\.0:|\[::\]:|:::|\*:)/, "");
         if (cleaned) {
             seen.add(cleaned);
         }
@@ -261,24 +265,30 @@ export function formatBytes(bytes : number) : string {
         v /= 1024;
         i++;
     }
+    // 1023.6 would otherwise round up to a nonsensical "1024 B"
+    if (Number(v.toFixed(v >= 100 || i === 0 ? 0 : 1)) >= 1024 && i < units.length - 1) {
+        v /= 1024;
+        i++;
+    }
     return `${v.toFixed(v >= 100 || i === 0 ? 0 : 1)} ${units[i]}`;
 }
 
 /**
- * Parse docker's human readable sizes ("1.53GB", "250.7MB", "0B") to bytes.
- * Docker prints decimal units.
+ * Parse docker's human readable sizes to bytes. Docker usually prints decimal
+ * units ("1.53GB"), but some builds emit IEC units ("1.5GiB") — both parse.
  * @param {string} size Size string from docker
  * @returns {number} Byte count, 0 when unparsable
  */
 export function parseDockerSize(size : string) : number {
-    const m = (size ?? "").trim().match(/^([\d.]+)\s*([kKmMgGtT]?)B?$/);
+    const m = (size ?? "").trim().match(/^([\d.]+)\s*([kKmMgGtT]?)(i)?B?$/);
     if (!m) {
         return 0;
     }
-    const mult : Record<string, number> = { "": 1,
-        k: 1e3,
-        m: 1e6,
-        g: 1e9,
-        t: 1e12 };
-    return parseFloat(m[1]) * (mult[m[2].toLowerCase()] ?? 1);
+    const base = m[3] ? 1024 : 1000;
+    const exp : Record<string, number> = { "": 0,
+        k: 1,
+        m: 2,
+        g: 3,
+        t: 4 };
+    return parseFloat(m[1]) * Math.pow(base, exp[m[2].toLowerCase()] ?? 0);
 }
