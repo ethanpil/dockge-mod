@@ -1,5 +1,5 @@
 <template>
-    <div class="shadow-box big-padding mb-3 container-card">
+    <div class="container-card mb-2">
         <div class="row">
             <div class="col-5">
                 <h4 class="fs-6 fw-semibold mb-1">{{ name }}</h4>
@@ -380,6 +380,10 @@ export default defineComponent({
 
 <style scoped lang="scss">
 .container-card {
+    border: 1px solid var(--bs-border-color);
+    border-radius: 4px;
+    padding: 0.5rem;
+
     .image {
         font-size: 0.8rem;
         color: var(--bs-secondary-color);

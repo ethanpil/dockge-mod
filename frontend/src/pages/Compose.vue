@@ -1,69 +1,73 @@
 <template>
     <transition name="slide-fade" appear>
         <div>
-            <h1 v-if="isAdd" class="fs-3 mb-3">{{ $t("compose") }}</h1>
-            <h1 v-else class="fs-3 mb-3">
-                <Uptime :stack="globalStack" :pill="true" /> {{ stack.name }}
-                <span v-if="$root.agentCount > 1 && endpoint !== ''" class="agent-name">
-                    ({{ endpointDisplay }})
-                </span>
-            </h1>
+            <div class="title-row mb-2">
+                <h1 v-if="isAdd" class="fs-4 mb-0">{{ $t("compose") }}</h1>
+                <template v-else>
+                    <Uptime :stack="globalStack" :pill="true" />
+                    <h1 class="fs-4 mb-0 title-name">{{ stack.name }}</h1>
+                    <span v-if="$root.agentCount > 1 && endpoint !== ''" class="agent-name">
+                        ({{ endpointDisplay }})
+                    </span>
+                    <span v-if="!isEditMode && serviceCount > 0" class="panel-note d-none d-sm-inline">{{ serviceCount }} {{ $tc("container", serviceCount).toLowerCase() }}</span>
+                </template>
 
-            <div v-if="stack.isManagedByDockge" class="mb-3">
-                <div class="btn-group btn-group-sm me-2" role="group">
-                    <button v-if="isEditMode" class="btn btn-primary" :disabled="processing" @click="deployStack">
-                        <font-awesome-icon icon="rocket" class="me-1" />
-                        {{ $t("deployStack") }}
-                    </button>
+                <div v-if="stack.isManagedByDockge" class="toolbar ms-auto">
+                    <div class="btn-group btn-group-sm me-2" role="group">
+                        <button v-if="isEditMode" class="btn btn-primary" :disabled="processing" @click="deployStack">
+                            <font-awesome-icon icon="rocket" class="me-1" />
+                            {{ $t("deployStack") }}
+                        </button>
 
-                    <button v-if="isEditMode" class="btn btn-normal" :disabled="processing" @click="saveStack">
-                        <font-awesome-icon icon="save" class="me-1" />
-                        {{ $t("saveStackDraft") }}
-                    </button>
+                        <button v-if="isEditMode" class="btn btn-normal" :disabled="processing" @click="saveStack">
+                            <font-awesome-icon icon="save" class="me-1" />
+                            {{ $t("saveStackDraft") }}
+                        </button>
 
-                    <button v-if="!isEditMode" class="btn btn-secondary" :disabled="processing" @click="enableEditMode">
-                        <font-awesome-icon icon="pen" class="me-1" />
-                        {{ $t("editStack") }}
-                    </button>
+                        <button v-if="!isEditMode" class="btn btn-secondary" :disabled="processing" @click="enableEditMode">
+                            <font-awesome-icon icon="pen" class="me-1" />
+                            {{ $t("editStack") }}
+                        </button>
 
-                    <button v-if="!isEditMode && !active" class="btn btn-primary" :disabled="processing" @click="startStack">
-                        <font-awesome-icon icon="play" class="me-1" />
-                        {{ $t("startStack") }}
-                    </button>
+                        <button v-if="!isEditMode && !active" class="btn btn-primary" :disabled="processing" @click="startStack">
+                            <font-awesome-icon icon="play" class="me-1" />
+                            {{ $t("startStack") }}
+                        </button>
 
-                    <button v-if="!isEditMode && active" class="btn btn-normal" :disabled="processing" @click="restartStack">
-                        <font-awesome-icon icon="rotate" class="me-1" />
-                        {{ $t("restartStack") }}
-                    </button>
+                        <button v-if="!isEditMode && active" class="btn btn-normal" :disabled="processing" @click="restartStack">
+                            <font-awesome-icon icon="rotate" class="me-1" />
+                            {{ $t("restartStack") }}
+                        </button>
 
-                    <button v-if="!isEditMode" class="btn btn-normal" :disabled="processing" @click="updateStack">
-                        <font-awesome-icon icon="cloud-arrow-down" class="me-1" />
-                        {{ $t("updateStack") }}
-                    </button>
+                        <button v-if="!isEditMode" class="btn btn-normal" :disabled="processing" @click="updateStack">
+                            <font-awesome-icon icon="cloud-arrow-down" class="me-1" />
+                            {{ $t("updateStack") }}
+                        </button>
 
-                    <button v-if="!isEditMode && active" class="btn btn-normal" :disabled="processing" @click="stopStack">
-                        <font-awesome-icon icon="stop" class="me-1" />
-                        {{ $t("stopStack") }}
-                    </button>
+                        <button v-if="!isEditMode && active" class="btn btn-normal" :disabled="processing" @click="stopStack">
+                            <font-awesome-icon icon="stop" class="me-1" />
+                            {{ $t("stopStack") }}
+                        </button>
 
-                    <button type="button" class="btn btn-normal dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" aria-expanded="false">
-                        <span class="visually-hidden">{{ $t("downStack") }}</span>
+                        <button type="button" class="btn btn-normal dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" aria-expanded="false">
+                            <span class="visually-hidden">{{ $t("downStack") }}</span>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li>
+                                <button type="button" class="dropdown-item" @click="downStack">
+                                    <font-awesome-icon icon="stop" class="me-1" />
+                                    {{ $t("downStack") }}
+                                </button>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <button v-if="isEditMode && !isAdd" class="btn btn-sm btn-normal" :disabled="processing" @click="discardStack">{{ $t("discardStack") }}</button>
+                    <button v-if="!isEditMode" class="btn btn-sm btn-outline-danger" :disabled="processing" @click="$refs.confirmDeleteStack.show()">
+                        <font-awesome-icon icon="trash" class="me-1" />
+                        {{ $t("deleteStack") }}
                     </button>
-                    <ul class="dropdown-menu dropdown-menu-end">
-                        <li>
-                            <button type="button" class="dropdown-item" @click="downStack">
-                                <font-awesome-icon icon="stop" class="me-1" />
-                                {{ $t("downStack") }}
-                            </button>
-                        </li>
-                    </ul>
                 </div>
-
-                <button v-if="isEditMode && !isAdd" class="btn btn-sm btn-normal" :disabled="processing" @click="discardStack">{{ $t("discardStack") }}</button>
-                <button v-if="!isEditMode" class="btn btn-sm btn-outline-danger" :disabled="processing" @click="$refs.confirmDeleteStack.show()">
-                    <font-awesome-icon icon="trash" class="me-1" />
-                    {{ $t("deleteStack") }}
-                </button>
             </div>
 
             <!-- URLs -->
@@ -89,9 +93,9 @@
             <div v-if="stack.isManagedByDockge" class="row">
                 <div class="col-12" :class="{ 'view-col': !isEditMode }">
                     <!-- General -->
-                    <div v-if="isAdd">
-                        <h4 class="fs-5 mb-2">{{ $t("general") }}</h4>
-                        <div class="shadow-box big-padding mb-3">
+                    <div v-if="isAdd" class="panel">
+                        <div class="panel-head"><span class="panel-title">{{ $t("general") }}</span></div>
+                        <div class="panel-body">
                             <!-- Stack Name -->
                             <div>
                                 <label for="name" class="form-label">{{ $t("stackName") }}</label>
@@ -112,33 +116,36 @@
                     </div>
 
                     <!-- Containers (edit mode): editable cards -->
-                    <h4 v-if="isEditMode" class="fs-5 mb-2">{{ $tc("container", 2) }}</h4>
+                    <div v-if="isEditMode" class="panel">
+                        <div class="panel-head"><span class="panel-title">{{ $tc("container", 2) }}</span></div>
+                        <div class="panel-body">
+                            <div class="input-group input-group-sm mb-2">
+                                <input
+                                    v-model="newContainerName"
+                                    :placeholder="$t(`New Container Name...`)"
+                                    class="form-control"
+                                    @keyup.enter="addContainer"
+                                />
+                                <button class="btn btn-primary" @click="addContainer">
+                                    {{ $t("addContainer") }}
+                                </button>
+                            </div>
 
-                    <div v-if="isEditMode" class="input-group mb-3">
-                        <input
-                            v-model="newContainerName"
-                            :placeholder="$t(`New Container Name...`)"
-                            class="form-control"
-                            @keyup.enter="addContainer"
-                        />
-                        <button class="btn btn-primary" @click="addContainer">
-                            {{ $t("addContainer") }}
-                        </button>
-                    </div>
-
-                    <div v-if="isEditMode" ref="containerList">
-                        <Container
-                            v-for="(service, name) in jsonConfig.services"
-                            :key="name"
-                            :name="name"
-                            :is-edit-mode="isEditMode"
-                            :first="name === Object.keys(jsonConfig.services)[0]"
-                            :serviceStatus="serviceStatusList[name]"
-                            :dockerStats="dockerStats"
-                            @start-service="startService"
-                            @stop-service="stopService"
-                            @restart-service="restartService"
-                        />
+                            <div ref="containerList">
+                                <Container
+                                    v-for="(service, name) in jsonConfig.services"
+                                    :key="name"
+                                    :name="name"
+                                    :is-edit-mode="isEditMode"
+                                    :first="name === Object.keys(jsonConfig.services)[0]"
+                                    :serviceStatus="serviceStatusList[name]"
+                                    :dockerStats="dockerStats"
+                                    @start-service="startService"
+                                    @stop-service="stopService"
+                                    @restart-service="restartService"
+                                />
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Containers (view mode): dense table, stacked cards on mobile -->
@@ -267,11 +274,11 @@
                     <button v-if="false && isEditMode && jsonConfig.services && Object.keys(jsonConfig.services).length > 0" class="btn btn-normal mb-3" @click="addContainer">{{ $t("addContainer") }}</button>
 
                     <!-- General -->
-                    <div v-if="isEditMode">
-                        <h4 class="fs-5 mb-2">{{ $t("extra") }}</h4>
-                        <div class="shadow-box big-padding mb-3">
+                    <div v-if="isEditMode" class="panel">
+                        <div class="panel-head"><span class="panel-title">{{ $t("extra") }}</span></div>
+                        <div class="panel-body">
                             <!-- URLs -->
-                            <div class="mb-4">
+                            <div class="mb-2">
                                 <label class="form-label">
                                     {{ $tc("url", 2) }}
                                 </label>
@@ -327,31 +334,32 @@
                     <div v-if="expandedPanel" class="panel-backdrop" @click="toggleExpand(expandedPanel)"></div>
                 </div>
                 <div v-if="isEditMode" class="col-12">
-                    <h4 class="fs-5 mb-2">{{ stack.composeFileName }}</h4>
-
                     <!-- YAML editor -->
-                    <div class="shadow-box mb-3 editor-box edit-mode">
-                        <code-mirror
-                            ref="editor"
-                            v-model="stack.composeYAML"
-                            :extensions="extensions"
-                            minimal
-                            wrap="true"
-                            dark="true"
-                            tab="true"
-                            :disabled="!isEditMode"
-                            :hasFocus="editorFocus"
-                            @change="yamlCodeChange"
-                        />
-                    </div>
-                    <div class="mb-3">
-                        {{ yamlError }}
+                    <div class="panel">
+                        <div class="panel-head">
+                            <span class="panel-title">{{ stack.composeFileName }}</span>
+                            <span v-if="yamlError" class="panel-note text-danger">{{ yamlError }}</span>
+                        </div>
+                        <div class="editor-box edit-mode">
+                            <code-mirror
+                                ref="editor"
+                                v-model="stack.composeYAML"
+                                :extensions="extensions"
+                                minimal
+                                wrap="true"
+                                dark="true"
+                                tab="true"
+                                :disabled="!isEditMode"
+                                :hasFocus="editorFocus"
+                                @change="yamlCodeChange"
+                            />
+                        </div>
                     </div>
 
                     <!-- ENV editor -->
-                    <div v-if="isEditMode">
-                        <h4 class="fs-5 mb-2">.env</h4>
-                        <div class="shadow-box mb-3 editor-box" :class="{'edit-mode' : isEditMode}">
+                    <div class="panel">
+                        <div class="panel-head"><span class="panel-title">.env</span></div>
+                        <div class="editor-box edit-mode">
                             <code-mirror
                                 ref="editor"
                                 v-model="stack.composeENV"
@@ -367,17 +375,10 @@
                         </div>
                     </div>
 
-                    <div v-if="isEditMode">
-                        <!-- Volumes -->
-                        <div v-if="false">
-                            <h4 class="fs-5 mb-2">{{ $tc("volume", 2) }}</h4>
-                            <div class="shadow-box big-padding mb-3">
-                            </div>
-                        </div>
-
-                        <!-- Networks -->
-                        <h4 class="fs-5 mb-2">{{ $tc("network", 2) }}</h4>
-                        <div class="shadow-box big-padding mb-3">
+                    <!-- Networks -->
+                    <div class="panel">
+                        <div class="panel-head"><span class="panel-title">{{ $tc("network", 2) }}</span></div>
+                        <div class="panel-body">
                             <NetworkInput />
                         </div>
                     </div>
@@ -1196,6 +1197,39 @@ export default {
     color: var(--bs-secondary-color);
 }
 
+/* ---------- compact title + toolbar row ---------- */
+.title-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.title-name {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+}
+
+.toolbar {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    flex-wrap: wrap;
+
+    .btn {
+        padding: 0.15rem 0.5rem;
+        font-size: 12px;
+    }
+}
+
+/* Edit-mode editors inside panels: give them room to work in */
+.panel .editor-box {
+    min-height: 300px;
+    border-radius: 0 0 4px 4px;
+}
+
 /* ---------- view mode: flex column that fills the viewport ---------- */
 .view-col {
     display: flex;
@@ -1203,39 +1237,7 @@ export default {
     min-height: calc(100vh - 210px);
 }
 
-/* ---------- panels ---------- */
-.panel {
-    background-color: var(--bs-body-bg);
-    border: 1px solid var(--bs-border-color);
-    border-radius: 4px;
-    display: flex;
-    flex-direction: column;
-    margin-bottom: 0.5rem;
-}
-
-.panel-head {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.3rem 0.5rem;
-    background-color: var(--bs-tertiary-bg);
-    border-bottom: 1px solid var(--bs-border-color);
-    border-radius: 4px 4px 0 0;
-}
-
-.panel-title {
-    font-size: 11px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: var(--bs-secondary-color);
-}
-
-.panel-note {
-    font-size: 11px;
-    color: var(--bs-secondary-color);
-}
-
+/* .panel family and .status-dot/.mono are global (main.scss) */
 .expand-btn {
     margin-left: auto;
     border: 1px solid var(--bs-border-color);
@@ -1329,12 +1331,6 @@ export default {
 }
 
 /* ---------- containers table ---------- */
-.mono {
-    font-family: ui-monospace, "JetBrains Mono", Menlo, Consolas, monospace;
-    font-variant-numeric: tabular-nums;
-    font-size: 0.92em;
-}
-
 .cell-muted {
     color: var(--bs-secondary-color);
 }
@@ -1342,26 +1338,6 @@ export default {
 .cell-sub {
     font-size: 11px;
     color: var(--bs-secondary-color);
-}
-
-.status-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    display: inline-block;
-    flex: 0 0 8px;
-}
-
-.dot-success {
-    background-color: var(--bs-success);
-}
-
-.dot-danger {
-    background-color: var(--bs-danger);
-}
-
-.dot-secondary {
-    background-color: var(--bs-secondary-color);
 }
 
 .state-badge {

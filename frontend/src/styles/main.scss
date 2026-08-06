@@ -40,6 +40,69 @@
     @extend .btn-secondary;
 }
 
+/* ---------- dense panel chrome (stack page, home) ---------- */
+.panel {
+    background-color: var(--bs-body-bg);
+    border: 1px solid var(--bs-border-color);
+    border-radius: 4px;
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 0.5rem;
+}
+
+.panel-head {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.3rem 0.5rem;
+    background-color: var(--bs-tertiary-bg);
+    border-bottom: 1px solid var(--bs-border-color);
+    border-radius: 4px 4px 0 0;
+}
+
+.panel-title {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--bs-secondary-color);
+}
+
+.panel-note {
+    font-size: 11px;
+    color: var(--bs-secondary-color);
+}
+
+.panel-body {
+    padding: 0.5rem;
+}
+
+.mono {
+    font-family: ui-monospace, "JetBrains Mono", Menlo, Consolas, monospace;
+    font-variant-numeric: tabular-nums;
+    font-size: 0.92em;
+}
+
+.status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+    flex: 0 0 8px;
+}
+
+.dot-success {
+    background-color: var(--bs-success);
+}
+
+.dot-danger {
+    background-color: var(--bs-danger);
+}
+
+.dot-secondary {
+    background-color: var(--bs-secondary-color);
+}
+
 /*
  * Transitions
  */
