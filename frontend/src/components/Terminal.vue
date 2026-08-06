@@ -71,6 +71,8 @@ export default {
             first: true,
             terminalInputBuffer: "",
             cursorPosition: 0,
+            lastSentRows: null,
+            lastSentCols: null,
         };
     },
     created() {
@@ -285,15 +287,28 @@ export default {
             // Push the fitted size to the backend. Without this the pty keeps the
             // hardcoded default width until the user happens to resize the window,
             // which makes output wrap mid-word on any wider viewport.
-            this.$root.emitAgent(this.endpoint, "terminalResize", this.name, this.terminal.rows, this.terminal.cols);
+            this.emitResize();
         },
         /**
          * Handles the resize event of the terminal component.
          */
         onResizeEvent() {
             this.terminalFitAddOn.fit();
-            let rows = this.terminal.rows;
-            let cols = this.terminal.cols;
+            this.emitResize();
+        },
+        /**
+         * Report the fitted size, skipping the send when it has not changed —
+         * a window resize event fires on every mounted terminal, including
+         * ones whose box did not move.
+         */
+        emitResize() {
+            const rows = this.terminal.rows;
+            const cols = this.terminal.cols;
+            if (rows === this.lastSentRows && cols === this.lastSentCols) {
+                return;
+            }
+            this.lastSentRows = rows;
+            this.lastSentCols = cols;
             this.$root.emitAgent(this.endpoint, "terminalResize", this.name, rows, cols);
         },
 

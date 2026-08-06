@@ -17,6 +17,16 @@ import { log } from "./log";
 export class Terminal {
     protected static terminalMap : Map<string, Terminal> = new Map();
 
+    /**
+     * Last size each client reported for each terminal name, kept OUTSIDE the
+     * terminal objects so it survives a terminal being closed and recreated
+     * under the same name (a stop/start cycle would otherwise revert the pty
+     * to the default width with no client left to correct it). The effective
+     * pty size is the minimum over the currently joined clients, so a narrow
+     * viewer cannot be overflowed by a wide one.
+     */
+    protected static sizeHints : Map<string, Map<string, { rows : number, cols : number }>> = new Map();
+
     protected _ptyProcess? : pty.IPty;
     protected server : DockgeServer;
     protected buffer : LimitQueue<string> = new LimitQueue(100);
@@ -31,12 +41,6 @@ export class Terminal {
     protected _cols : number = TERMINAL_COLS;
 
     public enableKeepAlive : boolean = false;
-
-    /**
-     * True once a client has reported its real terminal size, so that a later
-     * join does not reset the pty back to the hardcoded default width.
-     */
-    public sizedByClient : boolean = false;
     protected keepAliveInterval? : NodeJS.Timeout;
     protected kickDisconnectedClientsInterval? : NodeJS.Timeout;
 
@@ -121,7 +125,9 @@ export class Terminal {
             this._ptyProcess = pty.spawn(this.file, this.args, {
                 name: this.name,
                 cwd: this.cwd,
-                cols: TERMINAL_COLS,
+                // The instance size, not the global default — joinCombinedTerminal
+                // and client size hints set _cols before start() runs.
+                cols: this.cols,
                 rows: this.rows,
             });
 
@@ -180,10 +186,76 @@ export class Terminal {
 
     public join(socket : DockgeSocket) {
         this.socketList[socket.id] = socket;
+        this.applyClientSize();
     }
 
     public leave(socket : DockgeSocket) {
         delete this.socketList[socket.id];
+        // The leaver's constraint no longer applies; a wider remaining
+        // client may get its width back.
+        Terminal.sizeHints.get(this.name)?.delete(socket.id);
+        this.applyClientSize();
+    }
+
+    /**
+     * Record the size a client reported for a terminal name. Works whether or
+     * not the terminal currently exists — for interactive terminals the resize
+     * can arrive while the creation handler is still awaiting, and the hint is
+     * then applied by join().
+     * @param terminalName terminal the size applies to
+     * @param socketID reporting client
+     * @param rows reported rows
+     * @param cols reported cols
+     */
+    public static setSizeHint(terminalName : string, socketID : string, rows : number, cols : number) {
+        let hints = Terminal.sizeHints.get(terminalName);
+        if (!hints) {
+            hints = new Map();
+            Terminal.sizeHints.set(terminalName, hints);
+        }
+        hints.set(socketID, {
+            rows,
+            cols,
+        });
+    }
+
+    /**
+     * Drop every size hint a disconnected client left behind.
+     * @param socketID the disconnected client
+     */
+    public static removeSizeHintsForSocket(socketID : string) {
+        for (const [ name, hints ] of Terminal.sizeHints) {
+            hints.delete(socketID);
+            if (hints.size === 0) {
+                Terminal.sizeHints.delete(name);
+            }
+        }
+    }
+
+    /**
+     * Resize the pty to the minimum size over the currently joined clients
+     * that have reported one. No-op when no joined client has reported.
+     */
+    public applyClientSize() {
+        const hints = Terminal.sizeHints.get(this.name);
+        if (!hints) {
+            return;
+        }
+
+        let rows = Infinity;
+        let cols = Infinity;
+        for (const socketID in this.socketList) {
+            const hint = hints.get(socketID);
+            if (hint) {
+                rows = Math.min(rows, hint.rows);
+                cols = Math.min(cols, hint.cols);
+            }
+        }
+
+        if (Number.isFinite(rows) && Number.isFinite(cols)) {
+            this.rows = rows;
+            this.cols = cols;
+        }
     }
 
     public get ptyProcess() {

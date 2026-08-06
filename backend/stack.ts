@@ -477,11 +477,12 @@ export class Stack {
 
     async joinCombinedTerminal(socket: DockgeSocket) {
         const terminalName = getCombinedTerminalName(socket.endpoint, this.name);
+        const existing = Terminal.getTerminal(terminalName);
         const terminal = Terminal.getOrCreateTerminal(this.server, terminalName, "docker", this.getComposeOptions("logs", "-f", "--tail", "100"), this.path);
         terminal.enableKeepAlive = true;
-        // Only seed the fallback size. Applying it on every join would clobber the
-        // real size the client reported and force output back to the default width.
-        if (!terminal.sizedByClient) {
+        // Seed the fallback size only on creation; join() below applies the
+        // real client-reported sizes, which survive terminal recreation.
+        if (!existing) {
             terminal.rows = COMBINED_TERMINAL_ROWS;
             terminal.cols = COMBINED_TERMINAL_COLS;
         }

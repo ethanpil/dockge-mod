@@ -181,14 +181,21 @@ export class TerminalSocketHandler extends AgentSocketHandler {
                     throw new Error("Command must be a number.");
                 }
 
+                // A bogus client cannot shrink a shared pty to 1x2 for everyone
+                const safeRows = Math.min(Math.max(Math.round(rows), 5), 512);
+                const safeCols = Math.min(Math.max(Math.round(cols), 20), 1024);
+
+                // Record even when the terminal does not exist yet: interactive
+                // terminals are created behind an await, so the resize can
+                // arrive first, and the hint is applied on join.
+                Terminal.setSizeHint(terminalName, socket.id, safeRows, safeCols);
+
                 let terminal = Terminal.getTerminal(terminalName);
 
                 // log.info("terminal", terminal);
                 if (terminal instanceof Terminal) {
                     //log.debug("terminalInput", "Terminal found, writing to terminal.");
-                    terminal.rows = rows;
-                    terminal.cols = cols;
-                    terminal.sizedByClient = true;
+                    terminal.applyClientSize();
                 } else {
                     throw new Error(`${terminalName} Terminal not found.`);
                 }

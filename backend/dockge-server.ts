@@ -251,6 +251,10 @@ export class DockgeServer {
         this.io.on("connection", async (socket: Socket) => {
             let dockgeSocket = socket as DockgeSocket;
             dockgeSocket.instanceManager = new AgentManager(dockgeSocket);
+
+            socket.on("disconnect", () => {
+                Terminal.removeSizeHintsForSocket(socket.id);
+            });
             dockgeSocket.emitAgent = (event : string, ...args : unknown[]) => {
                 let obj = args[0];
                 if (typeof(obj) === "object") {
