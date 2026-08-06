@@ -6,6 +6,15 @@
             <div>{{ $t("Version") }}: {{ $root.info.version }}</div>
             <div class="frontend-version">{{ $t("Frontend Version") }}: {{ $root.frontendVersion }}</div>
 
+            <div class="mt-3">
+                <a href="https://github.com/ethanpil/dockge-mod" target="_blank" rel="noopener">github.com/ethanpil/dockge-mod</a>
+            </div>
+            <div class="compat-note mt-1">
+                Drop in replacement for the <a href="https://github.com/louislam/dockge" target="_blank" rel="noopener">dockge</a> project.
+                Fully backported and compatible up to dockge commit
+                <a href="https://github.com/louislam/dockge/commit/f809ae192b571944ad773e9866d3e67064ae8043" target="_blank" rel="noopener" class="mono">f809ae1</a>
+            </div>
+
             <div v-if="!$root.isFrontendBackendVersionMatched" class="alert alert-warning mt-4" role="alert">
                 ⚠️ {{ $t("Frontend Version do not match backend version!") }}
             </div>
@@ -35,6 +44,13 @@ export default {
 .frontend-version {
     font-size: 0.9em;
     color: var(--bs-secondary-color);
+}
+
+.compat-note {
+    font-size: 0.85em;
+    color: var(--bs-secondary-color);
+    max-width: 34em;
+    text-align: center;
 }
 
 </style>
