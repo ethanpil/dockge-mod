@@ -16,8 +16,10 @@ RUN npm ci --omit=dev
 # Frontend
 # Built here so that `docker build` alone produces a working image. Without this
 # stage the image starts and then exits on a missing frontend-dist/index.html.
+# --platform=$BUILDPLATFORM: the output is arch-independent JS/CSS, so a
+# multi-arch build must not recompile it per target under QEMU.
 ############################################
-FROM louislam/dockge:base AS frontend_build
+FROM --platform=$BUILDPLATFORM louislam/dockge:base AS frontend_build
 WORKDIR /app
 COPY --chown=node:node  ./package.json ./package.json
 COPY --chown=node:node  ./package-lock.json ./package-lock.json
