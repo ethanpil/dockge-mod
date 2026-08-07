@@ -6,6 +6,24 @@ The base is dockge commit [f809ae1](https://github.com/louislam/dockge/commit/f8
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). This project has no releases, so each entry is a commit. The newest entry comes first. A commit that changes only this file or the project rules has no entry.
 
+## [eb20290](../../commit/eb20290) - 2026-08-06
+
+### Removed
+
+- The dead envTemplate branch on the compose page. Nothing set the value, so the branch never ran.
+
+## [9a8d69c](../../commit/9a8d69c) - 2026-08-06
+
+### Fixed
+
+- The error callback sends the validation type again. ValidationError extends Error, and the Error test came first, so the reply never got the type field.
+
+## [089fa2c](../../commit/089fa2c) - 2026-08-06
+
+### Fixed
+
+- The start, stop, and restart commands for one service get the --env-file options. Before, a stack that uses global.env lost those values in the service commands. A debug print of the compose options also goes away.
+
 ## [09b1471](../../commit/09b1471) - 2026-08-06
 
 ### Added
