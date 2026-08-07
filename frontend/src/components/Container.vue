@@ -108,22 +108,7 @@ import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
 import ArrayInput from "./ArrayInput.vue";
 import ArraySelect from "./ArraySelect.vue";
 import Confirm from "./Confirm.vue";
-
-/**
- * True when a compose field holds a simple list that the form can edit.
- * A map, or a list of objects (the long syntax), must go to the YAML editor.
- * @param {*} value the field value
- * @returns {boolean} true if the form can add an item
- */
-function isSimpleList(value) {
-    if (value === undefined || value === null) {
-        return true;
-    }
-    if (!Array.isArray(value)) {
-        return false;
-    }
-    return !value.some((item) => typeof item === "object" && item !== null);
-}
+import { isSimpleList } from "../util-frontend";
 
 /**
  * The editable per-service card of edit mode. View mode renders the

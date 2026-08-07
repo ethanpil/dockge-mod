@@ -17,6 +17,8 @@
 </template>
 
 <script>
+import { isSimpleList } from "../util-frontend";
+
 export default {
     props: {
         name: {
@@ -85,18 +87,7 @@ export default {
         },
 
         valid() {
-            // Check if the array is actually an array
-            if (!Array.isArray(this.array)) {
-                return false;
-            }
-
-            // Check if the array contains non-object only.
-            for (let item of this.array) {
-                if (typeof item === "object") {
-                    return false;
-                }
-            }
-            return true;
+            return isSimpleList(this.array);
         }
 
     },

@@ -292,3 +292,24 @@ export function parseDockerSize(size : string) : number {
         t: 4 };
     return parseFloat(m[1]) * Math.pow(base, exp[m[2].toLowerCase()] ?? 0);
 }
+
+/**
+ * Tell if a compose field holds a simple list that the form can edit. A map,
+ * or a list of objects (the long syntax), must go to the YAML editor. Note
+ * that typeof null is "object", so a blank list item is not a simple value.
+ *
+ * The list editors and the add button of their parent both use this, because
+ * an add button over an editor that cannot show the list writes an item that
+ * the user cannot see or remove.
+ * @param {*} value the field value
+ * @returns {boolean} true when the form can edit the list
+ */
+export function isSimpleList(value : unknown) : boolean {
+    if (value === undefined || value === null) {
+        return true;
+    }
+    if (!Array.isArray(value)) {
+        return false;
+    }
+    return !value.some((item) => typeof item === "object");
+}

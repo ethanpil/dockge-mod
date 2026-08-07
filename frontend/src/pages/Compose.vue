@@ -158,58 +158,74 @@
                             <span class="panel-note">{{ containerRows.length }}</span>
                         </div>
 
-                        <table class="ctable d-none d-md-table">
-                            <thead>
-                                <tr>
-                                    <th class="c-svc">{{ $t("service") }}</th>
-                                    <th class="c-img">{{ $t("dockerImage") }}</th>
-                                    <th class="c-state">{{ $t("state") }}</th>
-                                    <th class="c-up">{{ $t("uptime") }}</th>
-                                    <th class="c-ip">{{ $t("ip") }}</th>
-                                    <th class="c-ports">{{ $tc("port", 2) }}</th>
-                                    <th class="c-num">{{ $t("CPU") }}</th>
-                                    <th class="c-num">{{ $t("memory") }}</th>
-                                    <th class="c-num c-net">{{ $t("networkIO") }}</th>
-                                    <th class="c-num c-blk">{{ $t("blockIO") }}</th>
-                                    <th class="c-act"></th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr v-for="row in containerRows" :key="row.key">
-                                    <td class="c-svc">
-                                        <span class="status-dot me-2" :class="'dot-' + row.color"></span><strong class="svc-name" :title="row.service">{{ row.service }}</strong>
-                                        <div v-if="row.showInstanceName" class="cell-sub">{{ row.instanceName }}</div>
-                                    </td>
-                                    <td class="c-img cell-muted">{{ imageOf(row.service) }}</td>
-                                    <td class="c-state"><span class="badge state-badge" :class="stateBadgeClass(row.status)">{{ row.status }}</span></td>
-                                    <td class="c-up mono">{{ row.uptime ?? "—" }}</td>
-                                    <td class="c-ip mono">{{ row.ip || "—" }}</td>
-                                    <td class="c-ports mono cell-muted">{{ row.ports || "—" }}</td>
-                                    <td class="c-num mono">{{ row.stat?.CPUPerc ?? "—" }}</td>
-                                    <td class="c-num mono">{{ memoryOf(row.stat) }}</td>
-                                    <td class="c-num c-net mono cell-muted">{{ row.stat?.NetIO ?? "—" }}</td>
-                                    <td class="c-num c-blk mono cell-muted">{{ row.stat?.BlockIO ?? "—" }}</td>
-                                    <td class="c-act">
-                                        <!-- Actions are service-scoped (docker compose has no per-replica
+                        <!-- One layout renders at a time. Both together would
+                             double the rows that every 5 second poll patches. -->
+                        <div v-if="wideLayout" class="ctable-scroll">
+                            <table class="ctable">
+                                <thead>
+                                    <tr>
+                                        <th class="c-svc">{{ $t("service") }}</th>
+                                        <th class="c-img">{{ $t("dockerImage") }}</th>
+                                        <th class="c-state">{{ $t("state") }}</th>
+                                        <th class="c-up">{{ $t("uptime") }}</th>
+                                        <th class="c-ip">{{ $t("ip") }}</th>
+                                        <th class="c-ports">{{ $tc("port", 2) }}</th>
+                                        <th class="c-num">{{ $t("CPU") }}</th>
+                                        <th class="c-num">{{ $t("memory") }}</th>
+                                        <th class="c-num c-net">{{ $t("networkIO") }}</th>
+                                        <th class="c-num c-blk">{{ $t("blockIO") }}</th>
+                                        <th class="c-act"></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr v-for="row in containerRows" :key="row.key">
+                                        <td class="c-svc">
+                                            <span class="status-dot me-2" :class="'dot-' + row.color"></span><strong class="svc-name" :title="row.service">{{ row.service }}</strong>
+                                            <div v-if="row.showInstanceName" class="cell-sub">{{ row.instanceName }}</div>
+                                        </td>
+                                        <td class="c-img cell-muted">{{ imageOf(row.service) }}</td>
+                                        <td class="c-state"><span class="badge state-badge" :class="stateBadgeClass(row.status)">{{ row.status }}</span></td>
+                                        <td class="c-up mono">{{ row.uptime ?? "—" }}</td>
+                                        <td class="c-ip mono">{{ row.ip || "—" }}</td>
+                                        <td class="c-ports mono cell-muted">
+                                            <template v-if="row.ports">
+                                                <a
+                                                    v-for="link in portLinks(row.ports)"
+                                                    :key="link.text"
+                                                    :href="link.url"
+                                                    target="_blank"
+                                                    rel="noopener"
+                                                    class="port-link"
+                                                >{{ link.text }}</a>
+                                            </template>
+                                            <template v-else>—</template>
+                                        </td>
+                                        <td class="c-num mono">{{ row.stat?.CPUPerc ?? "—" }}</td>
+                                        <td class="c-num mono" :title="memoryTitleOf(row.stat)">{{ memoryOf(row.stat) }}</td>
+                                        <td class="c-num c-net mono cell-muted">{{ row.stat?.NetIO ?? "—" }}</td>
+                                        <td class="c-num c-blk mono cell-muted">{{ row.stat?.BlockIO ?? "—" }}</td>
+                                        <td class="c-act">
+                                            <!-- Actions are service-scoped (docker compose has no per-replica
                                              stop), so they render once per service, on its first row. -->
-                                        <ContainerActions
-                                            v-if="row.first"
-                                            :status="row.status"
-                                            :service-count="serviceCount"
-                                            :processing="processing"
-                                            :bash-to="bashLink(row.service)"
-                                            @start="startService(row.service)"
-                                            @restart="restartService(row.service)"
-                                            @stop="stopService(row.service)"
-                                        />
-                                        <span v-else class="cell-muted">—</span>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
+                                            <ContainerActions
+                                                v-if="row.first"
+                                                :status="row.status"
+                                                :service-count="serviceCount"
+                                                :processing="processing"
+                                                :bash-to="bashLink(row.service)"
+                                                @start="startService(row.service)"
+                                                @restart="restartService(row.service)"
+                                                @stop="stopService(row.service)"
+                                            />
+                                            <span v-else class="cell-muted">—</span>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
 
-                        <!-- Mobile: stacked cards -->
-                        <div class="d-md-none">
+                        <!-- Narrow screens: stacked cards -->
+                        <div v-else>
                             <div v-for="row in containerRows" :key="row.key" class="mcard">
                                 <div class="mcard-top">
                                     <span class="status-dot" :class="'dot-' + row.color"></span>
@@ -231,9 +247,21 @@
                                 <div class="mcard-grid">
                                     <span class="k">{{ $t("uptime") }}</span><span class="mono">{{ row.uptime ?? "—" }}</span>
                                     <span class="k">{{ $t("ip") }}</span><span class="mono">{{ row.ip || "—" }}</span>
-                                    <span class="k">{{ $tc("port", 2) }}</span><span class="mono">{{ row.ports || "—" }}</span>
+                                    <span class="k">{{ $tc("port", 2) }}</span><span class="mono">
+                                        <template v-if="row.ports">
+                                            <a
+                                                v-for="link in portLinks(row.ports)"
+                                                :key="link.text"
+                                                :href="link.url"
+                                                target="_blank"
+                                                rel="noopener"
+                                                class="port-link"
+                                            >{{ link.text }}</a>
+                                        </template>
+                                        <template v-else>—</template>
+                                    </span>
                                     <span class="k">{{ $t("CPU") }}</span><span class="mono">{{ row.stat?.CPUPerc ?? "—" }}</span>
-                                    <span class="k">{{ $t("memory") }}</span><span class="mono">{{ memoryOf(row.stat) }}</span>
+                                    <span class="k">{{ $t("memory") }}</span><span class="mono">{{ row.stat?.MemUsage ?? "—" }}</span>
                                     <span class="k">{{ $t("networkIO") }}</span><span class="mono">{{ row.stat?.NetIO ?? "—" }}</span>
                                     <span class="k">{{ $t("blockIO") }}</span><span class="mono">{{ row.stat?.BlockIO ?? "—" }}</span>
                                 </div>
@@ -423,6 +451,7 @@ import {
     copyYAMLComments, envsubstYAML,
     getCombinedTerminalName,
     getComposeTerminalName,
+    parseDockerPort,
     PROGRESS_TERMINAL_ROWS,
     RUNNING
 } from "../../../common/util-common";
@@ -543,6 +572,10 @@ export default {
             stopDockerStatsTimeout: false,
             expandedPanel: null,
             editSnapshot: null,
+            // True when the container table fits. Below this the page shows
+            // cards instead. Only one of the two renders at a time.
+            wideLayout: true,
+            wideLayoutQuery: null,
             // True while exitConfirm holds a navigation, from the moment the
             // dialog opens until the choice is complete
             leaving: false,
@@ -791,6 +824,11 @@ export default {
 
         window.addEventListener("keydown", this.onComposeKeydown);
         window.addEventListener("beforeunload", this.onBeforeUnload);
+
+        // Same value as the bootstrap md breakpoint
+        this.wideLayoutQuery = window.matchMedia("(min-width: 768px)");
+        this.wideLayout = this.wideLayoutQuery.matches;
+        this.wideLayoutQuery.addEventListener("change", this.onWideLayoutChange);
     },
     beforeUnmount() {
         // The page can be destroyed without a route change, for example when
@@ -801,6 +839,7 @@ export default {
     unmounted() {
         window.removeEventListener("keydown", this.onComposeKeydown);
         window.removeEventListener("beforeunload", this.onBeforeUnload);
+        this.wideLayoutQuery?.removeEventListener("change", this.onWideLayoutChange);
     },
     methods: {
         /**
@@ -857,7 +896,16 @@ export default {
         },
 
         /**
-         * Memory cell: usage plus percentage, e.g. "2.77MiB (0.07%)".
+         * Change between the table and the cards when the window changes.
+         * @param {MediaQueryListEvent} e the media query change
+         * @returns {void}
+         */
+        onWideLayoutChange(e) {
+            this.wideLayout = e.matches;
+        },
+
+        /**
+         * Memory cell: usage plus percentage, for example "2.77MiB (0.07%)".
          * @param {object|null} stat docker stats entry
          * @returns {string} formatted memory usage
          */
@@ -867,6 +915,38 @@ export default {
             }
             const used = stat.MemUsage.split(" /")[0];
             return stat.MemPerc ? `${used} (${stat.MemPerc})` : used;
+        },
+
+        /**
+         * Full memory usage for the cell tooltip. The cell has no room for
+         * the limit, but the limit is what makes the percentage meaningful.
+         * @param {object|null} stat docker stats entry
+         * @returns {string} usage and limit, for example "2.77MiB / 3.822GiB"
+         */
+        memoryTitleOf(stat) {
+            return stat?.MemUsage ?? "";
+        },
+
+        /**
+         * Make the ports column into links. The Primary Hostname setting
+         * says which name to open. A port with its own bind address keeps
+         * that address, because the user set it on purpose.
+         * @param {string} ports formatted ports column
+         * @returns {object[]} text and url for each port
+         */
+        portLinks(ports) {
+            if (!ports) {
+                return [];
+            }
+
+            const hostname = this.stack.endpoint
+                ? this.stack.primaryHostname
+                : (this.$root.info.primaryHostname || location.hostname);
+
+            return ports.split(", ").map((port) => ({
+                text: port,
+                url: parseDockerPort(port, hostname).url,
+            }));
         },
 
         /**
@@ -1594,15 +1674,26 @@ export default {
     .c-act {
         white-space: nowrap;
     }
+}
 
-    // Tablet: drop the low-value columns so the rest keeps breathing room
-    @media (max-width: 1199.98px) {
-        .c-img,
-        .c-ports,
-        .c-net,
-        .c-blk {
-            display: none;
-        }
+// A narrow window scrolls the table sideways. To hide the columns instead
+// puts them out of reach, because the cards start below 768px only.
+.ctable-scroll {
+    overflow-x: auto;
+}
+
+.port-link {
+    color: inherit;
+    text-decoration: none;
+
+    &:hover {
+        color: var(--bs-link-color);
+        text-decoration: underline;
+    }
+
+    + .port-link::before {
+        content: ", ";
+        color: var(--bs-secondary-color);
     }
 }
 
