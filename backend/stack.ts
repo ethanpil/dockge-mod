@@ -444,6 +444,13 @@ export class Stack {
     static async getStack(server: DockgeServer, stackName: string, skipFSOperations = false) : Promise<Stack> {
         let dir = path.join(server.stacksDir, stackName);
 
+        // Keep the directory in the stacks directory. A name that contains
+        // path parts must not give access to the other directories.
+        const relative = path.relative(path.resolve(server.stacksDir), path.resolve(dir));
+        if (relative === "" || relative.startsWith("..") || path.isAbsolute(relative)) {
+            throw new ValidationError("Stack not found");
+        }
+
         if (!skipFSOperations) {
             if (!await fileExists(dir) || !(await fsAsync.stat(dir)).isDirectory()) {
                 // Maybe it is a stack managed by docker compose directly
