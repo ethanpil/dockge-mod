@@ -55,23 +55,9 @@ Debian Buster and Raspbian Buster are too old. Windows is not supported.
 
 ## Install
 
-There is no published Docker image for dockge-mod. You must build the image on your own machine. Docker does all the build steps, so you do not need Node.js on the host.
+The image is on Docker Hub as [`ethanpil/dockge-mod`](https://hub.docker.com/r/ethanpil/dockge-mod). It is available for amd64, arm64, and armv7. You do not need the source code to run it.
 
-### Step 1. Get the Source Code
-
-```bash
-git clone https://github.com/ethanpil/dockge-mod.git
-```
-
-### Step 2. Build the Image
-
-The Dockerfile also builds the frontend. This step downloads two base images from the upstream project.
-
-```bash
-cd dockge-mod && docker build --target release -f docker/Dockerfile -t dockge-mod:local .
-```
-
-### Step 3. Make the Directories
+### Step 1. Make the Directories
 
 Make one directory for your stacks and one directory for dockge-mod.
 
@@ -79,7 +65,7 @@ Make one directory for your stacks and one directory for dockge-mod.
 mkdir -p /opt/stacks /opt/dockge-mod
 ```
 
-### Step 4. Make the Compose File
+### Step 2. Make the Compose File
 
 The two stack paths in the `volumes` section must be the same. If the two paths are different, dockge-mod writes your data to a wrong path.
 
@@ -91,7 +77,7 @@ Write this text to `/opt/dockge-mod/compose.yaml`:
 ```yaml
 services:
   dockge-mod:
-    image: dockge-mod:local
+    image: ethanpil/dockge-mod:latest
     restart: unless-stopped
     ports:
       # Host port : container port
@@ -108,7 +94,7 @@ services:
       - DOCKGE_STACKS_DIR=/opt/stacks
 ```
 
-### Step 5. Start the Server
+### Step 3. Start the Server
 
 ```bash
 cd /opt/dockge-mod && docker compose up -d
@@ -118,42 +104,52 @@ If you use docker-compose V1 or Podman, run `docker-compose up -d` instead.
 
 dockge-mod now runs on `http://localhost:5001`. Open this address in a browser. The first page asks you to make an administrator account.
 
+### Build the Image Yourself
+
+This step is not necessary. Use it if you want to run a change that is not in the published image. Docker does all the build steps, so you do not need Node.js on the host. The build downloads the Node.js and the Go images from Docker Hub.
+
+```bash
+git clone https://github.com/ethanpil/dockge-mod.git
+cd dockge-mod && docker build --target release -f docker/Dockerfile -t dockge-mod:local .
+```
+
+Then put `dockge-mod:local` in the `image` line of your compose file.
+
 ## Move from Dockge
 
 dockge-mod can use the data of an existing Dockge installation. Do the steps that follow:
 
-1. Build the image. Read the install steps 1 and 2 above.
-2. Go to the directory that holds the compose file of Dockge.
-3. Stop Dockge with `docker compose down`.
-4. Make a copy of the `data` directory. Keep this copy in a safe place.
-5. In the compose file, change the `image` line to `dockge-mod:local`.
-6. Start the new container with `docker compose up -d`.
+1. Go to the directory that holds the compose file of Dockge.
+2. Stop Dockge with `docker compose down`.
+3. Make a copy of the `data` directory. Keep this copy in a safe place.
+4. In the compose file, change the `image` line to `ethanpil/dockge-mod:latest`.
+5. Start the new container with `docker compose up -d`.
 
 Your stacks, your users, and your settings stay the same. To go back to Dockge, change the `image` line again.
 
 ## Upgrade
 
-Do the steps that follow to move to a newer version.
-
-### Step 1. Get the New Source Code
-
 ```bash
-cd /path/to/your/dockge-mod/source && git pull
-```
-
-### Step 2. Build the Image Again
-
-```bash
-docker build --target release -f docker/Dockerfile -t dockge-mod:local .
-```
-
-### Step 3. Start the New Image
-
-```bash
-cd /opt/dockge-mod && docker compose up -d
+cd /opt/dockge-mod && docker compose pull && docker compose up -d
 ```
 
 Your data stays in the `data` volume. Your stacks stay in your stacks directory.
+
+If you build the image yourself, get the new source code with `git pull`, build the image again, then start it with `docker compose up -d`.
+
+## Reverse Proxy
+
+dockge-mod uses a WebSocket connection. Your reverse proxy must send the `Upgrade` and the `Connection` headers to the container, or the interface does not connect.
+
+For nginx, add these lines to the location block:
+
+```nginx
+proxy_http_version 1.1;
+proxy_set_header Upgrade $http_upgrade;
+proxy_set_header Connection "upgrade";
+```
+
+Caddy and Traefik do this without more configuration.
 
 ## Use
 
