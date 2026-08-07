@@ -216,6 +216,10 @@ Use a git checkout together with an override file: git holds the base compose fi
 
 The `.git` entry is not visible in the Dockge interface, and Dockge does not touch it. Thus the stacks directory stays compatible.
 
+### Change the Poll Interval
+
+An open stack page asks the server for container status and statistics every 5 seconds. Each poll runs docker commands on the server. Set a different time under **Settings** > **General** > **Poll interval**. A larger value decreases the load on a slow host.
+
 ### Examine the Health of the Server
 
 The **Health** page under **Settings** shows if the tools that dockge-mod needs are on the server: Docker, Docker Compose, and Git. It also shows if the server can write in the stacks directory and the data directory.

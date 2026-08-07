@@ -442,6 +442,9 @@ export class DockgeServer {
             version: versionProperty,
             isContainer,
             primaryHostname: await Settings.get("primaryHostname"),
+            // Seconds between the status polls of the interface. This
+            // field only adds data to the event.
+            pollInterval: await Settings.get("pollInterval") || 5,
             //serverTimezone: await this.getTimezone(),
             //serverTimezoneOffset: this.getTimezoneOffset(),
         });

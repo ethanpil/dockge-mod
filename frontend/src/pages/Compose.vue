@@ -829,6 +829,20 @@ export default {
         },
 
         /**
+         * Milliseconds between two status polls. The seconds come from the
+         * settings, over the info event. A value outside the limits gives
+         * the default of 5 seconds, which is also the value of dockge.
+         * @return {number}
+         */
+        pollIntervalMs() {
+            const seconds = Number(this.$root.info.pollInterval);
+            if (Number.isFinite(seconds) && seconds >= 2 && seconds <= 3600) {
+                return seconds * 1000;
+            }
+            return 5000;
+        },
+
+        /**
          * One row per container instance of every service, joined with the
          * docker stats when the container is running. Services that have no
          * container yet still get a placeholder row.
@@ -1240,14 +1254,14 @@ export default {
             clearTimeout(serviceStatusTimeout);
             serviceStatusTimeout = setTimeout(async () => {
                 this.requestServiceStatus();
-            }, 5000);
+            }, this.pollIntervalMs);
         },
 
         startDockerStatsTimeout() {
             clearTimeout(dockerStatsTimeout);
             dockerStatsTimeout = setTimeout(async () => {
                 this.requestDockerStats();
-            }, 5000);
+            }, this.pollIntervalMs);
         },
 
         requestServiceStatus() {

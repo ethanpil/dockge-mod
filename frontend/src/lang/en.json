@@ -196,5 +196,7 @@
     "mergedConfigEditorNote": "From the text in the editors",
     "requestTimeout": "The server did not answer.",
     "validateConfig": "Validate",
-    "validateConfigNote": "Examine the editor content with docker, without a save"
+    "validateConfigNote": "Examine the editor content with docker, without a save",
+    "pollInterval": "Poll interval (seconds)",
+    "pollIntervalNote": "The time between the status polls of a stack page. The default is 5 seconds. A larger value decreases the load on a slow host."
 }
