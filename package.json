@@ -24,8 +24,6 @@
         "dev:backend": "cross-env NODE_ENV=development tsx watch --inspect ./backend/index.ts",
         "dev:frontend": "cross-env NODE_ENV=development vite --host --config ./frontend/vite.config.ts",
         "build:frontend": "vite build --config ./frontend/vite.config.ts",
-        "mark-as-nightly": "tsx ./extra/mark-as-nightly.ts",
-        "reformat-changelog": "tsx ./extra/reformat-changelog.ts",
         "reset-password": "tsx ./extra/reset-password.ts"
     },
     "dependencies": {

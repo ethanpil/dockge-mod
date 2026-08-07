@@ -1,9 +1,9 @@
 ############################################
 # Base
 # The runtime environment: Node.js, the docker CLI, the compose
-# plugin, dumb-init, and tsx. Upstream publishes this layer as
-# louislam/dockge:base. This file builds it from the source, so the
-# image does not depend on the upstream registry.
+# plugin, dumb-init, and tsx. The upstream project publishes this
+# layer as an image. This file builds it from the source, so the
+# image does not depend on that registry.
 ############################################
 FROM node:22-bookworm-slim AS base
 RUN apt update && apt install --yes --no-install-recommends \
@@ -91,9 +91,3 @@ EXPOSE 5001
 HEALTHCHECK --interval=60s --timeout=30s --start-period=60s --retries=5 CMD extra/healthcheck
 ENTRYPOINT ["/usr/bin/dumb-init", "--"]
 CMD ["tsx", "./backend/index.ts"]
-
-############################################
-# Mark as Nightly
-############################################
-FROM release AS nightly
-RUN npm run mark-as-nightly
