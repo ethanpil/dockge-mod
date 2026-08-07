@@ -1792,6 +1792,9 @@ export default {
     .panel {
         min-width: 0;
         margin-bottom: 0;
+        // The editor must stay in its own box. Without this, a short window
+        // lets the text of the editor go over the panel below.
+        overflow: hidden;
     }
 
     // The divider sets the width of the first panel. The second takes what
@@ -1815,6 +1818,12 @@ export default {
 
     @media (max-width: 991.98px) {
         flex-direction: column;
+
+        // The two panels are now one above the other, thus this row needs the
+        // height of both. With a share of the height it becomes shorter than
+        // its content, and the content goes over the panel below.
+        flex: 0 0 auto;
+        min-height: 0;
 
         // The panels are one above the other, so the divider does not apply
         .panel,
@@ -1907,6 +1916,13 @@ export default {
 .logs-panel {
     flex: 2 1 0;
     min-height: 260px;
+    overflow: hidden;
+
+    // The panels above take their full height on a narrow window, thus this
+    // panel keeps its own height and the page scrolls.
+    @media (max-width: 991.98px) {
+        flex: 0 0 auto;
+    }
 }
 
 .panel-fill {
