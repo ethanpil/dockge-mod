@@ -472,10 +472,17 @@
                         </div>
                     </div>
 
-                    <!-- ENV editor -->
+                    <!-- ENV editor: rows with a key field and a value
+                         field, or the plain text. The text view is for
+                         comments and special lines. -->
                     <div class="panel">
-                        <div class="panel-head"><span class="panel-title">.env</span></div>
-                        <div class="editor-box edit-mode">
+                        <div class="panel-head head-grow">
+                            <span class="panel-title">.env</span>
+                            <button class="mini-btn" @click="envEditorText = !envEditorText">
+                                {{ envEditorText ? $t("envRowsView") : $t("envTextView") }}
+                            </button>
+                        </div>
+                        <div v-if="envEditorText" class="editor-box edit-mode">
                             <code-mirror
                                 v-model="stack.composeENV"
                                 v-bind="editorProps"
@@ -483,6 +490,11 @@
                                 @change="yamlCodeChange"
                             />
                         </div>
+                        <EnvEditor
+                            v-else
+                            v-model="stack.composeENV"
+                            @change="yamlCodeChange"
+                        />
                     </div>
 
                     <!-- Volumes -->
@@ -582,6 +594,7 @@ import NetworkInput from "../components/NetworkInput.vue";
 import Confirm from "../components/Confirm.vue";
 import Container from "../components/Container.vue";
 import ContainerActions from "../components/ContainerActions.vue";
+import EnvEditor from "../components/EnvEditor.vue";
 import Terminal from "../components/Terminal.vue";
 import Uptime from "../components/Uptime.vue";
 import ArrayInput from "../components/ArrayInput.vue";
@@ -611,6 +624,7 @@ export default {
         Confirm,
         Container,
         ContainerActions,
+        EnvEditor,
         Terminal,
         Uptime,
         ArrayInput,
@@ -719,6 +733,8 @@ export default {
             // The i18n key of the note in the overlay head. It names the
             // source of the content.
             mergedConfigNoteKey: "mergedConfigDiskNote",
+            // True shows the .env text editor, false shows the rows
+            envEditorText: false,
         };
     },
     computed: {

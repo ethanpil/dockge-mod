@@ -185,6 +185,10 @@ dockge-mod reads only the stacks in your stacks directory. To add a stack that i
 
 The stack is now in the list.
 
+### Edit the Environment Variables
+
+In edit mode, the `.env` panel shows each variable as a pair of fields: one for the key and one for the value. The values are not masked. Click **Add Variable** for a new pair. Comments keep their positions. Click **Text** to edit the file as plain text, for example for a comment or a special line.
+
 ### Use an Override File
 
 Docker compose merges an override file with the base compose file. Put your changes in the override file when the base file comes from a different source, for example a git repository. An update of the base file does not remove your changes.
