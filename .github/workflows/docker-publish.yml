@@ -2,15 +2,11 @@ name: Publish Docker Image
 
 on:
   workflow_dispatch:
-    inputs:
-      tag:
-        description: 'The Docker Hub tag to push'
-        type: string
-        default: latest
-      platforms:
-        description: 'The target platforms'
-        type: string
-        default: linux/amd64,linux/arm64,linux/arm/v7
+
+# Two runs that push the same tag must not race each other
+concurrency:
+  group: publish-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   publish:
@@ -22,6 +18,24 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Make the version and the tags
+        id: meta
+        run: |
+          set -eu
+          BASE="$(node -p "require('./package.json').version")"
+          VERSION="${BASE}-mod-$(git rev-parse --short HEAD)"
+          TAGS="ethanpil/dockge-mod:${VERSION}"
+          # Only the default branch moves the latest tag
+          if [ "${GITHUB_REF}" = "refs/heads/master" ]; then
+            TAGS="${TAGS},ethanpil/dockge-mod:latest"
+          fi
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "tags=${TAGS}" >> "$GITHUB_OUTPUT"
+          echo "Publishing ${VERSION}"
+          echo "Tags: ${TAGS}"
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -41,8 +55,16 @@ jobs:
           context: .
           file: docker/Dockerfile
           target: release
-          platforms: ${{ inputs.platforms }}
+          platforms: linux/amd64,linux/arm64,linux/arm/v7
           push: true
-          tags: ethanpil/dockge-mod:${{ inputs.tag }}
+          build-args: |
+            APP_VERSION=${{ steps.meta.outputs.version }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: |
+            org.opencontainers.image.title=dockge-mod
+            org.opencontainers.image.source=https://github.com/ethanpil/dockge-mod
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.version=${{ steps.meta.outputs.version }}
           cache-from: type=gha
-          cache-to: type=gha,mode=max
+          # A cache error must not fail a build that is already pushed
+          cache-to: type=gha,mode=max,ignore-error=true

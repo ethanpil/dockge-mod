@@ -12,6 +12,9 @@ docker
 # frontend/ is NOT ignored: the frontend_build stage compiles it inside the image.
 # frontend-dist is ignored so a stale local build cannot shadow that stage's output.
 frontend-dist
+# The same reason: the build_healthcheck stage compiles this binary for the
+# target architecture, and a local build must not take its place.
+extra/healthcheck
 .editorconfig
 .eslintrc.cjs
 .git

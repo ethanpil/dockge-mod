@@ -59,9 +59,12 @@ RUN npm ci --omit=dev
 ############################################
 FROM --platform=$BUILDPLATFORM node:22-bookworm-slim AS frontend_build
 WORKDIR /app
+ARG APP_VERSION
 COPY --chown=node:node  ./package.json ./package.json
 COPY --chown=node:node  ./package-lock.json ./package-lock.json
 RUN npm ci
+# The interface shows this version, and it must agree with the backend
+RUN if [ -n "$APP_VERSION" ]; then npm pkg set version="$APP_VERSION"; fi
 COPY --chown=node:node  ./tsconfig.json ./tsconfig.json
 COPY --chown=node:node  ./common ./common
 COPY --chown=node:node  ./frontend ./frontend
@@ -72,11 +75,14 @@ RUN npm run build:frontend
 ############################################
 FROM base AS release
 WORKDIR /app
+ARG APP_VERSION
 COPY --chown=node:node --from=build_healthcheck /app/extra/healthcheck /app/extra/healthcheck
 COPY --from=build /app/node_modules /app/node_modules
 COPY --chown=node:node  . .
 # After `COPY . .` so the freshly compiled frontend always wins.
 COPY --chown=node:node --from=frontend_build /app/frontend-dist /app/frontend-dist
+# After `COPY . .`, which brings the package.json of the source
+RUN if [ -n "$APP_VERSION" ]; then npm pkg set version="$APP_VERSION"; fi
 RUN mkdir ./data
 
 
