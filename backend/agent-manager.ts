@@ -32,11 +32,11 @@ export class AgentManager {
             let endpoint = obj.host;
 
             if (!endpoint) {
-                reject(new Error("Invalid Dockge URL"));
+                reject(new Error("Invalid agent URL"));
             }
 
             if (this.agentSocketList[endpoint]) {
-                reject(new Error("The Dockge URL already exists"));
+                reject(new Error("The agent URL already exists"));
             }
 
             let client = io(url, {
@@ -62,7 +62,7 @@ export class AgentManager {
 
             client.on("connect_error", (err) => {
                 if (err.message === "xhr poll error") {
-                    reject(new Error("Unable to connect to the Dockge instance"));
+                    reject(new Error("Unable to connect to the agent"));
                 } else {
                     reject(err);
                 }

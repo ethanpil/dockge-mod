@@ -409,8 +409,9 @@ export class Stack {
 
             // This stack probably is not managed by Dockge, but we still want to show it
             if (!stack) {
-                // Skip the dockge stack if it is not managed by Dockge
-                if (composeStack.Name === "dockge") {
+                // Skip the stack of the manager itself. The name comes from the
+                // directory of its compose file, thus both names can occur.
+                if (composeStack.Name === "dockge" || composeStack.Name === "dockge-mod") {
                     continue;
                 }
                 stack = new Stack(server, composeStack.Name);

@@ -32,7 +32,11 @@ func main() {
 	sslKey := os.Getenv("DOCKGE_SSL_KEY")
 	sslCert := os.Getenv("DOCKGE_SSL_CERT")
 
-	hostname := os.Getenv("DOCKGE_HOST")
+	// The server binds DOCKGE_HOSTNAME. DOCKGE_HOST stays for compatibility.
+	hostname := os.Getenv("DOCKGE_HOSTNAME")
+	if len(hostname) == 0 {
+		hostname = os.Getenv("DOCKGE_HOST")
+	}
 	if len(hostname) == 0 {
 		hostname = "127.0.0.1"
 	}
