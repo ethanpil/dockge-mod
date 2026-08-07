@@ -4,6 +4,7 @@ import { log } from "./log";
 import yaml from "yaml";
 import { DockgeSocket, fileExists, stderrOf, ValidationError } from "./util-server";
 import path from "path";
+import os from "os";
 import {
     acceptedComposeFileNames,
     acceptedComposeOverrideFileNames,
@@ -406,6 +407,69 @@ export class Stack {
                 ok: false,
                 content: stderrOf(e) || (e instanceof Error ? e.message : String(e)),
             };
+        }
+    }
+
+    /**
+     * Examine editor content with `docker compose config`, before a save
+     * writes it to the stack directory. The content goes to a temporary
+     * directory, thus the files of the stack do not change. The answer
+     * holds the merged configuration, or the error text of docker.
+     * @param server The server, for the location of global.env
+     * @param name Name of the stack, for the project name of docker
+     * @param composeYAML Content for the compose file
+     * @param composeENV Content for the .env file
+     * @param composeOverrideYAML Content for the override file, or null
+     */
+    static async validateConfig(server : DockgeServer, name : string, composeYAML : string, composeENV : string, composeOverrideYAML : string | null) : Promise<{ ok : boolean, content : string }> {
+        const dir = await fsAsync.mkdtemp(path.join(os.tmpdir(), "dockge-validate-"));
+
+        try {
+            await fsAsync.writeFile(path.join(dir, "compose.yaml"), composeYAML);
+
+            if (composeENV.trim() !== "") {
+                await fsAsync.writeFile(path.join(dir, ".env"), composeENV);
+            }
+
+            if (typeof composeOverrideYAML === "string" && composeOverrideYAML.trim() !== "") {
+                await fsAsync.writeFile(path.join(dir, "compose.override.yaml"), composeOverrideYAML);
+            }
+
+            // The name of the temporary directory is not a correct project
+            // name for docker. Use the name of the stack when it is one.
+            const projectName = name.match(/^[a-z0-9_-]+$/) ? name : "dockge-validate";
+
+            // The same env files as getComposeOptions: global.env comes
+            // first, then the local .env of the stack
+            const options = [ "compose", "-p", projectName ];
+            if (fs.existsSync(path.join(server.stacksDir, "global.env"))) {
+                options.push("--env-file", path.resolve(server.stacksDir, "global.env"));
+                if (composeENV.trim() !== "") {
+                    options.push("--env-file", "./.env");
+                }
+            }
+            options.push("config");
+
+            const res = await childProcessAsync.spawn("docker", options, {
+                cwd: dir,
+                encoding: "utf-8",
+                maxBuffer: 10 * 1024 * 1024,
+                timeout: 30000,
+            });
+            return {
+                ok: true,
+                content: res.stdout?.toString() ?? "",
+            };
+        } catch (e) {
+            return {
+                ok: false,
+                content: stderrOf(e) || (e instanceof Error ? e.message : String(e)),
+            };
+        } finally {
+            await fsAsync.rm(dir, {
+                recursive: true,
+                force: true,
+            });
         }
     }
 

@@ -26,6 +26,14 @@
                             {{ $t("deployStack") }}
                         </button>
 
+                        <!-- Examine the editor content with docker, before a
+                             save writes it. Hidden for a stack from an agent
+                             without the event. -->
+                        <button v-if="isEditMode && (isAdd || overrideSupported)" class="btn btn-normal" :disabled="processing" :title="$t('validateConfigNote')" @click="validateCompose">
+                            <font-awesome-icon icon="check-double" class="me-1" />
+                            {{ $t("validateConfig") }}
+                        </button>
+
                         <button
                             v-if="isEditMode"
                             class="btn"
@@ -393,7 +401,7 @@
                     <div v-if="expandedPanel === 'merged'" class="panel pop">
                         <div class="panel-head">
                             <span class="panel-title">{{ $t("mergedConfig") }}</span>
-                            <span class="panel-note">{{ $t("mergedConfigSource") }}</span>
+                            <span class="panel-note">{{ $t(mergedConfigSource === "disk" ? "mergedConfigDiskNote" : "mergedConfigEditorNote") }}</span>
                             <button class="mini-btn expand-btn" :title="$t('cancel')" @click="toggleExpand('merged')">
                                 <font-awesome-icon icon="compress" />
                             </button>
@@ -703,6 +711,9 @@ export default {
             mergedConfigError: "",
             mergedConfigYAML: "",
             mergedConfigSeq: 0,
+            // "disk" for the files of the stack, "editor" for a validation
+            // of the editor content
+            mergedConfigSource: "disk",
         };
     },
     computed: {
@@ -1521,14 +1532,18 @@ export default {
         },
 
         /**
-         * Open the merged configuration overlay and get the output of
-         * `docker compose config` from the agent. The overlay shows the
-         * error text of docker if the configuration is not correct. A
-         * timer ends the wait if an agent does not answer.
+         * Open the merged configuration overlay and send a request for its
+         * content. The overlay shows the error text of docker if the
+         * configuration is not correct. A timer ends the wait if an agent
+         * does not answer.
+         * @param {string} source "disk" or "editor", for the note text
+         * @param {string} event name of the socket event
+         * @param {...*} args arguments of the event
          * @returns {void}
          */
-        showMergedConfig() {
+        openMergedConfig(source, event, ...args) {
             this.expandedPanel = "merged";
+            this.mergedConfigSource = source;
             this.mergedConfigLoading = true;
             this.mergedConfigError = "";
             this.mergedConfigYAML = "";
@@ -1543,7 +1558,7 @@ export default {
                 this.mergedConfigError = this.$t("requestTimeout");
             }, 30000);
 
-            this.$root.emitAgent(this.endpoint, "getComposeConfig", this.stack.name, (res) => {
+            this.$root.emitAgent(this.endpoint, event, ...args, (res) => {
                 if (seq !== this.mergedConfigSeq) {
                     return;
                 }
@@ -1561,6 +1576,31 @@ export default {
                     this.mergedConfigError = res.msg ?? "";
                 }
             });
+        },
+
+        /**
+         * Show the merged configuration of the files on the disk.
+         * @returns {void}
+         */
+        showMergedConfig() {
+            this.openMergedConfig("disk", "getComposeConfig", this.stack.name);
+        },
+
+        /**
+         * Examine the editor content with docker, before a save writes it.
+         * The agent puts the content in a temporary directory, thus the
+         * files of the stack do not change.
+         * @returns {void}
+         */
+        validateCompose() {
+            this.openMergedConfig(
+                "editor",
+                "validateCompose",
+                this.stack.name ?? "",
+                this.stack.composeYAML,
+                this.stack.composeENV,
+                this.hasOverride ? this.stack.composeOverrideYAML : null,
+            );
         },
 
         /**

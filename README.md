@@ -204,6 +204,8 @@ dockge-mod uses the same names as docker: `compose.override.yml`, `compose.overr
 
 Docker merges the compose file, the override file, and the env files into one configuration. Click **Merged config** at the top of the compose panel to see the result of `docker compose config`. The view is read only, and it shows the files on the disk. If the configuration is not correct, the view shows the error text of docker.
 
+In edit mode, click **Validate** to examine the editor content before you save it. The server puts the content in a temporary directory and runs `docker compose config` there. The files of the stack do not change. Docker finds problems that a YAML check cannot see, for example an unknown key or a wrong service reference.
+
 ### Use a Git Checkout as a Stack
 
 A stack directory can be a git checkout. dockge-mod then shows the branch next to the stack name. A dot after the branch shows tracked changes that are not committed. Files that git does not track, for example an override file or a `.env` file, do not cause the dot. A **Pull & Redeploy** button also appears. The button runs `git pull` in the stack directory and then deploys the stack.

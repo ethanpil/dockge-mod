@@ -412,6 +412,39 @@ export class DockerSocketHandler extends AgentSocketHandler {
             }
         });
 
+        // Examine editor content with docker, before a save writes it.
+        // This event only adds a function to the socket API.
+        agentSocket.on("validateCompose", async (name : unknown, composeYAML : unknown, composeENV : unknown, composeOverrideYAML : unknown, callback) => {
+            try {
+                checkLogin(socket);
+
+                if (typeof(name) !== "string") {
+                    throw new ValidationError("Name must be a string");
+                }
+                if (typeof(composeYAML) !== "string") {
+                    throw new ValidationError("Compose YAML must be a string");
+                }
+                if (typeof(composeENV) !== "string") {
+                    throw new ValidationError("Compose ENV must be a string");
+                }
+                if (composeOverrideYAML !== undefined && composeOverrideYAML !== null && typeof(composeOverrideYAML) !== "string") {
+                    throw new ValidationError("Compose override YAML must be a string");
+                }
+
+                const result = await Stack.validateConfig(server, name, composeYAML, composeENV, composeOverrideYAML ?? null);
+
+                // ok says that this event worked. A configuration error is
+                // a normal answer here, and it goes in its own field.
+                callbackResult({
+                    ok: true,
+                    composeConfig: result.ok ? result.content : "",
+                    configError: result.ok ? "" : result.content,
+                }, callback);
+            } catch (e) {
+                callbackError(e, callback);
+            }
+        });
+
         // getExternalNetworkList
         agentSocket.on("getDockerNetworkList", async (callback) => {
             try {
