@@ -6,6 +6,8 @@ import { DockgeSocket, fileExists, ValidationError } from "./util-server";
 import path from "path";
 import {
     acceptedComposeFileNames,
+    acceptedComposeOverrideFileNames,
+    defaultComposeOverrideFileName,
     COMBINED_TERMINAL_COLS,
     COMBINED_TERMINAL_ROWS,
     CREATED_FILE,
@@ -29,7 +31,8 @@ export class Stack {
     protected _composeOverrideYAML?: string | null;
     protected _configFilePath?: string;
     protected _composeFileName: string = "compose.yaml";
-    protected _composeOverrideFileName: string = "compose.override.yaml";
+    protected _composeOverrideFileName?: string;
+    protected _skipFSOperations: boolean;
     protected server: DockgeServer;
 
     protected combinedTerminal? : Terminal;
@@ -42,25 +45,13 @@ export class Stack {
         this._composeYAML = composeYAML;
         this._composeENV = composeENV;
         this._composeOverrideYAML = composeOverrideYAML;
+        this._skipFSOperations = skipFSOperations;
 
         if (!skipFSOperations) {
             // Check if compose file name is different from compose.yaml
             for (const filename of acceptedComposeFileNames) {
                 if (fs.existsSync(path.join(this.path, filename))) {
                     this._composeFileName = filename;
-                    break;
-                }
-            }
-
-            // Docker pairs the override file with the base file name.
-            // Use the name of a file that exists. If no file exists, use
-            // the extension of the base file.
-            const extension = path.extname(this._composeFileName);
-            const stem = this._composeFileName.slice(0, -extension.length);
-            this._composeOverrideFileName = stem + ".override" + extension;
-            for (const overrideExtension of [ ".yaml", ".yml" ]) {
-                if (fs.existsSync(path.join(this.path, stem + ".override" + overrideExtension))) {
-                    this._composeOverrideFileName = stem + ".override" + overrideExtension;
                     break;
                 }
             }
@@ -91,7 +82,7 @@ export class Stack {
             composeYAML: this.composeYAML,
             composeENV: this.composeENV,
             composeOverrideYAML: this.composeOverrideYAML,
-            composeOverrideFileName: this._composeOverrideFileName,
+            composeOverrideFileName: this.composeOverrideFileName,
             primaryHostname,
         };
     }
@@ -139,8 +130,8 @@ export class Stack {
         yaml.parse(this.composeYAML);
 
         // Check the override YAML only when this save carries content for it
-        if (typeof this._composeOverrideYAML === "string" && this._composeOverrideYAML.trim() !== "") {
-            const parsed = yaml.parse(this._composeOverrideYAML);
+        if (this.hasOverrideContent()) {
+            const parsed = yaml.parse(this._composeOverrideYAML as string);
             if (parsed === null) {
                 throw new ValidationError("The override file needs content. Remove the file to disable it.");
             }
@@ -181,17 +172,48 @@ export class Stack {
     get composeOverrideYAML() : string | null {
         if (this._composeOverrideYAML === undefined) {
             try {
-                this._composeOverrideYAML = fs.readFileSync(path.join(this.path, this._composeOverrideFileName), "utf-8");
+                this._composeOverrideYAML = fs.readFileSync(path.join(this.path, this.composeOverrideFileName), "utf-8");
             } catch (e) {
-                // No override file
+                // No file is the usual condition. A different error keeps the
+                // file out of the interface, so the operator must see it.
+                if ((e as NodeJS.ErrnoException)?.code !== "ENOENT") {
+                    log.warn("stack", `Cannot read the override file of the stack ${this.name}: ${e}`);
+                }
                 this._composeOverrideYAML = null;
             }
         }
         return this._composeOverrideYAML;
     }
 
+    /**
+     * The name of the override file of this stack. Docker examines the
+     * accepted names in sequence and uses the first file that it finds. The
+     * name of the base compose file has no effect on that sequence. When no
+     * file exists, the name for a new file agrees with the base file.
+     */
     get composeOverrideFileName() : string {
+        if (this._composeOverrideFileName === undefined) {
+            this._composeOverrideFileName = defaultComposeOverrideFileName(this._composeFileName);
+
+            if (!this._skipFSOperations) {
+                for (const filename of acceptedComposeOverrideFileNames) {
+                    const filePath = path.join(this.path, filename);
+                    if (fs.existsSync(filePath) && fs.lstatSync(filePath).isFile()) {
+                        this._composeOverrideFileName = filename;
+                        break;
+                    }
+                }
+            }
+        }
         return this._composeOverrideFileName;
+    }
+
+    /**
+     * True when this stack holds override content for the disk. An empty
+     * value is a request to remove the file.
+     */
+    protected hasOverrideContent() : boolean {
+        return typeof this._composeOverrideYAML === "string" && this._composeOverrideYAML.trim() !== "";
     }
 
     get path() : string {
@@ -237,25 +259,33 @@ export class Stack {
         }
 
         // Write or overwrite the compose.yaml
-        fs.writeFileSync(path.join(dir, this._composeFileName), this.composeYAML);
+        const composePath = path.join(dir, this._composeFileName);
+        fs.writeFileSync(composePath, this.composeYAML);
+        const writtenFiles = [ composePath ];
 
         // Write or overwrite the .env
         const envPath = path.join(dir, ".env");
-        const writeEnv = await fileExists(envPath) || this.composeENV.trim() !== "";
-        if (writeEnv) {
+        if (await fileExists(envPath) || this.composeENV.trim() !== "") {
             fs.writeFileSync(envPath, this.composeENV);
+            writtenFiles.push(envPath);
         }
 
         // Write, or remove, the override file. An undefined value means the
         // save does not carry override data, so the file stays as it is.
-        const overridePath = path.join(dir, this._composeOverrideFileName);
-        let writeOverride = false;
         if (this._composeOverrideYAML !== undefined) {
-            if (this._composeOverrideYAML === null || this._composeOverrideYAML.trim() === "") {
-                fs.rmSync(overridePath, { force: true });
-            } else {
-                fs.writeFileSync(overridePath, this._composeOverrideYAML);
-                writeOverride = true;
+            const overridePath = path.join(dir, this.composeOverrideFileName);
+
+            // A link or a directory with this name is not something that this
+            // application can write or remove safely.
+            if (fs.existsSync(overridePath) && !fs.lstatSync(overridePath).isFile()) {
+                throw new ValidationError("The override file is not a usual file. Examine the stack directory.");
+            }
+
+            if (this.hasOverrideContent()) {
+                fs.writeFileSync(overridePath, this._composeOverrideYAML as string);
+                writtenFiles.push(overridePath);
+            } else if (fs.existsSync(overridePath)) {
+                fs.rmSync(overridePath);
             }
         }
 
@@ -263,12 +293,8 @@ export class Stack {
             const uid = Number(process.env.PUID);
             const gid = Number(process.env.PGID);
             fs.lchownSync(dir, uid, gid);
-            fs.chownSync(path.join(dir, this._composeFileName), uid, gid);
-            if (writeEnv) {
-                fs.chownSync(envPath, uid, gid);
-            }
-            if (writeOverride) {
-                fs.chownSync(overridePath, uid, gid);
+            for (const file of writtenFiles) {
+                fs.lchownSync(file, uid, gid);
             }
         }
     }

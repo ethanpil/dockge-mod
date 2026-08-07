@@ -115,6 +115,33 @@ export const acceptedComposeFileNames = [
 ];
 
 /**
+ * The names of the override file, in the sequence that docker uses. Docker
+ * uses the first file that it finds. The name of the base compose file has
+ * no effect on this sequence.
+ */
+export const acceptedComposeOverrideFileNames = [
+    "compose.override.yml",
+    "compose.override.yaml",
+    "docker-compose.override.yml",
+    "docker-compose.override.yaml",
+];
+
+/**
+ * Make the name of a new override file from the name of the base file.
+ * Docker accepts each of the accepted names, but a name that agrees with
+ * the base file is more clear to the user.
+ * @param composeFileName Name of the base compose file
+ * @returns Name for a new override file
+ */
+export function defaultComposeOverrideFileName(composeFileName : string) : string {
+    const dot = composeFileName.lastIndexOf(".");
+    if (dot <= 0) {
+        return "compose.override.yaml";
+    }
+    return composeFileName.slice(0, dot) + ".override" + composeFileName.slice(dot);
+}
+
+/**
  * Generate a decimal integer number from a string
  * @param str Input
  * @param length Default is 10 which means 0 - 9
