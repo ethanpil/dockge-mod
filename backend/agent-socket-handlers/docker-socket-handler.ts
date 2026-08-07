@@ -4,17 +4,33 @@ import { callbackError, callbackResult, checkLogin, DockgeSocket, ValidationErro
 import { Stack } from "../stack";
 import { AgentSocket } from "../../common/agent-socket";
 
+/**
+ * Put the arguments of a save event in sequence. A client without override
+ * support sends four arguments, so the acknowledge function arrives in the
+ * position of the override.
+ * @param composeOverrideYAML Argument in the override position
+ * @param callback Argument in the acknowledge position
+ * @returns The two arguments in their correct positions
+ */
+function acceptSaveArgs(composeOverrideYAML : unknown, callback : unknown) {
+    if (typeof composeOverrideYAML === "function" && callback === undefined) {
+        return {
+            composeOverrideYAML: undefined,
+            callback: composeOverrideYAML,
+        };
+    }
+    return {
+        composeOverrideYAML,
+        callback,
+    };
+}
+
 export class DockerSocketHandler extends AgentSocketHandler {
     create(socket : DockgeSocket, server : DockgeServer, agentSocket : AgentSocket) {
         // Do not call super.create()
 
-        agentSocket.on("deployStack", async (name : unknown, composeYAML : unknown, composeENV : unknown, isAdd : unknown, composeOverrideYAML : unknown, callback?) => {
-            // A client without override support sends four arguments, so the
-            // acknowledge function arrives in the override position.
-            if (typeof composeOverrideYAML === "function" && callback === undefined) {
-                callback = composeOverrideYAML;
-                composeOverrideYAML = undefined;
-            }
+        agentSocket.on("deployStack", async (name : unknown, composeYAML : unknown, composeENV : unknown, isAdd : unknown, overrideArg? : unknown, callbackArg? : unknown) => {
+            const { composeOverrideYAML, callback } = acceptSaveArgs(overrideArg, callbackArg);
             try {
                 checkLogin(socket);
                 const stack = await this.saveStack(server, name, composeYAML, composeENV, isAdd, composeOverrideYAML);
@@ -31,13 +47,8 @@ export class DockerSocketHandler extends AgentSocketHandler {
             }
         });
 
-        agentSocket.on("saveStack", async (name : unknown, composeYAML : unknown, composeENV : unknown, isAdd : unknown, composeOverrideYAML : unknown, callback?) => {
-            // A client without override support sends four arguments, so the
-            // acknowledge function arrives in the override position.
-            if (typeof composeOverrideYAML === "function" && callback === undefined) {
-                callback = composeOverrideYAML;
-                composeOverrideYAML = undefined;
-            }
+        agentSocket.on("saveStack", async (name : unknown, composeYAML : unknown, composeENV : unknown, isAdd : unknown, overrideArg? : unknown, callbackArg? : unknown) => {
+            const { composeOverrideYAML, callback } = acceptSaveArgs(overrideArg, callbackArg);
             try {
                 checkLogin(socket);
                 await this.saveStack(server, name, composeYAML, composeENV, isAdd, composeOverrideYAML);
