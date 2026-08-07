@@ -185,6 +185,10 @@ dockge-mod reads only the stacks in your stacks directory. To add a stack that i
 
 The stack is now in the list.
 
+### Change the Height of the Panels
+
+A thin bar with a grip is below the compose panels and the logs panel. Drag the bar to change the height of the panel above it. A double click on the bar gives the default height back. The heights are not saved.
+
 ### Edit the Environment Variables
 
 In edit mode, the `.env` panel shows each variable as a pair of fields: one for the key and one for the value. The values are not masked. Click **Add Variable** for a new pair. Comments keep their positions. Click **Text** to edit the file as plain text, for example for a comment or a value on more than one line. The **Global .env** page under **Settings** has the same editor.

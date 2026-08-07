@@ -205,5 +205,6 @@
     "deleteVariable": "Delete variable",
     "envRowsView": "Rows",
     "envTextView": "Text",
-    "envKeyInvalid": "The key is not correct. This variable does not go in the file."
+    "envKeyInvalid": "The key is not correct. This variable does not go in the file.",
+    "dragResizeNote": "Drag to change the height. A double click gives the default height."
 }

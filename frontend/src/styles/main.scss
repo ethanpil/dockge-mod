@@ -229,6 +229,12 @@ body.split-dragging {
     user-select: none;
 }
 
+// While the user drags a height handle
+body.vresize-dragging {
+    cursor: row-resize;
+    user-select: none;
+}
+
 h5.settings-subheading::after {
     content: "";
     display: block;
