@@ -910,19 +910,13 @@ export default {
             this.isEditMode = true;
 
             let composeYAML;
-            let composeENV;
+            let composeENV = envDefault;
 
             if (this.$root.composeTemplate) {
                 composeYAML = this.$root.composeTemplate;
                 this.$root.composeTemplate = "";
             } else {
                 composeYAML = template;
-            }
-            if (this.$root.envTemplate) {
-                composeENV = this.$root.envTemplate;
-                this.$root.envTemplate = "";
-            } else {
-                composeENV = envDefault;
             }
 
             // Default Values
