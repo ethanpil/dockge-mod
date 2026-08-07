@@ -6,6 +6,12 @@ The base is dockge commit [f809ae1](https://github.com/louislam/dockge/commit/f8
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). This project has no releases, so each entry is a commit. The newest entry comes first. A commit that changes only this file or the project rules has no entry.
 
+## [d89d469](../../commit/d89d469) - 2026-08-07
+
+### Fixed
+
+- The panels of the stack page keep their positions on a narrow window. Below 992 pixels the file panels go one above the other, but the row kept a share of the height, thus the text of the override editor went over the log panel.
+
 ## [cece10d](../../commit/cece10d) - 2026-08-07
 
 ### Fixed
