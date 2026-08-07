@@ -291,8 +291,8 @@
                     </div>
 
                     <!-- Logs + compose.yaml, side by side, filling the rest of the viewport -->
-                    <div v-show="!isEditMode" class="panel-split">
-                        <div class="panel" :class="{ pop: expandedPanel === 'logs' }">
+                    <div v-show="!isEditMode" ref="split" class="panel-split" :style="{ '--split-left': splitLeft + '%' }">
+                        <div class="panel split-a" :class="{ pop: expandedPanel === 'logs', 'split-gone': splitLeft === 0 }">
                             <div class="panel-head">
                                 <span class="panel-title">{{ $t("logs") }}</span>
                                 <span class="panel-note">{{ stack.name }}</span>
@@ -312,7 +312,17 @@
                             </div>
                         </div>
 
-                        <div class="panel" :class="{ pop: expandedPanel === 'yaml' }">
+                        <!-- Drag to change the width. The buttons hide one
+                             side or put the divider back in the middle. -->
+                        <div class="split-bar" @mousedown="startSplitDrag">
+                            <div class="split-actions">
+                                <button type="button" class="split-btn" :title="$t('hideLeftPanel')" @mousedown.stop @click="setSplit(0)">&lsaquo;</button>
+                                <button type="button" class="split-btn" :title="$t('equalPanels')" @mousedown.stop @click="setSplit(50)">&#9474;</button>
+                                <button type="button" class="split-btn" :title="$t('hideRightPanel')" @mousedown.stop @click="setSplit(100)">&rsaquo;</button>
+                            </div>
+                        </div>
+
+                        <div class="panel split-b" :class="{ pop: expandedPanel === 'yaml', 'split-gone': splitLeft === 100 }">
                             <div class="panel-head">
                                 <span class="panel-title">{{ stack.composeFileName }}</span>
                                 <button class="mini-btn expand-btn" :title="expandedPanel === 'yaml' ? $t('cancel') : $t('expand')" @click="toggleExpand('yaml')">
@@ -576,6 +586,9 @@ export default {
             stopServiceStatusTimeout: false,
             stopDockerStatsTimeout: false,
             expandedPanel: null,
+            // Width of the logs panel, as a percent of the split. 0 hides the
+            // logs panel and 100 hides the compose file panel.
+            splitLeft: 50,
             editSnapshot: null,
             // True when the container table fits. Below this the page shows
             // cards instead. Only one of the two renders at a time.
@@ -857,6 +870,7 @@ export default {
         window.removeEventListener("keydown", this.onComposeKeydown);
         window.removeEventListener("beforeunload", this.onBeforeUnload);
         this.wideLayoutQuery?.removeEventListener("change", this.onWideLayoutChange);
+        this.endSplitDrag();
     },
     methods: {
         /**
@@ -910,6 +924,63 @@ export default {
          */
         imageOf(service) {
             return this.envsubstJSONConfig?.services?.[service]?.image ?? "";
+        },
+
+        /**
+         * Start to drag the divider between the two panels.
+         * @param {MouseEvent} e the mousedown on the divider
+         * @returns {void}
+         */
+        startSplitDrag(e) {
+            e.preventDefault();
+            document.addEventListener("mousemove", this.onSplitDrag);
+            document.addEventListener("mouseup", this.endSplitDrag);
+            document.body.classList.add("split-dragging");
+        },
+
+        /**
+         * Move the divider with the pointer. The limits keep a part of each
+         * panel on screen, because the buttons are the way to hide one.
+         * @param {MouseEvent} e the mousemove
+         * @returns {void}
+         */
+        onSplitDrag(e) {
+            const box = this.$refs.split?.getBoundingClientRect();
+            if (!box || box.width <= 0) {
+                return;
+            }
+            const percent = ((e.clientX - box.left) / box.width) * 100;
+            this.splitLeft = Math.min(90, Math.max(10, Math.round(percent)));
+        },
+
+        /**
+         * Stop the drag and fit the terminal to its new width.
+         * @returns {void}
+         */
+        endSplitDrag() {
+            document.removeEventListener("mousemove", this.onSplitDrag);
+            document.removeEventListener("mouseup", this.endSplitDrag);
+            document.body.classList.remove("split-dragging");
+            this.refitCombinedTerminal();
+        },
+
+        /**
+         * Put the divider at a set position. 0 hides the logs panel, 100
+         * hides the compose file panel, and 50 gives both the same width.
+         * @param {number} percent width of the logs panel
+         * @returns {void}
+         */
+        setSplit(percent) {
+            this.splitLeft = percent;
+            this.$nextTick(this.refitCombinedTerminal);
+        },
+
+        /**
+         * Fit the logs terminal after its panel changes width.
+         * @returns {void}
+         */
+        refitCombinedTerminal() {
+            this.$refs.combinedTerminal?.updateTerminalSize();
         },
 
         /**
@@ -1550,18 +1621,81 @@ export default {
     margin-bottom: 0.5rem;
 
     .panel {
-        flex: 1 1 50%;
         min-width: 0;
         margin-bottom: 0;
+    }
+
+    // The divider sets the width of the first panel. The second takes what
+    // is left, so the two always fill the row.
+    .split-a {
+        flex: 0 0 var(--split-left, 50%);
+    }
+
+    .split-b {
+        flex: 1 1 0;
+    }
+
+    .split-gone {
+        display: none;
     }
 
     @media (max-width: 991.98px) {
         flex-direction: column;
 
-        .panel {
+        // The panels are one above the other, so the divider does not apply
+        .panel,
+        .split-a,
+        .split-b {
             flex: 1 1 auto;
             min-height: 300px;
         }
+
+        .split-gone {
+            display: flex;
+        }
+
+        .split-bar {
+            display: none;
+        }
+    }
+}
+
+.split-bar {
+    flex: 0 0 10px;
+    position: relative;
+    cursor: col-resize;
+    border-radius: 3px;
+
+    &:hover {
+        background-color: var(--bs-tertiary-bg);
+    }
+}
+
+.split-actions {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.split-btn {
+    width: 16px;
+    height: 18px;
+    padding: 0;
+    line-height: 1;
+    font-size: 11px;
+    cursor: pointer;
+    color: var(--bs-secondary-color);
+    background-color: var(--bs-body-bg);
+    border: 1px solid var(--bs-border-color);
+    border-radius: 2px;
+
+    &:hover {
+        color: var(--bs-body-color);
+        background-color: var(--bs-secondary-bg);
     }
 }
 

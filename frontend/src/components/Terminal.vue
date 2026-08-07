@@ -317,6 +317,16 @@ export default {
                 this.terminal.loadAddon(this.terminalFitAddOn);
                 window.addEventListener("resize", this.onResizeEvent);
             }
+
+            // A panel that is collapsed or hidden has no size. To fit to it
+            // gives almost no rows and columns, and the server uses the
+            // smallest size of all clients, so it would make the shared pty
+            // too small for everybody.
+            const box = this.$refs.terminal;
+            if (!box || !box.clientWidth || !box.clientHeight) {
+                return;
+            }
+
             this.terminalFitAddOn.fit();
 
             // Push the fitted size to the backend. Without this the pty keeps the
@@ -328,8 +338,7 @@ export default {
          * Handles the resize event of the terminal component.
          */
         onResizeEvent() {
-            this.terminalFitAddOn.fit();
-            this.emitResize();
+            this.updateTerminalSize();
         },
         /**
          * Report the fitted size, skipping the send when it has not changed —

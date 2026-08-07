@@ -212,6 +212,13 @@
     }
 }
 
+// While the user drags the divider between the two panels. Without this the
+// pointer selects the text that it moves over.
+body.split-dragging {
+    cursor: col-resize;
+    user-select: none;
+}
+
 h5.settings-subheading::after {
     content: "";
     display: block;
