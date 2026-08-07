@@ -290,46 +290,10 @@
                         </div>
                     </div>
 
-                    <!-- Logs + compose.yaml, side by side, filling the rest of the viewport -->
+                    <!-- Compose file + override file, side by side. Without an
+                         override file the compose file takes the full row. -->
                     <div v-show="!isEditMode" ref="split" class="panel-split" :style="{ '--split-left': splitLeft + '%' }">
-                        <div class="panel split-a" :class="{ pop: expandedPanel === 'logs', 'split-gone': splitLeft === 0 }">
-                            <div class="panel-head">
-                                <span class="panel-title">{{ $t("logs") }}</span>
-                                <span class="panel-note">{{ stack.name }}</span>
-                                <button class="mini-btn expand-btn" :title="expandedPanel === 'logs' ? $t('cancel') : $t('expand')" @click="toggleExpand('logs')">
-                                    <font-awesome-icon :icon="expandedPanel === 'logs' ? 'compress' : 'expand'" />
-                                </button>
-                            </div>
-                            <div class="panel-fill">
-                                <Terminal
-                                    ref="combinedTerminal"
-                                    class="terminal"
-                                    :name="combinedTerminalName"
-                                    :endpoint="endpoint"
-                                    :rows="combinedTerminalRows"
-                                    :cols="combinedTerminalCols"
-                                ></Terminal>
-                            </div>
-                        </div>
-
-                        <!-- Drag to change the width. The buttons hide one
-                             side or put the divider back in the middle. -->
-                        <div class="split-bar" @mousedown="startSplitDrag">
-                            <span class="split-grip"><font-awesome-icon icon="grip-lines-vertical" /></span>
-                            <div class="split-actions">
-                                <button type="button" class="split-btn" :title="$t('hideLeftPanel')" @mousedown.stop @click="setSplit(0)">
-                                    <font-awesome-icon icon="chevron-left" />
-                                </button>
-                                <button type="button" class="split-btn" :title="$t('equalPanels')" @mousedown.stop @click="setSplit(50)">
-                                    <font-awesome-icon icon="table-columns" />
-                                </button>
-                                <button type="button" class="split-btn" :title="$t('hideRightPanel')" @mousedown.stop @click="setSplit(100)">
-                                    <font-awesome-icon icon="chevron-right" />
-                                </button>
-                            </div>
-                        </div>
-
-                        <div class="panel split-b" :class="{ pop: expandedPanel === 'yaml', 'split-gone': splitLeft === 100 }">
+                        <div class="panel split-a" :class="{ pop: expandedPanel === 'yaml', 'split-solo': !hasOverride, 'split-gone': hasOverride && splitLeft === 0 }">
                             <div class="panel-head">
                                 <span class="panel-title">{{ stack.composeFileName }}</span>
                                 <button class="mini-btn expand-btn" :title="expandedPanel === 'yaml' ? $t('cancel') : $t('expand')" @click="toggleExpand('yaml')">
@@ -349,6 +313,66 @@
                                     :hasFocus="editorFocus"
                                 />
                             </div>
+                        </div>
+
+                        <!-- Drag to change the width. The buttons hide one
+                             side or put the divider back in the middle. -->
+                        <div v-if="hasOverride" class="split-bar" @mousedown="startSplitDrag">
+                            <span class="split-grip"><font-awesome-icon icon="grip-lines-vertical" /></span>
+                            <div class="split-actions">
+                                <button type="button" class="split-btn" :title="$t('hideLeftPanel')" @mousedown.stop @click="setSplit(0)">
+                                    <font-awesome-icon icon="chevron-left" />
+                                </button>
+                                <button type="button" class="split-btn" :title="$t('equalPanels')" @mousedown.stop @click="setSplit(50)">
+                                    <font-awesome-icon icon="table-columns" />
+                                </button>
+                                <button type="button" class="split-btn" :title="$t('hideRightPanel')" @mousedown.stop @click="setSplit(100)">
+                                    <font-awesome-icon icon="chevron-right" />
+                                </button>
+                            </div>
+                        </div>
+
+                        <div v-if="hasOverride" class="panel split-b" :class="{ pop: expandedPanel === 'override', 'split-gone': splitLeft === 100 }">
+                            <div class="panel-head">
+                                <span class="panel-title">{{ overrideFileName }}</span>
+                                <button class="mini-btn expand-btn" :title="expandedPanel === 'override' ? $t('cancel') : $t('expand')" @click="toggleExpand('override')">
+                                    <font-awesome-icon :icon="expandedPanel === 'override' ? 'compress' : 'expand'" />
+                                </button>
+                            </div>
+                            <div class="panel-fill editor-fill">
+                                <code-mirror
+                                    v-if="!isEditMode"
+                                    v-model="stack.composeOverrideYAML"
+                                    :extensions="extensions"
+                                    minimal
+                                    wrap="true"
+                                    dark="true"
+                                    tab="true"
+                                    :disabled="true"
+                                    :hasFocus="editorFocus"
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Logs, full width below the files -->
+                    <div v-show="!isEditMode" class="panel logs-panel" :class="{ pop: expandedPanel === 'logs' }">
+                        <div class="panel-head">
+                            <span class="panel-title">{{ $t("logs") }}</span>
+                            <span class="panel-note">{{ stack.name }}</span>
+                            <button class="mini-btn expand-btn" :title="expandedPanel === 'logs' ? $t('cancel') : $t('expand')" @click="toggleExpand('logs')">
+                                <font-awesome-icon :icon="expandedPanel === 'logs' ? 'compress' : 'expand'" />
+                            </button>
+                        </div>
+                        <div class="panel-fill">
+                            <Terminal
+                                ref="combinedTerminal"
+                                class="terminal"
+                                :name="combinedTerminalName"
+                                :endpoint="endpoint"
+                                :rows="combinedTerminalRows"
+                                :cols="combinedTerminalCols"
+                            ></Terminal>
                         </div>
                     </div>
                     <div v-if="expandedPanel" class="panel-backdrop" @click="toggleExpand(expandedPanel)"></div>
@@ -373,6 +397,39 @@
                                 :hasFocus="editorFocus"
                                 @change="yamlCodeChange"
                             />
+                        </div>
+                    </div>
+
+                    <!-- Override editor. The file is optional, so the panel
+                         shows an editor when the file exists and a create
+                         button when it does not. A stack from an agent
+                         without override support shows no panel. -->
+                    <div v-if="hasOverride" class="panel">
+                        <div class="panel-head">
+                            <span class="panel-title">{{ overrideFileName }}</span>
+                            <button class="mini-btn expand-btn" @click="$refs.confirmDeleteOverride.show()">
+                                {{ $t("deleteOverride") }}
+                            </button>
+                        </div>
+                        <div class="editor-box edit-mode">
+                            <code-mirror
+                                v-model="stack.composeOverrideYAML"
+                                :extensions="extensions"
+                                minimal
+                                wrap="true"
+                                dark="true"
+                                tab="true"
+                                :disabled="!isEditMode"
+                                :hasFocus="editorFocus"
+                            />
+                        </div>
+                    </div>
+                    <div v-else-if="overrideSupported && !isAdd" class="panel">
+                        <div class="panel-head">
+                            <span class="panel-title">{{ overrideFileName }}</span>
+                            <button class="mini-btn expand-btn" @click="createOverride">
+                                {{ $t("createOverride") }}
+                            </button>
                         </div>
                     </div>
 
@@ -428,6 +485,11 @@
             <!-- Delete Dialog -->
             <Confirm ref="confirmDeleteStack" btn-style="btn-danger" :yes-text="$t('deleteStack')" :no-text="$t('cancel')" @yes="deleteDialog">
                 {{ $t("deleteStackMsg") }}
+            </Confirm>
+
+            <!-- Delete Override Dialog -->
+            <Confirm ref="confirmDeleteOverride" btn-style="btn-danger" :yes-text="$t('deleteOverride')" :no-text="$t('cancel')" @yes="deleteOverride">
+                {{ $t("deleteOverrideMsg") }}
             </Confirm>
 
             <!-- Unsaved changes dialog: shown when the user leaves edit mode
@@ -593,8 +655,8 @@ export default {
             stopServiceStatusTimeout: false,
             stopDockerStatsTimeout: false,
             expandedPanel: null,
-            // Width of the logs panel, as a percent of the split. 0 hides the
-            // logs panel and 100 hides the compose file panel.
+            // Width of the compose panel, as a percent of the split. 0 hides
+            // the compose panel and 100 hides the override panel.
             splitLeft: 50,
             editSnapshot: null,
             // True when the container table fits. Below this the page shows
@@ -649,6 +711,29 @@ export default {
         },
 
         /**
+         * True when the agent knows the override file. A stack from an old
+         * agent has no composeOverrideYAML field, and the page then hides
+         * the override panels and sends the old four-argument save.
+         * @return {boolean}
+         */
+        overrideSupported() {
+            return this.stack.composeOverrideYAML !== undefined;
+        },
+
+        /**
+         * True when the override file exists, or when the editor holds new
+         * override content that a save writes.
+         * @return {boolean}
+         */
+        hasOverride() {
+            return typeof this.stack.composeOverrideYAML === "string";
+        },
+
+        overrideFileName() {
+            return this.stack.composeOverrideFileName || "compose.override.yaml";
+        },
+
+        /**
          * True when edit mode holds changes that are not saved. Form edits
          * write back into composeYAML, so the two strings cover both the
          * editors and the config cards.
@@ -662,6 +747,7 @@ export default {
             // work that the user must not lose without a question.
             return this.stack.composeYAML !== this.editSnapshot.yaml
                 || this.stack.composeENV !== this.editSnapshot.env
+                || (this.stack.composeOverrideYAML ?? null) !== this.editSnapshot.override
                 || (this.stack.name ?? "") !== this.editSnapshot.name
                 || (this.stack.endpoint ?? "") !== this.editSnapshot.endpoint;
         },
@@ -909,7 +995,7 @@ export default {
          * Expand a panel into a full screen overlay, or collapse it back.
          * The terminal must refit after the size change, and it only listens
          * for window resize, so dispatch one.
-         * @param {string} which "logs" or "yaml"
+         * @param {string} which "logs", "yaml" or "override"
          * @returns {void}
          */
         toggleExpand(which) {
@@ -964,9 +1050,9 @@ export default {
         },
 
         /**
-         * Put the divider at a set position. 0 hides the logs panel, 100
-         * hides the compose file panel, and 50 gives both the same width.
-         * @param {number} percent width of the logs panel
+         * Put the divider at a set position. 0 hides the compose panel, 100
+         * hides the override panel, and 50 gives both the same width.
+         * @param {number} percent width of the compose panel
          * @returns {void}
          */
         setSplit(percent) {
@@ -1253,11 +1339,23 @@ export default {
 
             this.bindTerminal();
 
-            this.$root.emitAgent(this.stack.endpoint, "deployStack", this.stack.name, this.stack.composeYAML, this.stack.composeENV, this.isAdd, (res) => {
+            // An old agent reads the acknowledge function as the fifth
+            // argument, so the override goes only to an agent that sent the
+            // field in its stack data.
+            const deployArgs = [ this.stack.name, this.stack.composeYAML, this.stack.composeENV, this.isAdd ];
+            if (this.overrideSupported) {
+                deployArgs.push(this.stack.composeOverrideYAML ?? null);
+            }
+
+            this.$root.emitAgent(this.stack.endpoint, "deployStack", ...deployArgs, (res) => {
                 this.processing = false;
                 this.$root.toastRes(res);
 
                 if (res.ok) {
+                    // An empty override means the save removed the file
+                    if (typeof this.stack.composeOverrideYAML === "string" && this.stack.composeOverrideYAML.trim() === "") {
+                        this.stack.composeOverrideYAML = null;
+                    }
                     this.isEditMode = false;
                     this.$router.push(this.url);
                 }
@@ -1291,7 +1389,15 @@ export default {
                     resolve(false);
                 }, 30000);
 
-                this.$root.emitAgent(this.stack.endpoint, "saveStack", this.stack.name, sent.yaml, sent.env, this.isAdd, (res) => {
+                // An old agent reads the acknowledge function as the fifth
+                // argument, so the override goes only to an agent that sent
+                // the field in its stack data.
+                const saveArgs = [ this.stack.name, sent.yaml, sent.env, this.isAdd ];
+                if (this.overrideSupported) {
+                    saveArgs.push(sent.override);
+                }
+
+                this.$root.emitAgent(this.stack.endpoint, "saveStack", ...saveArgs, (res) => {
                     clearTimeout(timer);
                     this.processing = false;
                     this.$root.toastRes(res);
@@ -1302,6 +1408,12 @@ export default {
                         // still clear the dirty mark, or the editor asks to
                         // save a file that the server already has.
                         this.editSnapshot = sent;
+
+                        // An empty override means the save removed the file
+                        if (typeof sent.override === "string" && sent.override.trim() === "" && this.stack.composeOverrideYAML === sent.override) {
+                            this.stack.composeOverrideYAML = null;
+                            this.editSnapshot = this.currentEditState();
+                        }
                     }
 
                     if (settled) {
@@ -1466,9 +1578,28 @@ export default {
             return {
                 yaml: this.stack.composeYAML,
                 env: this.stack.composeENV,
+                override: this.stack.composeOverrideYAML ?? null,
                 name: this.stack.name ?? "",
                 endpoint: this.stack.endpoint ?? "",
             };
+        },
+
+        /**
+         * Put a start template in the override editor. The template holds an
+         * empty services map, so a save without more edits gives a file that
+         * docker accepts.
+         * @returns {void}
+         */
+        createOverride() {
+            this.stack.composeOverrideYAML = "# This file merges with " + this.stack.composeFileName + ".\n# Put your changes here. An update of the base file keeps them.\nservices: {}\n";
+        },
+
+        /**
+         * Mark the override file for removal. The save removes the file.
+         * @returns {void}
+         */
+        deleteOverride() {
+            this.stack.composeOverrideYAML = null;
         },
 
         checkYAML() {
@@ -1601,13 +1732,14 @@ export default {
     margin-left: auto;
 }
 
-/* Logs + yaml split: fills the remaining viewport height */
+/* Compose + override split: shares the remaining viewport height with the
+   logs panel below it */
 .panel-split {
-    flex: 1 1 auto;
+    flex: 3 1 0;
     display: flex;
     gap: 0.5rem;
     align-items: stretch;
-    min-height: 380px;
+    min-height: 300px;
     margin-bottom: 0.5rem;
 
     .panel {
@@ -1623,6 +1755,11 @@ export default {
 
     .split-b {
         flex: 1 1 0;
+    }
+
+    // Without an override file the compose panel is alone in the row
+    .split-solo {
+        flex: 1 1 auto;
     }
 
     .split-gone {
@@ -1717,6 +1854,13 @@ export default {
         color: var(--bs-body-color);
         background-color: var(--bs-tertiary-bg);
     }
+}
+
+/* Logs below the split, full width */
+.logs-panel {
+    flex: 2 1 0;
+    min-height: 260px;
+    margin-bottom: 0.5rem;
 }
 
 .panel-fill {
