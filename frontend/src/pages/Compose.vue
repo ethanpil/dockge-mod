@@ -313,7 +313,7 @@
 
                     <!-- Compose file + override file, side by side. Without an
                          override file the compose file takes the full row. -->
-                    <div v-show="!isEditMode" ref="split" class="panel-split" :style="[{ '--split-left': splitLeft + '%' }, heightStyle('files')]">
+                    <div v-show="!isEditMode" ref="split" class="panel-split" :class="{ 'h-fixed': panelHeights.files }" :style="[{ '--split-left': splitLeft + '%' }, panelVar('files')]">
                         <div class="panel split-a" :class="{ pop: expandedPanel === 'yaml', 'split-solo': !hasOverride, 'split-gone': hasOverride && splitLeft === 0 }">
                             <div class="panel-head head-grow">
                                 <span class="panel-title">{{ stack.composeFileName }}</span>
@@ -376,13 +376,15 @@
                         </div>
                     </div>
 
-                    <!-- Drag to change the height of the file row -->
-                    <div v-show="!isEditMode" class="vresize" :title="$t('dragResizeNote')" @mousedown="startHeightDrag($event, 'files')" @dblclick="resetHeight('files')">
+                    <!-- Drag to change the height of the file row. The
+                         handle is not on a narrow window, because the
+                         panels there go one above the other. -->
+                    <div v-show="!isEditMode" class="vresize vresize-files" :title="$t('dragResizeNote')" @pointerdown="startHeightDrag($event, 'files')" @dblclick="resetHeight('files')">
                         <font-awesome-icon icon="grip-lines" />
                     </div>
 
                     <!-- Logs, full width below the files -->
-                    <div v-show="!isEditMode" class="panel logs-panel" :class="{ pop: expandedPanel === 'logs' }" :style="expandedPanel === 'logs' ? {} : heightStyle('logs')">
+                    <div v-show="!isEditMode" class="panel logs-panel" :class="{ pop: expandedPanel === 'logs', 'h-fixed': panelHeights.logs }" :style="panelVar('logs')">
                         <div class="panel-head">
                             <span class="panel-title">{{ $t("logs") }}</span>
                             <span class="panel-note">{{ stack.name }}</span>
@@ -402,7 +404,7 @@
                         </div>
                     </div>
                     <!-- Drag to change the height of the logs -->
-                    <div v-show="!isEditMode" class="vresize" :title="$t('dragResizeNote')" @mousedown="startHeightDrag($event, 'logs')" @dblclick="resetHeight('logs')">
+                    <div v-show="!isEditMode" class="vresize" :title="$t('dragResizeNote')" @pointerdown="startHeightDrag($event, 'logs')" @dblclick="resetHeight('logs')">
                         <font-awesome-icon icon="grip-lines" />
                     </div>
 
@@ -443,7 +445,7 @@
                             <span class="panel-title">{{ stack.composeFileName }}</span>
                             <span v-if="yamlError" class="panel-note text-danger">{{ yamlError }}</span>
                         </div>
-                        <div class="editor-box edit-mode" :style="heightStyle('editYaml', true)">
+                        <div class="editor-box edit-mode" :class="{ 'h-fixed': panelHeights.editYaml }" :style="panelVar('editYaml')">
                             <code-mirror
                                 ref="editor"
                                 v-model="stack.composeYAML"
@@ -452,7 +454,7 @@
                                 @change="yamlCodeChange"
                             />
                         </div>
-                        <div class="vresize" :title="$t('dragResizeNote')" @mousedown="startHeightDrag($event, 'editYaml')" @dblclick="resetHeight('editYaml')">
+                        <div class="vresize" :title="$t('dragResizeNote')" @pointerdown="startHeightDrag($event, 'editYaml')" @dblclick="resetHeight('editYaml')">
                             <font-awesome-icon icon="grip-lines" />
                         </div>
                     </div>
@@ -468,14 +470,14 @@
                                 {{ $t("deleteOverride") }}
                             </button>
                         </div>
-                        <div class="editor-box edit-mode" :style="heightStyle('editOverride', true)">
+                        <div class="editor-box edit-mode" :class="{ 'h-fixed': panelHeights.editOverride }" :style="panelVar('editOverride')">
                             <code-mirror
                                 v-model="stack.composeOverrideYAML"
                                 v-bind="editorProps"
                                 :extensions="extensions"
                             />
                         </div>
-                        <div class="vresize" :title="$t('dragResizeNote')" @mousedown="startHeightDrag($event, 'editOverride')" @dblclick="resetHeight('editOverride')">
+                        <div class="vresize" :title="$t('dragResizeNote')" @pointerdown="startHeightDrag($event, 'editOverride')" @dblclick="resetHeight('editOverride')">
                             <font-awesome-icon icon="grip-lines" />
                         </div>
                     </div>
@@ -751,7 +753,7 @@ export default {
             mergedConfigNoteKey: "mergedConfigDiskNote",
             // True shows the .env text editor, false shows the rows
             envEditorText: false,
-            // Heights that the user set with the drag handles, in pixels.
+            // Heights that the user sets with the drag handles, in pixels.
             // A null gives the default layout. The values are not saved.
             panelHeights: {
                 files: null,
@@ -1208,32 +1210,29 @@ export default {
         },
 
         /**
-         * The style for a panel with a height from a drag handle. Without
-         * a height the panel keeps its default layout.
+         * The style variable for a panel with a height from a drag handle.
+         * The h-fixed class reads it. Without a height the panel keeps its
+         * default layout.
          * @param {string} key name of the height
-         * @param {boolean} scroll true gives the box its own scroll bar
          * @returns {object} the style
          */
-        heightStyle(key, scroll = false) {
+        panelVar(key) {
             const height = this.panelHeights[key];
             if (!height) {
                 return {};
             }
-            const style = {
-                height: height + "px",
-                minHeight: "0",
-                flex: "0 0 auto",
+            return {
+                "--panel-h": height + "px",
             };
-            if (scroll) {
-                style.overflow = "auto";
-            }
-            return style;
         },
 
         /**
          * Start to drag a height handle. The element above the handle is
-         * the element that changes.
-         * @param {MouseEvent} event the mousedown on the handle
+         * the element that changes. Pointer events cover the mouse and
+         * touch. A start height over the window height goes down to the
+         * window height, so one movement can make a very tall editor
+         * short.
+         * @param {PointerEvent} event the pointerdown on the handle
          * @param {string} key name of the height
          * @returns {void}
          */
@@ -1246,24 +1245,41 @@ export default {
             this.heightDrag = {
                 key,
                 startY: event.clientY,
-                startHeight: target.getBoundingClientRect().height,
+                startHeight: Math.min(target.getBoundingClientRect().height, window.innerHeight),
+                lastY: event.clientY,
+                raf: null,
             };
-            document.addEventListener("mousemove", this.onHeightDrag);
-            document.addEventListener("mouseup", this.endHeightDrag);
+            document.addEventListener("pointermove", this.onHeightDrag);
+            document.addEventListener("pointerup", this.endHeightDrag);
+            document.addEventListener("pointercancel", this.endHeightDrag);
             document.body.classList.add("vresize-dragging");
         },
 
         /**
-         * Move a height handle with the pointer.
-         * @param {MouseEvent} event the mousemove
+         * Move a height handle with the pointer. The write waits for the
+         * next animation frame, because each write makes the page lay out
+         * again.
+         * @param {PointerEvent} event the pointermove
          * @returns {void}
          */
         onHeightDrag(event) {
             if (!this.heightDrag) {
                 return;
             }
-            const height = this.heightDrag.startHeight + event.clientY - this.heightDrag.startY;
-            this.panelHeights[this.heightDrag.key] = Math.max(150, Math.round(height));
+            this.heightDrag.lastY = event.clientY;
+
+            if (this.heightDrag.raf) {
+                return;
+            }
+            this.heightDrag.raf = requestAnimationFrame(() => {
+                const drag = this.heightDrag;
+                if (!drag) {
+                    return;
+                }
+                drag.raf = null;
+                const height = drag.startHeight + drag.lastY - drag.startY;
+                this.panelHeights[drag.key] = Math.min(window.innerHeight * 2, Math.max(150, Math.round(height)));
+            });
         },
 
         /**
@@ -1271,9 +1287,13 @@ export default {
          * @returns {void}
          */
         endHeightDrag() {
+            if (this.heightDrag?.raf) {
+                cancelAnimationFrame(this.heightDrag.raf);
+            }
             this.heightDrag = null;
-            document.removeEventListener("mousemove", this.onHeightDrag);
-            document.removeEventListener("mouseup", this.endHeightDrag);
+            document.removeEventListener("pointermove", this.onHeightDrag);
+            document.removeEventListener("pointerup", this.endHeightDrag);
+            document.removeEventListener("pointercancel", this.endHeightDrag);
             document.body.classList.remove("vresize-dragging");
         },
 
@@ -2253,6 +2273,8 @@ export default {
     cursor: row-resize;
     color: var(--bs-border-color);
     font-size: 10px;
+    // The browser must give the pointer to the drag, not to the scroll
+    touch-action: none;
 
     &:hover {
         color: var(--bs-secondary-color);
@@ -2307,6 +2329,32 @@ export default {
     }
 }
 
+/* A height from a drag handle. The variable comes from panelVar. This
+   rule is after the panel rules, thus it wins over their flex values. */
+.h-fixed {
+    height: var(--panel-h);
+    min-height: 150px;
+    flex: 0 0 auto;
+}
+
+.editor-box.h-fixed {
+    overflow: auto;
+}
+
+/* The stacked file panels of a narrow window need their full height,
+   thus the fixed height and its handle do not apply there */
+@media (max-width: 991.98px) {
+    .panel-split.h-fixed {
+        height: auto;
+        min-height: 0;
+        flex: 0 0 auto;
+    }
+
+    .vresize-files {
+        display: none !important;
+    }
+}
+
 /* Expanded overlay */
 .panel.pop {
     position: fixed;
@@ -2321,6 +2369,12 @@ export default {
     inset: 0;
     z-index: 1050;
     background: rgba(0, 0, 0, 0.55);
+}
+
+/* The expanded overlay fills the screen, also with a fixed height */
+.panel.pop.h-fixed {
+    height: auto;
+    min-height: 0;
 }
 
 /* ---------- merged configuration overlay ---------- */

@@ -222,17 +222,19 @@
     }
 }
 
-// While the user drags the divider between the two panels. Without this the
+// While the user drags a divider or a height handle. Without this the
 // pointer selects the text that it moves over.
-body.split-dragging {
-    cursor: col-resize;
+body.split-dragging,
+body.vresize-dragging {
     user-select: none;
 }
 
-// While the user drags a height handle
+body.split-dragging {
+    cursor: col-resize;
+}
+
 body.vresize-dragging {
     cursor: row-resize;
-    user-select: none;
 }
 
 h5.settings-subheading::after {
