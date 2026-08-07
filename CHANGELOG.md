@@ -6,6 +6,16 @@ The base is dockge commit [f809ae1](https://github.com/louislam/dockge/commit/f8
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). This project has no releases, so each entry is a commit. The newest entry comes first. A commit that changes only this file or the project rules has no entry.
 
+## [1a33365](../../commit/1a33365) - 2026-08-07
+
+### Changed
+
+- A new override file holds comments and an example. Before, it held an empty services map, which put braces in the editor. A test shows that docker accepts a file with only comments.
+
+### Fixed
+
+- A save accepts an override file that holds only comments. Before, it refused such a file although docker accepts it.
+
 ## [a8df589](../../commit/a8df589) - 2026-08-07
 
 ### Added
