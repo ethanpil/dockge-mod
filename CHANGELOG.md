@@ -42,6 +42,14 @@ The base is dockge commit [f809ae1](https://github.com/louislam/dockge/commit/f8
 - The status dot has a text label for screen readers.
 - The Escape key and the backdrop close the expanded panel in all conditions.
 
+### Interface polish, August 2026
+
+- Each terminal now watches its own box. Before, a terminal fitted itself only when the window changed size, so text went past the right edge after a panel changed width or became visible. ([ebe91e7](../../commit/ebe91e7))
+- The panel divider is 6 pixels wide. Its buttons use icons and appear when the pointer is on the divider. A grip icon marks it the rest of the time. ([b86bc28](../../commit/b86bc28))
+- The terminal menu also has Select all and Clear. ([5e6ffe6](../../commit/5e6ffe6))
+- The icons in the Actions menu have the same width, so the text of each item starts at the same position. ([4aa67f6](../../commit/4aa67f6))
+- Below 1080 pixels the stack list uses smaller rows. ([30c66e2](../../commit/30c66e2))
+
 ### Interface work, August 2026
 
 - The logs panel and the compose file panel have an adjustable width. Drag the divider, or use its three buttons to hide one side or to give both the same width. ([835664f](../../commit/835664f))
