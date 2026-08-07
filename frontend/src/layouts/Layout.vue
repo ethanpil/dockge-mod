@@ -4,7 +4,7 @@
             <div class="container-fluid">
                 {{ $root.socketIO.connectionErrorMsg }}
                 <div v-if="$root.socketIO.showReverseProxyGuide">
-                    {{ $t("reverseProxyMsg1") }} <a href="https://github.com/louislam/uptime-kuma/wiki/Reverse-Proxy" target="_blank">{{ $t("reverseProxyMsg2") }}</a>
+                    {{ $t("reverseProxyMsg1") }} <a href="https://github.com/ethanpil/dockge-mod#reverse-proxy" target="_blank">{{ $t("reverseProxyMsg2") }}</a>
                 </div>
             </div>
         </div>

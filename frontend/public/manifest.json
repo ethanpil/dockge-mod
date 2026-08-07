@@ -1,6 +1,6 @@
 {
-    "name": "Dockge",
-    "short_name": "Dockge",
+    "name": "dockge-mod",
+    "short_name": "dockge-mod",
     "start_url": "/",
     "background_color": "#fff",
     "display": "standalone",

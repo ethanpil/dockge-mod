@@ -36,7 +36,7 @@ export class MainSocketHandler extends SocketHandler {
                 }
 
                 if ((await R.knex("user").count("id as count").first()).count !== 0) {
-                    throw new Error("Dockge has been initialized. If you want to run setup again, please delete the database.");
+                    throw new Error("dockge-mod has been initialized. If you want to run setup again, please delete the database.");
                 }
 
                 const user = R.dispense("user");

@@ -1,12 +1,13 @@
 # Security Policy
 
-## Reporting a Vulnerability
+## Report a Vulnerability
 
-1. Please report security issues to https://github.com/louislam/dockge/security/advisories/new.
-1. Please also create an empty security issue to alert me, as GitHub Advisories do not send a notification, I probably will miss it without this. https://github.com/louislam/dockge/issues/new?assignees=&labels=help&template=security.md
+Report a security problem in this fork with a [private security advisory](https://github.com/ethanpil/dockge-mod/security/advisories/new).
 
-Do not use the public issue tracker or discuss it in public as it will cause more damage.
+Do not use the public issue tracker, and do not discuss the problem in public. This causes more damage.
 
-## Do you accept other 3rd-party bug bounty platforms?
+Much of the code comes from the [Dockge](https://github.com/louislam/dockge) project. If the problem is also in Dockge, report it to that project too, with a [Dockge security advisory](https://github.com/louislam/dockge/security/advisories/new). A problem that is only in the code of this fork needs no report to Dockge.
 
-At this moment, I DO NOT accept other bug bounty platforms, because I am not familiar with these platforms and someone has tried to send a phishing link to me by doing this already. To minimize my own risk, please report through GitHub Advisories only. I will ignore all 3rd-party bug bounty platforms emails.
+## Third-party bug bounty platforms
+
+Reports through a third-party bug bounty platform are not accepted. Use a GitHub security advisory.
