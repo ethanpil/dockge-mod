@@ -315,10 +315,17 @@
                         <!-- Drag to change the width. The buttons hide one
                              side or put the divider back in the middle. -->
                         <div class="split-bar" @mousedown="startSplitDrag">
+                            <span class="split-grip"><font-awesome-icon icon="grip-lines-vertical" /></span>
                             <div class="split-actions">
-                                <button type="button" class="split-btn" :title="$t('hideLeftPanel')" @mousedown.stop @click="setSplit(0)">&lsaquo;</button>
-                                <button type="button" class="split-btn" :title="$t('equalPanels')" @mousedown.stop @click="setSplit(50)">&#9474;</button>
-                                <button type="button" class="split-btn" :title="$t('hideRightPanel')" @mousedown.stop @click="setSplit(100)">&rsaquo;</button>
+                                <button type="button" class="split-btn" :title="$t('hideLeftPanel')" @mousedown.stop @click="setSplit(0)">
+                                    <font-awesome-icon icon="chevron-left" />
+                                </button>
+                                <button type="button" class="split-btn" :title="$t('equalPanels')" @mousedown.stop @click="setSplit(50)">
+                                    <font-awesome-icon icon="table-columns" />
+                                </button>
+                                <button type="button" class="split-btn" :title="$t('hideRightPanel')" @mousedown.stop @click="setSplit(100)">
+                                    <font-awesome-icon icon="chevron-right" />
+                                </button>
                             </div>
                         </div>
 
@@ -1660,14 +1667,33 @@ export default {
     }
 }
 
+// A thin bar. The grip and the buttons are centred on it and may reach a
+// little over each panel, which keeps the bar itself narrow.
 .split-bar {
-    flex: 0 0 10px;
+    flex: 0 0 6px;
     position: relative;
     cursor: col-resize;
-    border-radius: 3px;
 
-    &:hover {
-        background-color: var(--bs-tertiary-bg);
+    .split-grip {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 9px;
+        line-height: 1;
+        color: var(--bs-border-color);
+        transition: color 0.15s;
+    }
+
+    &:hover .split-grip {
+        color: var(--bs-secondary-color);
+    }
+
+    // The buttons appear on hover, so the bar stays quiet the rest of time
+    &:hover .split-actions,
+    .split-actions:focus-within {
+        opacity: 1;
+        pointer-events: auto;
     }
 }
 
@@ -1678,24 +1704,35 @@ export default {
     transform: translate(-50%, -50%);
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: 1px;
+    padding: 1px;
+    border-radius: 4px;
+    background-color: var(--bs-body-bg);
+    border: 1px solid var(--bs-border-color);
+    box-shadow: 0 1px 3px rgb(0 0 0 / 12%);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.15s;
 }
 
 .split-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
     width: 16px;
-    height: 18px;
+    height: 16px;
     padding: 0;
+    font-size: 8.5px;
     line-height: 1;
-    font-size: 11px;
     cursor: pointer;
     color: var(--bs-secondary-color);
-    background-color: var(--bs-body-bg);
-    border: 1px solid var(--bs-border-color);
+    background: transparent;
+    border: 0;
     border-radius: 2px;
 
     &:hover {
         color: var(--bs-body-color);
-        background-color: var(--bs-secondary-bg);
+        background-color: var(--bs-tertiary-bg);
     }
 }
 

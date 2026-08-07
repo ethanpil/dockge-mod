@@ -60,6 +60,12 @@ import {
     faChevronCircleDown,
     faArrowLeft,
     faPaste,
+    faChevronLeft,
+    faChevronRight,
+    faGripLinesVertical,
+    faTableColumns,
+    faCheckDouble,
+    faEraser,
 } from "@fortawesome/free-solid-svg-icons";
 
 library.add(
@@ -121,6 +127,12 @@ library.add(
     faChevronCircleDown,
     faArrowLeft,
     faPaste,
+    faChevronLeft,
+    faChevronRight,
+    faGripLinesVertical,
+    faTableColumns,
+    faCheckDouble,
+    faEraser,
 );
 
 export { FontAwesomeIcon };
