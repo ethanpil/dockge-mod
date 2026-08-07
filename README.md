@@ -26,6 +26,7 @@ You can point dockge-mod at the data directory of an existing Dockge installatio
 - Make, edit, start, stop, restart, and delete compose stacks.
 - Update the Docker images of a stack.
 - Edit `compose.yaml` in an interactive editor.
+- Make and edit an optional override file. Docker merges it with `compose.yaml`.
 - Open a web terminal for a stack or for the host.
 - Manage stacks on more than one Docker host from one interface.
 - Change a `docker run` command into a `compose.yaml` file.
@@ -176,6 +177,21 @@ dockge-mod reads only the stacks in your stacks directory. To add a stack that i
 4. Click **Scan Stacks Folder**.
 
 The stack is now in the list.
+
+### Use an Override File
+
+Docker compose merges an override file with the base compose file. Put your changes in the override file when the base file comes from a different source, for example a git repository. An update of the base file does not remove your changes.
+
+To make an override file, do the steps that follow:
+
+1. Open the stack and click **Edit**.
+2. Click **Create override** below the compose editor.
+3. Write your changes in the new editor.
+4. Click **Save** to write the file, or click **Deploy** to write the file and start the stack.
+
+To remove the file, click **Delete override**, then save. An empty editor also removes the file on the next save.
+
+dockge-mod uses the same names as docker: `compose.override.yml`, `compose.override.yaml`, `docker-compose.override.yml`, and `docker-compose.override.yaml`. It uses the first file that it finds. Dockge ignores this file, so the stacks directory stays compatible.
 
 ### Use the Terminal
 
