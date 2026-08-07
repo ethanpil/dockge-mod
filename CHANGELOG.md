@@ -6,6 +6,42 @@ The base is dockge commit [f809ae1](https://github.com/louislam/dockge/commit/f8
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). This project has no releases, so each entry is a commit. The newest entry comes first. A commit that changes only this file or the project rules has no entry.
 
+## [a9a3f0a](../../commit/a9a3f0a) - 2026-08-07
+
+### Changed
+
+- The editors on the stack page use one set of properties, and the dirty test compares the full edit state. A new field in the edit state now gets a dirty mark without a second change.
+
+## [df54017](../../commit/df54017) - 2026-08-07
+
+### Fixed
+
+- A save sends the override file only when the user changes it. Before, each save sent the override, so it could remove a file that a different user or a tool made after the page loaded.
+- The editors keep the dirty mark for text that the user writes while a save is in progress. Before, an empty override in that save marked the new text as saved, and the text could go away with no question.
+- The reply to a deploy uses the values that went to the server. Before, it read the editor, so it could hide an override file that is on the disk, or show one that is not.
+- The Create override button gives back the content of a file that the user deleted in the same session. Before, it put the template in the editor and the content went away.
+- Discard leaves edit mode after the stack arrives, so view mode does not show the content that the user discarded.
+
+## [312c5d9](../../commit/312c5d9) - 2026-08-07
+
+### Changed
+
+- The deployStack and the saveStack handlers use one helper for their arguments. The two copies of that block had to stay the same, or one event would accept the old clients and the other would not.
+
+## [d4f1ce9](../../commit/d4f1ce9) - 2026-08-07
+
+### Fixed
+
+- The search for the override file uses the sequence that docker uses. Docker examines four names and uses the first file that it finds, and the name of the base compose file has no effect on that sequence. Before, the interface could hide a file that docker uses, or show a file that docker ignores.
+- The save refuses a link or a directory that has the name of the override file. Such a file could look absent in the interface, and then go away in a subsequent save.
+- The search for the file name is lazy, so the stack list does not examine the disk for a name that it does not use.
+
+## [5f5a30d](../../commit/5f5a30d) - 2026-08-07
+
+### Security
+
+- Stack.getStack refuses a stack name that goes out of the stacks directory. Before, a name that contains path parts gave a user with an account access to the files of other directories.
+
 ## [eb20290](../../commit/eb20290) - 2026-08-06
 
 ### Removed
@@ -28,7 +64,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Thi
 
 ### Added
 
-- An editor for the compose override file on the stack page. Edit mode shows the editor when the file exists, and a Create override button when it does not. Delete override, or an empty editor, removes the file on the next save. View mode shows the compose file and the override file side by side, and the logs fill the row below them.
+- An editor for the compose override file on the stack page. Edit mode shows the editor when the file exists, and a Create override button when it does not. Delete override, or an empty editor, removes the file on the next save.
+
+### Changed
+
+- View mode shows the compose file and the override file side by side, and the logs fill the row below them. Before, the logs and the compose file were side by side. This applies to each stack, also a stack that has no override file.
 
 ## [de484b4](../../commit/de484b4) - 2026-08-06
 
