@@ -1,6 +1,6 @@
 # dockge-mod
 
-dockge-mod is a drop-in replacement for [Dockge](https://github.com/louislam/dockge) by Louis Lam. This fork changes only the interface and adds some quality of life improvements.
+dockge-mod is a drop-in replacement for [Dockge](https://github.com/louislam/dockge) by Louis Lam. This fork changes the interface and adds new features. You can put it in an existing Dockge installation, and you can go back to Dockge later.
 
 dockge is a self-hosted manager for Docker Compose stacks. dockge keeps your compose files on your disk and does not move them into a database, unlike other solutions. You can still edit your compose files and use normal `docker compose` commands from the CLI.
 
@@ -20,6 +20,15 @@ dockge and dockge-mod work in the same way:
 - An agent connection works between dockge-mod and Dockge in both directions.
 
 You can point dockge-mod at the data directory of an existing Dockge installation. You can also go back to Dockge later. There is no migration step. This is a primary goal of the project.
+
+### Go Back to Dockge
+
+Change the image in your compose file to the Dockge image, then start the container again. Your data stays. dockge-mod adds no table and no column to the database, and it writes no new file to the `data` directory. You lose the new features, but you lose no data.
+
+Two conditions apply after you go back:
+
+- The Dockge interface does not show the override file, but `docker compose` continues to merge it. Your stacks keep their behavior, but the interface shows only the base file.
+- Dockge does not write the `.env` file when you save a stack. Your `.env` files stay on the disk, but a change that you make in the Dockge editor does not go to the disk.
 
 ## Features
 
@@ -191,7 +200,7 @@ To make an override file, do the steps that follow:
 
 To remove the file, click **Delete override**, then save. An empty editor also removes the file on the next save.
 
-dockge-mod uses the same names as docker: `compose.override.yml`, `compose.override.yaml`, `docker-compose.override.yml`, and `docker-compose.override.yaml`. It uses the first file that it finds. Dockge ignores this file, so the stacks directory stays compatible.
+dockge-mod uses the same names as docker: `compose.override.yml`, `compose.override.yaml`, `docker-compose.override.yml`, and `docker-compose.override.yaml`. It uses the first file that it finds. The Dockge interface does not show this file, but `docker compose` continues to merge it. Thus the stacks directory stays compatible.
 
 ### Use the Terminal
 
