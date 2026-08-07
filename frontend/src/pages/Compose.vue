@@ -304,13 +304,9 @@
                                 <code-mirror
                                     v-if="!isEditMode"
                                     v-model="stack.composeYAML"
+                                    v-bind="editorProps"
                                     :extensions="extensions"
-                                    minimal
-                                    wrap="true"
-                                    dark="true"
-                                    tab="true"
                                     :disabled="true"
-                                    :hasFocus="editorFocus"
                                 />
                             </div>
                         </div>
@@ -343,13 +339,9 @@
                                 <code-mirror
                                     v-if="!isEditMode"
                                     v-model="stack.composeOverrideYAML"
+                                    v-bind="editorProps"
                                     :extensions="extensions"
-                                    minimal
-                                    wrap="true"
-                                    dark="true"
-                                    tab="true"
                                     :disabled="true"
-                                    :hasFocus="editorFocus"
                                 />
                             </div>
                         </div>
@@ -388,13 +380,8 @@
                             <code-mirror
                                 ref="editor"
                                 v-model="stack.composeYAML"
+                                v-bind="editorProps"
                                 :extensions="extensions"
-                                minimal
-                                wrap="true"
-                                dark="true"
-                                tab="true"
-                                :disabled="!isEditMode"
-                                :hasFocus="editorFocus"
                                 @change="yamlCodeChange"
                             />
                         </div>
@@ -414,13 +401,8 @@
                         <div class="editor-box edit-mode">
                             <code-mirror
                                 v-model="stack.composeOverrideYAML"
+                                v-bind="editorProps"
                                 :extensions="extensions"
-                                minimal
-                                wrap="true"
-                                dark="true"
-                                tab="true"
-                                :disabled="!isEditMode"
-                                :hasFocus="editorFocus"
                             />
                         </div>
                     </div>
@@ -438,15 +420,9 @@
                         <div class="panel-head"><span class="panel-title">.env</span></div>
                         <div class="editor-box edit-mode">
                             <code-mirror
-                                ref="editor"
                                 v-model="stack.composeENV"
+                                v-bind="editorProps"
                                 :extensions="extensionsEnv"
-                                minimal
-                                wrap="true"
-                                dark="true"
-                                tab="true"
-                                :disabled="!isEditMode"
-                                :hasFocus="editorFocus"
                                 @change="yamlCodeChange"
                             />
                         </div>
@@ -733,7 +709,22 @@ export default {
         },
 
         overrideFileName() {
-            return this.stack.composeOverrideFileName || "compose.override.yaml";
+            return this.stack.composeOverrideFileName;
+        },
+
+        /**
+         * The properties that each editor has in common. The extensions and
+         * the model stay with each editor, because they are not the same.
+         * @returns {object}
+         */
+        editorProps() {
+            return {
+                minimal: true,
+                wrap: "true",
+                dark: "true",
+                tab: "true",
+                hasFocus: this.editorFocus,
+            };
         },
 
         /**
@@ -746,13 +737,12 @@ export default {
             if (!this.isEditMode || !this.editSnapshot) {
                 return false;
             }
-            // The name and the endpoint exist only in add mode, but they hold
-            // work that the user must not lose without a question.
-            return this.stack.composeYAML !== this.editSnapshot.yaml
-                || this.stack.composeENV !== this.editSnapshot.env
-                || (this.stack.composeOverrideYAML ?? null) !== this.editSnapshot.override
-                || (this.stack.name ?? "") !== this.editSnapshot.name
-                || (this.stack.endpoint ?? "") !== this.editSnapshot.endpoint;
+            // currentEditState lists the fields, so a new field gets a dirty
+            // mark without a change here. The name and the endpoint exist
+            // only in add mode, but they hold work that the user must not
+            // lose without a question.
+            const current = this.currentEditState();
+            return Object.keys(current).some((key) => current[key] !== this.editSnapshot[key]);
         },
 
         serviceCount() {
@@ -1910,7 +1900,6 @@ export default {
 .logs-panel {
     flex: 2 1 0;
     min-height: 260px;
-    margin-bottom: 0.5rem;
 }
 
 .panel-fill {
