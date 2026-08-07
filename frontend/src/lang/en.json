@@ -128,6 +128,8 @@
     "returnToStack": "Return to Stack",
     "copy": "Copy",
     "paste": "Paste",
+    "selectAll": "Select all",
+    "clearTerminal": "Clear",
     "hideLeftPanel": "Hide the left panel",
     "equalPanels": "Equal width",
     "hideRightPanel": "Hide the right panel",

@@ -6,10 +6,17 @@
              terminal needs another way to reach the clipboard. -->
         <div v-if="menuOpen" ref="menu" class="term-menu" :style="{ top: menuY + 'px', left: menuX + 'px' }">
             <button type="button" class="term-menu-item" :disabled="!menuSelection" @click="menuCopy">
-                <font-awesome-icon icon="copy" class="me-2" />{{ $t("copy") }}
+                <font-awesome-icon icon="copy" fixed-width class="me-2" />{{ $t("copy") }}
             </button>
             <button v-if="canInput" type="button" class="term-menu-item" @click="menuPaste">
-                <font-awesome-icon icon="paste" class="me-2" />{{ $t("paste") }}
+                <font-awesome-icon icon="paste" fixed-width class="me-2" />{{ $t("paste") }}
+            </button>
+            <button type="button" class="term-menu-item" @click="menuSelectAll">
+                <font-awesome-icon icon="check-double" fixed-width class="me-2" />{{ $t("selectAll") }}
+            </button>
+            <hr class="term-menu-line">
+            <button type="button" class="term-menu-item" @click="menuClear">
+                <font-awesome-icon icon="eraser" fixed-width class="me-2" />{{ $t("clearTerminal") }}
             </button>
         </div>
     </div>
@@ -496,6 +503,26 @@ export default {
         },
 
         /**
+         * Select everything in the buffer. The selection handler then copies
+         * it, which is the quick way to take a full log.
+         * @returns {void}
+         */
+        menuSelectAll() {
+            this.closeMenu();
+            this.terminal.selectAll();
+        },
+
+        /**
+         * Empty the terminal on this client. The shell does not see this,
+         * and the text that other clients hold stays as it is.
+         * @returns {void}
+         */
+        menuClear() {
+            this.closeMenu();
+            this.terminal.clear();
+        },
+
+        /**
          * Send text that the browser pasted. A page that is not on https has
          * no clipboard object, so this event is the only way to paste there.
          * @param {ClipboardEvent} e the paste event
@@ -596,6 +623,12 @@ export default {
     &:disabled {
         color: var(--bs-secondary-color);
     }
+}
+
+.term-menu-line {
+    margin: 0.25rem 0;
+    border-top: 1px solid var(--bs-border-color);
+    opacity: 1;
 }
 </style>
 
