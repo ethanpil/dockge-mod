@@ -6,6 +6,18 @@ The base is dockge commit [f809ae1](https://github.com/louislam/dockge/commit/f8
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). This project has no releases, so each entry is a commit. The newest entry comes first. A commit that changes only this file or the project rules has no entry.
 
+## [fb3b473](../../commit/fb3b473) - 2026-08-07
+
+### Changed
+
+- The README says that the fork adds new features, and not only interface changes. A new section tells how to go back to Dockge, and gives the two conditions that apply after that.
+
+## [ced7f7d](../../commit/ced7f7d) - 2026-08-07
+
+### Changed
+
+- The README gives the features and the use of the override file, and the names that dockge-mod examines.
+
 ## [d4a5589](../../commit/d4a5589) - 2026-08-07
 
 ### Fixed
