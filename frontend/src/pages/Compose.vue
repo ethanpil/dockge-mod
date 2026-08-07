@@ -913,15 +913,8 @@ export default {
          * @returns {void}
          */
         toggleExpand(which) {
+            // The terminal watches its own box, so it fits itself again
             this.expandedPanel = (this.expandedPanel === which) ? null : which;
-            // Only the logs panel holds a terminal, and only its own geometry
-            // changes — a global resize event would make every mounted
-            // terminal refit and re-message the backend.
-            if (which === "logs") {
-                this.$nextTick(() => {
-                    this.$refs.combinedTerminal?.onResizeEvent?.();
-                });
-            }
         },
 
         /**
@@ -961,14 +954,13 @@ export default {
         },
 
         /**
-         * Stop the drag and fit the terminal to its new width.
+         * Stop the drag.
          * @returns {void}
          */
         endSplitDrag() {
             document.removeEventListener("mousemove", this.onSplitDrag);
             document.removeEventListener("mouseup", this.endSplitDrag);
             document.body.classList.remove("split-dragging");
-            this.refitCombinedTerminal();
         },
 
         /**
@@ -979,15 +971,6 @@ export default {
          */
         setSplit(percent) {
             this.splitLeft = percent;
-            this.$nextTick(this.refitCombinedTerminal);
-        },
-
-        /**
-         * Fit the logs terminal after its panel changes width.
-         * @returns {void}
-         */
-        refitCombinedTerminal() {
-            this.$refs.combinedTerminal?.updateTerminalSize();
         },
 
         /**

@@ -177,7 +177,7 @@ export default {
     },
 
     unmounted() {
-        window.removeEventListener("resize", this.onResizeEvent); // Remove the resize event listener from the window object.
+        this.boxObserver?.disconnect();
         this.$root.unbindTerminal(this.name);
         this.terminal.dispose();
         this.$refs.terminal?.removeEventListener("contextmenu", this.handleContextMenu);
@@ -308,14 +308,20 @@ export default {
         /**
          * Update the terminal size to fit the container size.
          *
-         * If the terminalFitAddOn is not created, creates it, loads it and then fits the terminal to the appropriate size.
-         * It then addes an event listener to the window object to listen for resize events and calls the fit method of the terminalFitAddOn.
+         * The first call makes the fit addon and starts to watch the box.
          */
         updateTerminalSize() {
             if (!Object.hasOwn(this, "terminalFitAddOn")) {
                 this.terminalFitAddOn = new FitAddon();
                 this.terminal.loadAddon(this.terminalFitAddOn);
-                window.addEventListener("resize", this.onResizeEvent);
+
+                // Watch the box, not the window. The box also changes width
+                // when the user drags the panel divider, hides a panel, or
+                // shows a panel that was hidden. None of those change the
+                // window, so a window event misses them and the text then
+                // goes past the edge of the box.
+                this.boxObserver = new ResizeObserver(() => this.updateTerminalSize());
+                this.boxObserver.observe(this.$refs.terminal);
             }
 
             // A panel that is collapsed or hidden has no size. To fit to it
@@ -333,12 +339,6 @@ export default {
             // hardcoded default width until the user happens to resize the window,
             // which makes output wrap mid-word on any wider viewport.
             this.emitResize();
-        },
-        /**
-         * Handles the resize event of the terminal component.
-         */
-        onResizeEvent() {
-            this.updateTerminalSize();
         },
         /**
          * Report the fitted size, skipping the send when it has not changed —
