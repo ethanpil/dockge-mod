@@ -12,13 +12,13 @@
                     <slot />
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn" :class="btnStyle" :disabled="busy" data-bs-dismiss="modal" @click="yes">
+                    <button type="button" class="btn" :class="btnStyle" :disabled="busy" @click="yes">
                         {{ yesText }}
                     </button>
-                    <button v-if="altText" type="button" class="btn" :class="altStyle" :disabled="busy" data-bs-dismiss="modal" @click="alt">
+                    <button v-if="altText" type="button" class="btn" :class="altStyle" :disabled="busy" @click="alt">
                         {{ altText }}
                     </button>
-                    <button type="button" class="btn btn-secondary" :disabled="busy" data-bs-dismiss="modal" @click="no">
+                    <button type="button" class="btn btn-secondary" :disabled="busy" @click="no">
                         {{ noText }}
                     </button>
                 </div>
@@ -29,6 +29,10 @@
 
 <script>
 import { Modal } from "bootstrap";
+
+// The backdrop and the body scroll lock are global. Count the dialogs that
+// are open, so that only the last dialog to close removes them.
+let openCount = 0;
 
 export default {
     props: {
@@ -81,11 +85,21 @@ export default {
             type: Boolean,
             default: false,
         },
+        /**
+         * Keep the dialog on screen after a button is pressed. The parent
+         * then calls hide() when its action is complete. Use this with busy
+         * to show the user that the action runs.
+         */
+        keepOpen: {
+            type: Boolean,
+            default: false,
+        },
     },
     emits: [ "yes", "no", "alt" ],
     data: () => ({
         modal: null,
         answered: false,
+        isOpen: false,
     }),
     mounted() {
         this.modal = new Modal(this.$refs.modal);
@@ -103,7 +117,8 @@ export default {
         // example is an action that removes the item which holds the dialog.
         const modal = this.modal;
         this.modal = null;
-        const wasOpen = el?.classList.contains("show") || document.body.classList.contains("modal-open");
+        const wasOpen = this.isOpen;
+        this.markClosed();
 
         if (wasOpen) {
             modal.hide();
@@ -122,7 +137,8 @@ export default {
 
         // The backdrop and the scroll lock are on <body>. They stay if
         // bootstrap cannot complete its own teardown on a removed element.
-        if (wasOpen) {
+        // Another dialog can still be open, and it needs them.
+        if (wasOpen && openCount === 0) {
             document.querySelectorAll(".modal-backdrop").forEach((backdrop) => backdrop.remove());
             document.body.classList.remove("modal-open");
             document.body.style.removeProperty("overflow");
@@ -135,7 +151,10 @@ export default {
          * @returns {void}
          */
         show() {
-            this.answered = false;
+            if (!this.isOpen) {
+                this.isOpen = true;
+                openCount++;
+            }
             this.modal.show();
         },
         /**
@@ -151,36 +170,60 @@ export default {
          * @returns {void}
          */
         yes() {
-            this.answered = true;
-            this.$emit("yes");
+            this.answer("yes");
         },
         /**
          * @fires string "no" Notify the parent when No is pressed
          * @returns {void}
          */
         no() {
-            this.answered = true;
-            this.$emit("no");
+            this.answer("no");
         },
         /**
          * @fires string "alt" Notify the parent when the third button is pressed
          * @returns {void}
          */
         alt() {
+            this.answer("alt");
+        },
+        /**
+         * Report the answer, and close the dialog unless the parent keeps it.
+         * @param {string} event the event to send to the parent
+         * @returns {void}
+         */
+        answer(event) {
             this.answered = true;
-            this.$emit("alt");
+            this.$emit(event);
+            if (!this.keepOpen) {
+                this.modal?.hide();
+            }
         },
         /**
          * Escape, the backdrop, and the X button close the dialog without an
          * answer. Report that as "no" if the parent asked for it.
+         *
+         * The flag clears here and not in show(). A dialog that opens again
+         * during the close animation must not make this callback, which is
+         * still to run, send an answer the user did not give.
          * @returns {void}
          */
         onHidden() {
+            this.markClosed();
             if (!this.answered && this.noOnDismiss) {
-                this.answered = true;
                 this.$emit("no");
             }
-        }
+            this.answered = false;
+        },
+        /**
+         * Record that this dialog is no longer open.
+         * @returns {void}
+         */
+        markClosed() {
+            if (this.isOpen) {
+                this.isOpen = false;
+                openCount--;
+            }
+        },
     },
 };
 </script>

@@ -26,7 +26,7 @@
                             class="btn"
                             :class="isDirty ? 'btn-success' : 'btn-normal'"
                             :disabled="processing || (!isDirty && !isAdd)"
-                            @click="saveStack()"
+                            @click="saveStackAndExit"
                         >
                             <font-awesome-icon icon="save" class="me-1" />
                             {{ $t("saveStackDraft") }}<template v-if="isDirty"> &#9679;</template>
@@ -383,7 +383,8 @@
             <!-- Unsaved changes dialog: shown when the user leaves edit mode
                  with changes that are not saved. Escape, the backdrop, and
                  the X button all mean "stay", so the pending navigation
-                 always gets an answer. -->
+                 always gets an answer. The buttons do not close the dialog,
+                 because a save keeps it on screen until the server replies. -->
             <Confirm
                 ref="confirmLeave"
                 :title="$t('unsavedChanges')"
@@ -393,6 +394,7 @@
                 :no-text="$t('stay')"
                 :no-on-dismiss="true"
                 :busy="processing"
+                :keep-open="true"
                 @yes="resolveLeave('save')"
                 @alt="resolveLeave('discard')"
                 @no="resolveLeave('stay')"
@@ -541,11 +543,11 @@ export default {
             stopDockerStatsTimeout: false,
             expandedPanel: null,
             editSnapshot: null,
-            leaveOpen: false,
-            leaveNext: null,
-            // Increases each time the dialog is answered, so a save reply
-            // that arrives after another answer is ignored
-            leaveToken: 0,
+            // True while exitConfirm holds a navigation, from the moment the
+            // dialog opens until the choice is complete
+            leaving: false,
+            // Resolves the open dialog with the user's choice
+            leaveResolve: null,
         };
     },
     computed: {
@@ -794,12 +796,7 @@ export default {
         // The page can be destroyed without a route change, for example when
         // a failed login hides the router view. A pending navigation must
         // still get an answer, or it never finishes.
-        if (this.leaveNext) {
-            const next = this.leaveNext;
-            this.leaveNext = null;
-            this.leaveOpen = false;
-            next(false);
-        }
+        this.resolveLeave("stay");
     },
     unmounted() {
         window.removeEventListener("keydown", this.onComposeKeydown);
@@ -965,74 +962,71 @@ export default {
             });
         },
 
-        exitConfirm(next) {
+        async exitConfirm(next) {
             // Ask only when there is work to lose. A clean editor leaves.
-            if (this.isEditMode && this.isDirty) {
-                // A second navigation while the dialog is open must not
-                // replace the first callback, which would then never get an
-                // answer and would leave the address bar out of step.
-                if (this.leaveOpen) {
+            if (!this.isEditMode || !this.isDirty) {
+                this.exitAction();
+                next();
+                return;
+            }
+
+            // The dialog on screen owns this decision. Refuse a second
+            // navigation, because only one of them can get an answer.
+            if (this.leaving) {
+                next(false);
+                return;
+            }
+
+            this.leaving = true;
+            try {
+                const choice = await this.askLeave();
+
+                if (choice === "stay") {
                     next(false);
                     return;
                 }
-                this.leaveNext = next;
-                this.leaveOpen = true;
-                this.$refs.confirmLeave.show();
-            } else {
+
+                // "save": leave only after the server accepts the file. The
+                // dialog stays on screen, with its buttons disabled, so the
+                // user can see that the save runs.
+                if (choice === "save") {
+                    const saved = await this.saveStack();
+                    if (!saved) {
+                        next(false);
+                        return;
+                    }
+                }
+
                 this.exitAction();
                 next();
+            } finally {
+                this.leaving = false;
+                this.leaveResolve = null;
+                this.$refs.confirmLeave?.hide();
             }
         },
 
         /**
-         * Close the unsaved-changes dialog with one of its three choices.
-         * @param {string} choice "stay", "discard" or "save"
-         * @returns {void}
+         * Show the unsaved-changes dialog and wait for the user.
+         * @returns {Promise<string>} "save", "discard" or "stay"
          */
-        resolveLeave(choice) {
-            const next = this.leaveNext;
-            // Each answer makes the token of any earlier answer out of date
-            const token = ++this.leaveToken;
-
-            if (choice === "stay") {
-                this.closeLeaveDialog();
-                next?.(false);
-                return;
-            }
-
-            if (choice === "discard") {
-                this.closeLeaveDialog();
-                this.exitAction();
-                next?.();
-                return;
-            }
-
-            // "save": leave only after the server accepts the file. The
-            // dialog stays open, with its buttons disabled, until the reply.
-            this.saveStack((ok) => {
-                // The user answered again while the save ran. That answer
-                // owns the navigation now, so do nothing here.
-                if (token !== this.leaveToken) {
-                    return;
-                }
-                this.closeLeaveDialog();
-                if (ok) {
-                    this.exitAction();
-                    next?.();
-                } else {
-                    next?.(false);
-                }
+        askLeave() {
+            return new Promise((resolve) => {
+                this.leaveResolve = resolve;
+                this.$refs.confirmLeave.show();
             });
         },
 
         /**
-         * Hide the unsaved-changes dialog and forget its callback.
+         * Give the waiting navigation the user's choice. The promise accepts
+         * the first answer only, so a later answer cannot answer twice.
+         * @param {string} choice "stay", "discard" or "save"
          * @returns {void}
          */
-        closeLeaveDialog() {
-            this.leaveOpen = false;
-            this.leaveNext = null;
-            this.$refs.confirmLeave?.hide();
+        resolveLeave(choice) {
+            const resolve = this.leaveResolve;
+            this.leaveResolve = null;
+            resolve?.(choice);
         },
 
         exitAction() {
@@ -1108,7 +1102,11 @@ export default {
             });
         },
 
-        saveStack(then = null) {
+        /**
+         * Send the editor contents to the server.
+         * @returns {Promise<boolean>} true when the server accepts the file
+         */
+        saveStack() {
             this.processing = true;
 
             // Hold the values that go to the server. The editors stay usable
@@ -1116,45 +1114,52 @@ export default {
             // of the buffer would then mark unsent text as saved.
             const sent = this.currentEditState();
 
-            let settled = false;
+            return new Promise((resolve) => {
+                let settled = false;
 
-            // An agent that is offline never answers, and the dialog and the
-            // buttons would stay disabled for ever.
-            const timer = setTimeout(() => {
-                if (settled) {
-                    return;
-                }
-                settled = true;
-                this.processing = false;
-                this.$root.toastError(this.$t("saveTimeout"));
-                if (then) {
-                    then(false);
-                }
-            }, 30000);
-
-            this.$root.emitAgent(this.stack.endpoint, "saveStack", this.stack.name, sent.yaml, sent.env, this.isAdd, (res) => {
-                if (settled) {
-                    return;
-                }
-                settled = true;
-                clearTimeout(timer);
-
-                this.processing = false;
-                this.$root.toastRes(res);
-
-                if (res.ok) {
-                    // The baseline is what the server has, not the buffer
-                    this.editSnapshot = sent;
-                    if (then) {
-                        then(true);
+                // An agent that is offline never answers, and the dialog and
+                // the buttons would stay disabled for ever.
+                const timer = setTimeout(() => {
+                    if (settled) {
                         return;
                     }
-                    this.isEditMode = false;
-                    this.$router.push(this.url);
-                } else if (then) {
-                    then(false);
-                }
+                    settled = true;
+                    this.processing = false;
+                    this.$root.toastError(this.$t("saveTimeout"));
+                    resolve(false);
+                }, 30000);
+
+                this.$root.emitAgent(this.stack.endpoint, "saveStack", this.stack.name, sent.yaml, sent.env, this.isAdd, (res) => {
+                    clearTimeout(timer);
+                    this.processing = false;
+                    this.$root.toastRes(res);
+
+                    if (res.ok) {
+                        // The baseline is what the server has, not the
+                        // buffer. A reply that comes after the timeout must
+                        // still clear the dirty mark, or the editor asks to
+                        // save a file that the server already has.
+                        this.editSnapshot = sent;
+                    }
+
+                    if (settled) {
+                        return;
+                    }
+                    settled = true;
+                    resolve(res.ok);
+                });
             });
+        },
+
+        /**
+         * Save from the toolbar, then leave edit mode.
+         * @returns {Promise<void>}
+         */
+        async saveStackAndExit() {
+            if (await this.saveStack()) {
+                this.isEditMode = false;
+                this.$router.push(this.url);
+            }
         },
 
         startStack() {
