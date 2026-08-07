@@ -6,6 +6,12 @@ The base is dockge commit [f809ae1](https://github.com/louislam/dockge/commit/f8
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). This project has no releases, so each entry is a commit. The newest entry comes first. A commit that changes only this file or the project rules has no entry.
 
+## [4f7cd88](../../commit/4f7cd88) - 2026-08-07
+
+### Added
+
+- A **Merged config** button on the stack page. It opens a read-only dialog with the output of `docker compose config`. A configuration error shows the error text of docker itself.
+
 ## [5681d78](../../commit/5681d78) - 2026-08-07
 
 ### Added
