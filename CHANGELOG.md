@@ -6,6 +6,54 @@ The base is dockge commit [f809ae1](https://github.com/louislam/dockge/commit/f8
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). This project has no releases, so each entry is a commit. The newest entry comes first. A commit that changes only this file or the project rules has no entry.
 
+## [5dc0c7c](../../commit/5dc0c7c) - 2026-08-07
+
+### Removed
+
+- The release tools of the upstream project: the changelog tool, the version tool, and the nightly tool. The nightly stage of the Dockerfile goes away with them, because the workflow builds only the release target.
+
+## [243af3f](../../commit/243af3f) - 2026-08-07
+
+### Changed
+
+- The crash message, the lost-connection banner, and the security policy name this fork. Before, they sent the user to the upstream repository, to the wiki of a different project, and to the advisory address of the upstream project.
+- The installed application name, the first-run page, and three server messages say dockge-mod. The package holds the name of this fork, the repository, the home page, and the issue address.
+- The translation guide says where the language files come from. This fork has no Weblate project.
+
+## [c90b019](../../commit/c90b019) - 2026-08-07
+
+### Changed
+
+- The README uses the published image for the install and the upgrade. The build steps move to an optional section. The sample compose file uses the published image.
+
+### Added
+
+- A README section that tells how to configure a reverse proxy for the WebSocket connection.
+
+## [e66f2db](../../commit/e66f2db) - 2026-08-07
+
+### Added
+
+- A manual workflow that builds the release image for amd64, arm64, and armv7, and pushes it to ethanpil/dockge-mod on Docker Hub. The tag and the platforms are inputs.
+
+## [334c1c8](../../commit/334c1c8) - 2026-08-07
+
+### Changed
+
+- The Dockerfile builds its base layer and its healthcheck binary from the source in this repository. Before, it took two images from the registry of the upstream project, and the build stopped if those images went away. The healthcheck compiles for the target architecture on the build platform, thus it does not run under emulation.
+
+## [9261414](../../commit/9261414) - 2026-08-07
+
+### Fixed
+
+- The CI workflow runs again. The checkout step had a run key and a uses key together, which is not a valid step, and the matrix named self-hosted runners that do not exist for this repository.
+
+## [e77eb25](../../commit/e77eb25) - 2026-08-07
+
+### Removed
+
+- The automation and the community files of the upstream project: the nightly release, the issue automation, the file guard, the funding file, and the issue, discussion, and pull request templates.
+
 ## [fb3b473](../../commit/fb3b473) - 2026-08-07
 
 ### Changed
