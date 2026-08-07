@@ -15,6 +15,9 @@
                 <font-awesome-icon icon="check-double" fixed-width class="me-2" />{{ $t("selectAll") }}
             </button>
             <hr class="term-menu-line">
+            <button type="button" class="term-menu-item" @click="menuSave">
+                <font-awesome-icon icon="file-arrow-down" fixed-width class="me-2" />{{ $t("saveOutput") }}
+            </button>
             <button type="button" class="term-menu-item" @click="menuClear">
                 <font-awesome-icon icon="eraser" fixed-width class="me-2" />{{ $t("clearTerminal") }}
             </button>
@@ -510,6 +513,52 @@ export default {
         menuSelectAll() {
             this.closeMenu();
             this.terminal.selectAll();
+        },
+
+        /**
+         * Save what the terminal holds to a text file.
+         *
+         * xterm has no method for the full text, but its buffer gives each
+         * line. A line that the terminal wrapped continues the line above
+         * it, so it must not start a new line in the file, and the line
+         * above it must keep the spaces at its end.
+         * @returns {void}
+         */
+        menuSave() {
+            this.closeMenu();
+
+            const buffer = this.terminal.buffer.active;
+            const lines = [];
+
+            for (let i = 0; i < buffer.length; i++) {
+                const line = buffer.getLine(i);
+                if (!line) {
+                    continue;
+                }
+
+                const next = buffer.getLine(i + 1);
+                const text = line.translateToString(!next?.isWrapped);
+
+                if (line.isWrapped && lines.length > 0) {
+                    lines[lines.length - 1] += text;
+                } else {
+                    lines.push(text);
+                }
+            }
+
+            // The buffer keeps the empty rows below the last output
+            while (lines.length > 0 && lines[lines.length - 1] === "") {
+                lines.pop();
+            }
+
+            const url = URL.createObjectURL(new Blob([ lines.join("\n") + "\n" ], { type: "text/plain" }));
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = `${this.name || "terminal"}.log`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
         },
 
         /**

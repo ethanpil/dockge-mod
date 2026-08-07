@@ -130,6 +130,7 @@
     "paste": "Paste",
     "selectAll": "Select all",
     "clearTerminal": "Clear",
+    "saveOutput": "Save output",
     "hideLeftPanel": "Hide the left panel",
     "equalPanels": "Equal width",
     "hideRightPanel": "Hide the right panel",

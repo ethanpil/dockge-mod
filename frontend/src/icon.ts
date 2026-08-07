@@ -66,6 +66,7 @@ import {
     faTableColumns,
     faCheckDouble,
     faEraser,
+    faFileArrowDown,
 } from "@fortawesome/free-solid-svg-icons";
 
 library.add(
@@ -133,6 +134,7 @@ library.add(
     faTableColumns,
     faCheckDouble,
     faEraser,
+    faFileArrowDown,
 );
 
 export { FontAwesomeIcon };
