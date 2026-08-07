@@ -6,6 +6,12 @@ The base is dockge commit [f809ae1](https://github.com/louislam/dockge/commit/f8
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). This project has no releases, so each entry is a commit. The newest entry comes first. A commit that changes only this file or the project rules has no entry.
 
+## [92af193](../../commit/92af193) - 2026-08-07
+
+### Added
+
+- A setting for the poll interval of a stack page, under **Settings** > **General**. The default stays 5 seconds. A larger value decreases the load on a slow host.
+
 ## [478f075](../../commit/478f075) - 2026-08-07
 
 ### Added
