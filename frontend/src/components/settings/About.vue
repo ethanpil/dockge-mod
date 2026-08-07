@@ -15,9 +15,6 @@
                 <a href="https://github.com/louislam/dockge/commit/f809ae192b571944ad773e9866d3e67064ae8043" target="_blank" rel="noopener" class="mono">f809ae1</a>
             </div>
 
-            <div v-if="!$root.isFrontendBackendVersionMatched" class="alert alert-warning mt-4" role="alert">
-                ⚠️ {{ $t("Frontend Version do not match backend version!") }}
-            </div>
         </div>
     </div>
 </template>
