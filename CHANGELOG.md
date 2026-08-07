@@ -17,13 +17,13 @@ The base is dockge commit [f809ae1](https://github.com/louislam/dockge/commit/f8
 - The status "active" is green. The status "inactive" uses a subtle badge that adapts to the theme.
 - The home page shows stat tiles: stacks by state, containers, host memory with a usage meter, Docker disk with reclaimable space, images, volumes, and load average.
 - Uptime shows in the fixed "0d 0h 55m" form. The ports column hides the wildcard host address.
-- On mobile, the table becomes stacked cards at full width. On tablet, the image, ports, and I/O columns hide.
+- Below 768 pixels the table becomes stacked cards at full width. Between 768 and 1200 pixels the table scrolls sideways, so no column goes out of reach. Only one of the two layouts renders.
 
 ## Features
 
 - The terminal width follows the browser window. Each client reports its size. The server applies the smallest size of all connected clients.
 - The additive "hostStats" socket event supplies host memory, load average, and Docker disk usage. An agent without this event shows only the stack tiles.
-- The service status data includes uptime, ports, and IP. The IP values come from one batched `docker inspect` call, cached by container ID.
+- The service status data includes uptime, ports, and IP. The IP values come from one batched `docker inspect` call, held for 30 seconds.
 - The compose editor marks each YAML syntax error at its position, with a gutter icon and an underline. The error message shows on hover.
 - The container editor uses a two-column grid. The card header shows the name, the image, and the item counts. The Edit button changes to Close when the card is open. Cards start closed when a stack has three or more services.
 - The Save button becomes green when there are changes to save. A dot also shows next to the stack name.
@@ -41,6 +41,22 @@ The base is dockge commit [f809ae1](https://github.com/louislam/dockge/commit/f8
 - The dashboard polls host stats only on the home page. The server caches the result for 60 seconds and serves all clients from one collection.
 - The status dot has a text label for screen readers.
 - The Escape key and the backdrop close the expanded panel in all conditions.
+
+### Code review, August 2026
+
+- The unsaved-changes dialog no longer stops navigation with no message. The dialog stays on screen while the save runs. ([7fa5109](../../commit/7fa5109))
+- A save that answers after the 30 second limit now clears the changed mark. ([7fa5109](../../commit/7fa5109))
+- The IP cache no longer keeps an empty address after a stack stop and start cycle. ([fab024e](../../commit/fab024e))
+- One failure of the host statistics no longer stops the dashboard tiles until a restart. ([fab024e](../../commit/fab024e))
+- The pty goes back to its default size when the last client with a size goes away. One size change now sends one SIGWINCH. ([fab024e](../../commit/fab024e))
+- The load average shows on an idle host. Windows shows the CPU count without a load average. ([fab024e](../../commit/fab024e), [469d19a](../../commit/469d19a))
+- The terminal reports its size after the name arrives, not before. ([469d19a](../../commit/469d19a))
+- Leaving the home page and returning no longer adds one more host statistics poll each time. ([469d19a](../../commit/469d19a))
+- All disk tiles use the same units, so the total cannot look smaller than one of its parts. Sizes go up to EiB. ([469d19a](../../commit/469d19a))
+- The ports column has links again, so the Primary Hostname setting works. ([c2f74c6](../../commit/c2f74c6))
+- The memory cell tooltip shows the limit. ([c2f74c6](../../commit/c2f74c6))
+- The Add button of a list agrees with the list editor about a blank list item. ([c2f74c6](../../commit/c2f74c6))
+- A dialog that closes no longer removes the backdrop of a different dialog. ([7fa5109](../../commit/7fa5109))
 
 ## Security
 
