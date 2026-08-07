@@ -670,17 +670,22 @@ export class DockgeServer {
     }
 
     /**
-     * Host level statistics for the dashboard. Additive and best effort: every
-     * section that cannot be read is simply omitted, and the frontend hides the
-     * matching tile, so an older agent without this event degrades cleanly.
+     * Host level statistics for the dashboard.
      *
-     * Memory and load come from /proc, which is the host's because containers
-     * share the host kernel. Disk usage comes from `docker system df`.
+     * This event only adds data, and it does the best that it can. It leaves
+     * out each section that it cannot read, and the frontend then hides the
+     * tile. Thus an older agent without this event still works.
+     *
+     * Memory and load come from /proc. Containers use the kernel of the host,
+     * so these are the values of the host. Note that a virtual machine or an
+     * LXC guest shows its own values, not the values of the machine.
+     *
+     * Disk use comes from `docker system df`.
      */
     async getHostStats() : Promise<object> {
-        // One collection serves every client: `docker system df` walks the
-        // whole image/volume store, so it must not run once per open tab, and
-        // an in-flight guard stops slow responses from piling up.
+        // One collection serves every client. `docker system df` reads the
+        // full image store and the full volume store, so it must not run once
+        // for each open tab. The guard also stops slow replies from collecting.
         const now = Date.now();
         if (this.hostStatsCache && now - this.hostStatsCache.time < 60 * 1000) {
             return this.hostStatsCache.data;

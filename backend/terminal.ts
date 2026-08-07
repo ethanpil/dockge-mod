@@ -18,12 +18,14 @@ export class Terminal {
     protected static terminalMap : Map<string, Terminal> = new Map();
 
     /**
-     * Last size each client reported for each terminal name, kept OUTSIDE the
-     * terminal objects so it survives a terminal being closed and recreated
-     * under the same name (a stop/start cycle would otherwise revert the pty
-     * to the default width with no client left to correct it). The effective
-     * pty size is the minimum over the currently joined clients, so a narrow
-     * viewer cannot be overflowed by a wide one.
+     * The last size that each client reported, for each terminal name.
+     *
+     * This map stays outside the terminal objects. A stop and start cycle
+     * closes the terminal and makes a new one with the same name. The map
+     * keeps the sizes, so the new pty does not go back to the default width.
+     *
+     * The pty gets the smallest size of the clients that joined. Thus a wide
+     * client cannot make the text too wide for a narrow client.
      */
     protected static sizeHints : Map<string, Map<string, { rows : number, cols : number }>> = new Map();
 

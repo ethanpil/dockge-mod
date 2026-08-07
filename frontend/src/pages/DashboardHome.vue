@@ -226,7 +226,7 @@ export default {
             return Math.round(this.hostStats.mem.used / this.hostStats.mem.total * 100);
         },
 
-        /** Sum of every `docker system df` row, e.g. images + containers + volumes. */
+        /** Sum of every `docker system df` row: images, containers, volumes. */
         dockerDiskTotal() {
             if (!Array.isArray(this.hostStats.df) || this.hostStats.df.length === 0) {
                 return "";

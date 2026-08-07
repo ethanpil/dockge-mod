@@ -232,7 +232,7 @@ export function formatUptime(status : string) : string | null {
  * that stripping produces. A specific bind address (127.0.0.1, a LAN IP) is
  * meaningful — the user restricted the port on purpose — so it is kept.
  * @param {string} ports Ports column of `docker compose ps`
- * @returns {string} e.g. "18080->80/tcp"
+ * @returns {string} the short form, for example "18080->80/tcp"
  */
 export function formatPorts(ports : string) : string {
     if (!ports) {
@@ -250,7 +250,7 @@ export function formatPorts(ports : string) : string {
 }
 
 /**
- * Format a byte count for display, e.g. 2147483648 -> "2.0 GiB".
+ * Format a byte count for display. For example, 2147483648 gives "2.0 GiB".
  * @param {number} bytes Byte count
  * @returns {string} Human readable size
  */

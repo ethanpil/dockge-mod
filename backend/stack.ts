@@ -571,8 +571,9 @@ export class Stack {
                 if (partial) {
                     parse(partial.toString());
                 } else {
-                    // e.g. docker CLI missing or daemon unreachable — without this
-                    // the IP column shows dashes with zero diagnostics anywhere
+                    // For example, the docker CLI is missing, or the daemon
+                    // does not answer. Without this the IP column shows only
+                    // dashes and gives no reason anywhere.
                     log.debug("getContainerIPs", "docker inspect failed: " + (e instanceof Error ? e.message : String(e)));
                 }
             }
@@ -620,7 +621,8 @@ export class Stack {
                 statusList.get(obj.Service)?.push({
                     status: obj.Health || obj.State,
                     name: obj.Name,
-                    // `Status` is docker's human readable uptime, e.g. "Up 23 minutes".
+                    // `Status` is docker's uptime for a person to read. An
+                    // example is "Up 23 minutes".
                     uptime: obj.Status ?? "",
                     ports: obj.Ports ?? "",
                     ip: "",
