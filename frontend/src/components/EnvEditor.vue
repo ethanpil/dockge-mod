@@ -1,6 +1,6 @@
 <template>
     <div class="env-editor">
-        <div v-for="(entry, index) in entries" :key="index" class="env-entry">
+        <div v-for="(entry, index) in entries" :key="entry.id" class="env-entry">
             <!-- One pair takes two rows, so a long value has room -->
             <div v-if="entry.type === 'pair'" class="env-pair">
                 <div class="env-row">
@@ -8,7 +8,8 @@
                     <input
                         v-model="entry.key"
                         type="text"
-                        class="form-control form-control-sm"
+                        class="form-control form-control-sm mono"
+                        :class="{ 'is-invalid': !keyOK(entry) }"
                         autocomplete="off"
                         spellcheck="false"
                         @input="onEdit"
@@ -22,17 +23,23 @@
                     <input
                         v-model="entry.value"
                         type="text"
-                        class="form-control form-control-sm env-value"
+                        class="form-control form-control-sm mono"
                         autocomplete="off"
                         spellcheck="false"
                         @input="onEdit"
                     />
                 </div>
+                <!-- A pair with a bad key does not go in the file. The
+                     message makes that visible, so no data goes away
+                     without a sign. -->
+                <div v-if="!keyOK(entry)" class="env-key-warning">
+                    {{ $t("envKeyInvalid") }}
+                </div>
             </div>
 
-            <!-- A comment or an other line that is not a pair. The text
-                 view can change it. -->
-            <div v-else class="env-raw">{{ entry.text }}</div>
+            <!-- A comment, or a different line that is not a pair. The
+                 text view can change it. -->
+            <div v-else class="env-raw mono">{{ entry.text }}</div>
         </div>
 
         <button type="button" class="btn btn-sm btn-normal mt-2" @click="addEntry">
@@ -43,7 +50,15 @@
 </template>
 
 <script>
-import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
+// Keys that docker and dotenv accept. A different key does not go in
+// the file, and the row shows a message.
+const KEY_REGEX = /^[A-Za-z_][A-Za-z0-9_.-]*$/;
+
+// A pair line: an optional export prefix, a key, and the value after
+// the first "=" character
+const PAIR_REGEX = /^((?:export\s+)?)([A-Za-z_][A-Za-z0-9_.-]*)=(.*)$/;
+
+let nextEntryId = 1;
 
 /**
  * A .env editor with one key field and one value field for each
@@ -51,14 +66,12 @@ import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
  * example comments, stay in their positions and do not change.
  *
  * The component does not interpret quotes. The value field holds the
- * exact text after the first "=", thus the file text stays the same
- * when the user changes nothing.
+ * exact text after the first "=". The line ends and the last line of
+ * the file stay as they are, so the file text stays the same when the
+ * user changes nothing.
  */
 export default {
     name: "EnvEditor",
-    components: {
-        FontAwesomeIcon,
-    },
 
     props: {
         /** The text of the .env file */
@@ -73,6 +86,11 @@ export default {
     data() {
         return {
             entries: [],
+            // The line end of the file: "\n", or "\r\n" for a file from
+            // Windows
+            eol: "\n",
+            // True when the file ends with a line end
+            finalNewline: true,
             // The last text that this component made. A model change with
             // this exact text is an echo, not an edit from outside.
             lastSerialized: null,
@@ -90,55 +108,99 @@ export default {
         },
     },
 
+    unmounted() {
+        clearTimeout(this.changeTimer);
+    },
+
     methods: {
         /**
-         * Divide the text into pairs and other lines.
+         * True when the key of a pair can go in the file.
+         * @param {object} entry a pair entry
+         * @returns {boolean}
+         */
+        keyOK(entry) {
+            return KEY_REGEX.test(entry.key);
+        },
+
+        /**
+         * Divide the text into pairs and other lines. A value in quotes
+         * that continues on more lines stays one raw block, because the
+         * fields cannot show it correctly.
          * @param {string} text the .env text
          * @returns {void}
          */
         parse(text) {
             this.lastSerialized = text;
             this.entries = [];
+            this.eol = text.includes("\r\n") ? "\r\n" : "\n";
+            this.finalNewline = text === "" || text.endsWith("\n");
 
             if (!text) {
                 return;
             }
 
-            for (const line of text.split("\n")) {
-                const match = line.match(/^([A-Za-z_][A-Za-z0-9_.-]*)=(.*)$/);
+            const lines = text.split(/\r?\n/);
+
+            // The split gives one empty last item for a text with a final
+            // line end. The serialization adds the line end back.
+            if (this.finalNewline && text !== "") {
+                lines.pop();
+            }
+
+            for (let i = 0; i < lines.length; i++) {
+                const match = lines[i].match(PAIR_REGEX);
+
                 if (match) {
+                    const value = match[3];
+                    const quote = value[0];
+
+                    // An open quote without its end on the same line: the
+                    // value continues on the lines below
+                    if ((quote === "\"" || quote === "'") && !value.slice(1).includes(quote)) {
+                        const block = [ lines[i] ];
+                        while (i + 1 < lines.length) {
+                            i++;
+                            block.push(lines[i]);
+                            if (lines[i].includes(quote)) {
+                                break;
+                            }
+                        }
+                        this.entries.push({
+                            id: nextEntryId++,
+                            type: "raw",
+                            text: block.join(this.eol),
+                        });
+                        continue;
+                    }
+
                     this.entries.push({
+                        id: nextEntryId++,
                         type: "pair",
-                        key: match[1],
-                        value: match[2],
+                        prefix: match[1],
+                        key: match[2],
+                        value,
                     });
                 } else {
                     this.entries.push({
+                        id: nextEntryId++,
                         type: "raw",
-                        text: line,
+                        text: lines[i],
                     });
                 }
-            }
-
-            // The split gives one empty last line for a text with a final
-            // newline. The serialization adds the newline back.
-            const last = this.entries[this.entries.length - 1];
-            if (last && last.type === "raw" && last.text === "") {
-                this.entries.pop();
             }
         },
 
         /**
-         * Make the .env text from the entries. A pair without a key gives
-         * no line, because "=value" is not a correct line.
+         * Make the .env text from the entries. A pair with a bad key
+         * gives no line, and its row shows a message.
          * @returns {string} the .env text
          */
         serialize() {
             const lines = [];
             for (const entry of this.entries) {
                 if (entry.type === "pair") {
-                    if (entry.key.trim() !== "") {
-                        lines.push(entry.key.trim() + "=" + entry.value);
+                    if (this.keyOK(entry)) {
+                        lines.push(entry.prefix + entry.key + "=" + entry.value);
                     }
                 } else {
                     lines.push(entry.text);
@@ -147,18 +209,24 @@ export default {
             if (lines.length === 0) {
                 return "";
             }
-            return lines.join("\n") + "\n";
+            return lines.join(this.eol) + (this.finalNewline ? this.eol : "");
         },
 
         /**
-         * Send the new text to the parent after an edit.
+         * Send the new text to the parent after an edit. The change event
+         * waits a short time, so a fast sequence of key presses does not
+         * start a YAML parse for each press.
          * @returns {void}
          */
         onEdit() {
             const text = this.serialize();
             this.lastSerialized = text;
             this.$emit("update:modelValue", text);
-            this.$emit("change");
+
+            clearTimeout(this.changeTimer);
+            this.changeTimer = setTimeout(() => {
+                this.$emit("change");
+            }, 200);
         },
 
         /**
@@ -167,7 +235,9 @@ export default {
          */
         addEntry() {
             this.entries.push({
+                id: nextEntryId++,
                 type: "pair",
+                prefix: "",
                 key: "",
                 value: "",
             });
@@ -217,10 +287,14 @@ export default {
     color: var(--bs-secondary-color);
 }
 
-.env-value,
 .env-row input {
-    font-family: "JetBrains Mono", monospace;
     font-size: 12.5px;
+}
+
+.env-key-warning {
+    margin-top: 0.25rem;
+    font-size: 11.5px;
+    color: var(--bs-danger);
 }
 
 .env-del {
@@ -228,7 +302,6 @@ export default {
 }
 
 .env-raw {
-    font-family: "JetBrains Mono", monospace;
     font-size: 12px;
     color: var(--bs-secondary-color);
     padding: 0.1rem 0.25rem;

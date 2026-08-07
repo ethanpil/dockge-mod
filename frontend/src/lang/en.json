@@ -204,5 +204,6 @@
     "addVariable": "Add Variable",
     "deleteVariable": "Delete variable",
     "envRowsView": "Rows",
-    "envTextView": "Text"
+    "envTextView": "Text",
+    "envKeyInvalid": "The key is not correct. This variable does not go in the file."
 }

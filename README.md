@@ -187,7 +187,7 @@ The stack is now in the list.
 
 ### Edit the Environment Variables
 
-In edit mode, the `.env` panel shows each variable as a pair of fields: one for the key and one for the value. The values are not masked. Click **Add Variable** for a new pair. Comments keep their positions. Click **Text** to edit the file as plain text, for example for a comment or a special line.
+In edit mode, the `.env` panel shows each variable as a pair of fields: one for the key and one for the value. The values are not masked. Click **Add Variable** for a new pair. Comments keep their positions. Click **Text** to edit the file as plain text, for example for a comment or a value on more than one line. The **Global .env** page under **Settings** has the same editor.
 
 ### Use an Override File
 

@@ -2,7 +2,13 @@
     <div>
         <div v-if="settingsLoaded" class="my-3">
             <form class="my-3" autocomplete="off" @submit.prevent="saveGeneral">
-                <div class="shadow-box mb-3 editor-box edit-mode">
+                <div class="env-toggle mb-2">
+                    <button type="button" class="mini-btn" @click="envEditorText = !envEditorText">
+                        {{ envEditorText ? $t("envRowsView") : $t("envTextView") }}
+                    </button>
+                </div>
+
+                <div v-if="envEditorText" class="shadow-box mb-3 editor-box edit-mode">
                     <code-mirror
                         ref="editor"
                         v-model="settings.globalENV"
@@ -14,6 +20,9 @@
                         :hasFocus="editorFocus"
                         @change="onChange"
                     />
+                </div>
+                <div v-else class="shadow-box mb-3">
+                    <EnvEditor v-model="settings.globalENV" />
                 </div>
 
                 <div class="my-3">
@@ -35,11 +44,20 @@ import { python } from "@codemirror/lang-python"; // good enough for .env key=va
 import { dracula as editorTheme } from "thememirror";
 import { lineNumbers, EditorView } from "@codemirror/view";
 import { ref } from "vue";
+import EnvEditor from "../EnvEditor.vue";
 
 export default {
     name: "GlobalEnv",
     components: {
         CodeMirror,
+        EnvEditor,
+    },
+
+    data() {
+        return {
+            // True shows the text editor, false shows the rows
+            envEditorText: false,
+        };
     },
 
     setup() {
