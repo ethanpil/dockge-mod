@@ -4,6 +4,10 @@
             <h1 class="fs-3 mb-3">{{ $t("terminal") }} - {{ serviceName }} ({{ stackName }})</h1>
 
             <div class="mb-3">
+                <router-link :to="stackURL" class="btn btn-sm btn-normal me-2">
+                    <font-awesome-icon icon="arrow-left" class="me-1" />
+                    {{ $t("returnToStack") }}
+                </router-link>
                 <router-link :to="sh" class="btn btn-sm btn-outline-secondary me-2">{{ $t("Switch to sh") }}</router-link>
             </div>
 
@@ -40,6 +44,13 @@ export default {
         },
         terminalName() {
             return getContainerExecTerminalName(this.endpoint, this.stackName, this.serviceName, 0);
+        },
+        /** Page of the stack that this container belongs to */
+        stackURL() {
+            if (this.endpoint) {
+                return `/compose/${this.stackName}/${this.endpoint}`;
+            }
+            return `/compose/${this.stackName}`;
         },
         sh() {
             let endpoint = this.$route.params.endpoint;
