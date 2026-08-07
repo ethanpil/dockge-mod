@@ -1,7 +1,13 @@
 <template>
     <div class="container-actions">
         <div v-if="hasActions" class="dropdown">
-            <button class="btn btn-secondary btn-sm dropdown-toggle actions-btn" data-bs-toggle="dropdown" aria-expanded="false">
+            <button
+                class="btn btn-secondary btn-sm dropdown-toggle actions-btn"
+                data-bs-toggle="dropdown"
+                data-bs-boundary="viewport"
+                aria-expanded="false"
+                @mousedown="useFixedMenu"
+            >
                 {{ $t("actions") }}
             </button>
             <ul class="dropdown-menu dropdown-menu-end">
@@ -34,6 +40,7 @@
 
 <script>
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
+import { Dropdown } from "bootstrap";
 
 /**
  * The per-container Actions menu, shared by the desktop table and the mobile
@@ -81,6 +88,26 @@ export default {
 
         hasActions() {
             return this.running || this.serviceCount > 1;
+        },
+    },
+    methods: {
+        /**
+         * Make the menu use a fixed position before bootstrap makes a default
+         * one. The container table scrolls sideways, and a menu inside that
+         * box is cut off and adds a scrollbar. A fixed menu is not in the box.
+         *
+         * mousedown comes before the click that bootstrap listens for, so the
+         * instance that this makes is the instance that bootstrap then uses.
+         * @param {MouseEvent} e the mousedown on the toggle button
+         * @returns {void}
+         */
+        useFixedMenu(e) {
+            Dropdown.getOrCreateInstance(e.currentTarget, {
+                popperConfig: (defaults) => ({
+                    ...defaults,
+                    strategy: "fixed",
+                }),
+            });
         },
     },
 };
