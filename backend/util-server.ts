@@ -72,7 +72,13 @@ export function callbackError(error : unknown, callback : unknown) {
             msgi18n: true,
         });
     } else {
-        log.debug("console", "Unknown error: " + error);
+        // A rejection can carry a plain string, for example from
+        // Terminal.exec. The client must get an answer for each error, or
+        // its buttons stay disabled.
+        callback({
+            ok: false,
+            msg: String(error),
+        });
     }
 }
 

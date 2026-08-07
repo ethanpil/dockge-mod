@@ -202,9 +202,11 @@ dockge-mod uses the same names as docker: `compose.override.yml`, `compose.overr
 
 ### Use a Git Checkout as a Stack
 
-A stack directory can be a git checkout. dockge-mod then shows the branch next to the stack name, with a dot when the checkout has changes that are not committed. A **Pull & Redeploy** button also appears. The button runs `git pull` in the stack directory and then deploys the stack.
+A stack directory can be a git checkout. dockge-mod then shows the branch next to the stack name. A dot after the branch shows tracked changes that are not committed. Files that git does not track, for example an override file or a `.env` file, do not cause the dot. A **Pull & Redeploy** button also appears. The button runs `git pull` in the stack directory and then deploys the stack.
 
-This works well together with an override file: git tracks the base compose file, and your local changes stay in the override file.
+When the checkout is on a tag or a commit, and not on a branch, the badge shows the short commit hash. A pull is not possible then, thus the button does not show.
+
+Use a git checkout together with an override file: git holds the base compose file, and your local changes stay in the override file.
 
 The `.git` entry is not visible in the Dockge interface, and Dockge does not touch it. Thus the stacks directory stays compatible.
 

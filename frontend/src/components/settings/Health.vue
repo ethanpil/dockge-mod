@@ -44,6 +44,22 @@ export default {
         };
     },
 
+    computed: {
+        /**
+         * The display names of the checks, by key.
+         * @returns {object} key to display name
+         */
+        labels() {
+            return {
+                docker: this.$t("healthDocker"),
+                dockerCompose: this.$t("healthDockerCompose"),
+                git: this.$t("healthGit"),
+                stacksDir: this.$t("healthStacksDir"),
+                dataDir: this.$t("healthDataDir"),
+            };
+        },
+    },
+
     mounted() {
         this.load();
     },
@@ -72,14 +88,7 @@ export default {
          * @returns {string} display name
          */
         labelOf(key) {
-            const labels = {
-                docker: this.$t("healthDocker"),
-                dockerCompose: this.$t("healthDockerCompose"),
-                git: this.$t("healthGit"),
-                stacksDir: this.$t("healthStacksDir"),
-                dataDir: this.$t("healthDataDir"),
-            };
-            return labels[key] ?? key;
+            return this.labels[key] ?? key;
         },
     },
 };

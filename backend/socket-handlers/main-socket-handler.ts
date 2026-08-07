@@ -53,10 +53,14 @@ async function checkTool(key : string, file : string, args : string[]) : Promise
             info: firstLine,
         };
     } catch (e) {
+        // The first line of stderr holds the reason from the tool itself,
+        // for example "docker: 'compose' is not a docker command". The
+        // generic message only says that the process failed.
+        const stderr = (e as { stderr ?: string | Buffer })?.stderr?.toString().trim().split("\n")[0];
         return {
             key,
             ok: false,
-            info: e instanceof Error ? e.message : String(e),
+            info: stderr || (e instanceof Error ? e.message : String(e)),
         };
     }
 }

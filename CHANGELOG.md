@@ -10,8 +10,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Thi
 
 ### Added
 
-- The stack page shows the git branch when the stack directory is a git checkout, with a dot when the checkout has changes that are not committed. A **Pull & Redeploy** button runs `git pull` and then deploys the stack. This works well with an override file: git holds the base file, and the local changes stay in the override file.
-- A **Health** page under **Settings**. It shows if Docker, Docker Compose, and Git are on the server, and if the server can write in the stacks directory and the data directory.
+- The stack page shows the git branch when the stack directory is a git checkout. A dot shows tracked changes that are not committed. A **Pull & Redeploy** button runs `git pull` and then deploys the stack.
+- A **Health** page under **Settings**. It shows if Docker, Docker Compose, and Git are on the server. It also shows if the server can write in the stacks directory and the data directory.
 
 ## [d89d469](../../commit/d89d469) - 2026-08-07
 

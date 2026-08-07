@@ -37,6 +37,7 @@ export class Terminal {
     protected file : string;
     protected args : string | string[];
     protected cwd : string;
+    protected env? : NodeJS.ProcessEnv;
     protected callback? : (exitCode : number) => void;
 
     protected _rows : number = TERMINAL_ROWS;
@@ -54,13 +55,14 @@ export class Terminal {
 
     protected socketList : Record<string, DockgeSocket> = {};
 
-    constructor(server : DockgeServer, name : string, file : string, args : string | string[], cwd : string) {
+    constructor(server : DockgeServer, name : string, file : string, args : string | string[], cwd : string, env? : NodeJS.ProcessEnv) {
         this.server = server;
         this._name = name;
         //this._name = "terminal-" + Date.now() + "-" + getCryptoRandomInt(0, 1000000);
         this.file = file;
         this.args = args;
         this.cwd = cwd;
+        this.env = env;
 
         Terminal.terminalMap.set(this.name, this);
     }
@@ -141,6 +143,13 @@ export class Terminal {
             this._ptyProcess = pty.spawn(this.file, this.args, {
                 name: this.name,
                 cwd: this.cwd,
+                // Extra variables merge into the environment of the server.
+                // Without extra variables the child gets the environment of
+                // the server, as before.
+                env: this.env ? {
+                    ...process.env,
+                    ...this.env,
+                } : undefined,
                 // The instance size, not the global default — joinCombinedTerminal
                 // and client size hints set _cols before start() runs.
                 cols: this.cols,
@@ -322,7 +331,7 @@ export class Terminal {
         return terminal;
     }
 
-    public static exec(server : DockgeServer, socket : DockgeSocket | undefined, terminalName : string, file : string, args : string | string[], cwd : string) : Promise<number> {
+    public static exec(server : DockgeServer, socket : DockgeSocket | undefined, terminalName : string, file : string, args : string | string[], cwd : string, env? : NodeJS.ProcessEnv) : Promise<number> {
         return new Promise((resolve, reject) => {
             // check if terminal exists
             if (Terminal.terminalMap.has(terminalName)) {
@@ -330,7 +339,7 @@ export class Terminal {
                 return;
             }
 
-            let terminal = new Terminal(server, terminalName, file, args, cwd);
+            let terminal = new Terminal(server, terminalName, file, args, cwd, env);
             terminal.rows = PROGRESS_TERMINAL_ROWS;
 
             if (socket) {

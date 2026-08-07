@@ -67,31 +67,46 @@ export class Stack {
     }
 
     /**
-     * The git state of the stack directory: the branch, and a flag that
-     * shows work that is not committed. The result is null when the
-     * directory is not a git checkout, or when git gives an error, for
-     * example when git is not installed. The stack object then looks the
-     * same as one from an agent without git support.
+     * The git state of the stack directory: the branch, a flag that shows
+     * tracked work that is not committed, and a flag for a detached HEAD.
+     * On a detached HEAD the branch field holds the short commit hash. The
+     * dirty flag does not count untracked files, because an override file
+     * or a .env file next to the checkout is the usual condition, not
+     * drift. The result is null when the directory is not a git checkout,
+     * or when git gives an error, for example when git is not installed.
+     * The stack object then looks the same as one from an agent without
+     * git support.
      */
-    async getGitInfo() : Promise<{ branch : string, isDirty : boolean } | null> {
+    async getGitInfo() : Promise<{ branch : string, isDirty : boolean, isDetached : boolean } | null> {
         if (!this.isGitRepo) {
             return null;
         }
 
-        try {
-            const branchRes = await childProcessAsync.spawn("git", [ "rev-parse", "--abbrev-ref", "HEAD" ], {
-                cwd: this.path,
-                encoding: "utf-8",
-            });
+        const git = (...args : string[]) => childProcessAsync.spawn("git", args, {
+            cwd: this.path,
+            encoding: "utf-8",
+        });
 
-            const statusRes = await childProcessAsync.spawn("git", [ "status", "--porcelain" ], {
-                cwd: this.path,
-                encoding: "utf-8",
-            });
+        try {
+            const [ branchRes, statusRes ] = await Promise.all([
+                git("rev-parse", "--abbrev-ref", "HEAD"),
+                git("status", "--porcelain", "--untracked-files=no"),
+            ]);
+
+            let branch = (branchRes.stdout?.toString() ?? "").trim();
+            const isDetached = branch === "HEAD";
+
+            if (isDetached) {
+                // The short hash tells the user which commit runs. A pull is
+                // not possible here, and the frontend hides the button.
+                const shaRes = await git("rev-parse", "--short", "HEAD");
+                branch = (shaRes.stdout?.toString() ?? "").trim() || branch;
+            }
 
             return {
-                branch: (branchRes.stdout?.toString() ?? "").trim(),
+                branch,
                 isDirty: (statusRes.stdout?.toString() ?? "").trim() !== "",
+                isDetached,
             };
         } catch (e) {
             log.debug("getGitInfo", "git failed for stack " + this.name + ": " + (e instanceof Error ? e.message : String(e)));
@@ -102,10 +117,19 @@ export class Stack {
     /**
      * Run `git pull` in the stack directory. The output goes to the compose
      * terminal of the stack, so the user can read it on the stack page.
+     * The environment stops each credential question. A question on the
+     * progress terminal can get no answer, and the pull would then never
+     * end.
      */
     async gitPull(socket : DockgeSocket) : Promise<number> {
         const terminalName = getComposeTerminalName(socket.endpoint, this.name);
-        const exitCode = await Terminal.exec(this.server, socket, terminalName, "git", [ "pull" ], this.path);
+        const env : NodeJS.ProcessEnv = {
+            GIT_TERMINAL_PROMPT: "0",
+        };
+        if (!process.env.GIT_SSH_COMMAND) {
+            env.GIT_SSH_COMMAND = "ssh -o BatchMode=yes";
+        }
+        const exitCode = await Terminal.exec(this.server, socket, terminalName, "git", [ "pull" ], this.path, env);
         if (exitCode !== 0) {
             throw new Error("Failed to pull, please check the terminal output for more information.");
         }
@@ -113,6 +137,8 @@ export class Stack {
     }
 
     async toJSON(endpoint : string) : Promise<object> {
+        // The git processes run while the settings read goes on
+        const gitInfoPromise = this.getGitInfo();
 
         // Since we have multiple agents now, embed primary hostname in the stack object too.
         let primaryHostname = await Settings.get("primaryHostname");
@@ -137,7 +163,7 @@ export class Stack {
             composeENV: this.composeENV,
             composeOverrideYAML: this.composeOverrideYAML,
             composeOverrideFileName: this.composeOverrideFileName,
-            gitInfo: await this.getGitInfo(),
+            gitInfo: await gitInfoPromise,
             primaryHostname,
         };
     }

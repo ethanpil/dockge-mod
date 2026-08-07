@@ -57,7 +57,8 @@
                             {{ $t("updateStack") }}
                         </button>
 
-                        <button v-if="!isEditMode && gitInfo" class="btn btn-normal" :disabled="processing" @click="gitPullStack">
+                        <!-- A detached HEAD cannot pull, thus no button for it -->
+                        <button v-if="!isEditMode && gitInfo && !gitInfo.isDetached" class="btn btn-normal" :disabled="processing" @click="gitPullStack">
                             <font-awesome-icon icon="code-branch" class="me-1" />
                             {{ $t("gitPullRedeploy") }}
                         </button>
@@ -1476,8 +1477,10 @@ export default {
 
         /**
          * Pull the git checkout of the stack, then deploy it. The output of
-         * git goes to the progress terminal. After a good pull the page
-         * loads the stack again, because the files and the git state changed.
+         * git goes to the progress terminal. The page then loads the stack
+         * again, also after a failure: the pull can change the files on the
+         * disk although the deploy fails, and the editor must show the
+         * files that the disk holds.
          * @returns {void}
          */
         gitPullStack() {
@@ -1486,10 +1489,7 @@ export default {
             this.$root.emitAgent(this.endpoint, "gitPullStack", this.stack.name, (res) => {
                 this.processing = false;
                 this.$root.toastRes(res);
-
-                if (res.ok) {
-                    this.loadStack();
-                }
+                this.loadStack();
             });
         },
 
