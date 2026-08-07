@@ -1,6 +1,17 @@
 <template>
     <div class="shadow-box">
         <div v-pre ref="terminal" class="main-terminal"></div>
+
+        <!-- Right click menu. Ctrl+C and Ctrl+V go to the shell, so the
+             terminal needs another way to reach the clipboard. -->
+        <div v-if="menuOpen" ref="menu" class="term-menu" :style="{ top: menuY + 'px', left: menuX + 'px' }">
+            <button type="button" class="term-menu-item" :disabled="!menuSelection" @click="menuCopy">
+                <font-awesome-icon icon="copy" class="me-2" />{{ $t("copy") }}
+            </button>
+            <button v-if="canInput" type="button" class="term-menu-item" @click="menuPaste">
+                <font-awesome-icon icon="paste" class="me-2" />{{ $t("paste") }}
+            </button>
+        </div>
     </div>
 </template>
 
@@ -73,7 +84,19 @@ export default {
             cursorPosition: 0,
             lastSentRows: null,
             lastSentCols: null,
+            menuOpen: false,
+            menuX: 0,
+            menuY: 0,
+            // Text that was selected when the menu opened. The menu takes the
+            // focus, and the terminal drops its selection when that happens.
+            menuSelection: "",
         };
+    },
+    computed: {
+        /** True for the modes that send what the user types to a shell */
+        canInput() {
+            return this.mode === "mainTerminal" || this.mode === "interactive";
+        },
     },
     watch: {
         // Report the size again when the name arrives after the mount
@@ -113,6 +136,10 @@ export default {
 
         // Add right-click context menu handler for paste
         this.$refs.terminal.addEventListener("contextmenu", this.handleContextMenu);
+
+        // Ctrl+V reaches the hidden textarea of xterm as a paste event. The
+        // component reads keys with onKey, which a paste does not raise.
+        this.$refs.terminal.addEventListener("paste", this.handleNativePaste);
 
         // Add selection handler for copy to clipboard
         this.terminal.onSelectionChange(() => {
@@ -154,6 +181,8 @@ export default {
         this.$root.unbindTerminal(this.name);
         this.terminal.dispose();
         this.$refs.terminal?.removeEventListener("contextmenu", this.handleContextMenu);
+        this.$refs.terminal?.removeEventListener("paste", this.handleNativePaste);
+        this.closeMenu();
     },
 
     methods: {
@@ -327,9 +356,19 @@ export default {
         },
 
         /**
-         * Handle clipboard paste operation
+         * Read the clipboard and send what it holds.
+         *
+         * Only a page on https or on localhost has navigator.clipboard. On
+         * any other page the browser gives the clipboard to a paste event
+         * only, so tell the user to use the keyboard.
+         * @returns {Promise<void>}
          */
         async handlePaste() {
+            if (!navigator.clipboard?.readText) {
+                this.$root.toastError(this.$t("pasteNeedsKeyboard"));
+                return;
+            }
+
             try {
                 const text = await navigator.clipboard.readText();
                 if (text) {
@@ -337,6 +376,7 @@ export default {
                 }
             } catch (error) {
                 console.error("Failed to read from clipboard:", error);
+                this.$root.toastError(this.$t("pasteNeedsKeyboard"));
             }
         },
 
@@ -372,15 +412,94 @@ export default {
         },
 
         /**
-         * Handle right-click context menu for paste operation
+         * Open the right click menu at the pointer.
+         * @param {MouseEvent} event the contextmenu event
+         * @returns {void}
          */
         handleContextMenu(event) {
-            // Prevent default context menu
             event.preventDefault();
 
-            // Only handle paste for modes that support input
-            if (this.mode === "mainTerminal" || this.mode === "interactive") {
-                this.handlePaste();
+            // Read the selection now. The menu button takes the focus, and
+            // the terminal clears its selection when it loses the focus.
+            this.menuSelection = this.terminal.getSelection() ?? "";
+            this.menuX = event.clientX;
+            this.menuY = event.clientY;
+            this.menuOpen = true;
+
+            document.addEventListener("mousedown", this.closeMenu);
+            document.addEventListener("keydown", this.onMenuKeydown);
+            window.addEventListener("resize", this.closeMenu);
+            window.addEventListener("scroll", this.closeMenu, true);
+        },
+
+        /**
+         * Close the right click menu.
+         * @param {Event} [e] the event that closes the menu
+         * @returns {void}
+         */
+        closeMenu(e) {
+            // A press on the menu must reach the button. mousedown comes
+            // before click, and the button is gone if the menu closes first.
+            if (e?.type === "mousedown" && this.$refs.menu?.contains(e.target)) {
+                return;
+            }
+
+            if (!this.menuOpen) {
+                return;
+            }
+            this.menuOpen = false;
+            document.removeEventListener("mousedown", this.closeMenu);
+            document.removeEventListener("keydown", this.onMenuKeydown);
+            window.removeEventListener("resize", this.closeMenu);
+            window.removeEventListener("scroll", this.closeMenu, true);
+        },
+
+        /**
+         * Close the menu with Escape.
+         * @param {KeyboardEvent} e the keydown event
+         * @returns {void}
+         */
+        onMenuKeydown(e) {
+            if (e.key === "Escape") {
+                this.closeMenu();
+            }
+        },
+
+        /**
+         * Copy the selected text from the menu.
+         * @returns {void}
+         */
+        menuCopy() {
+            const text = this.menuSelection;
+            this.closeMenu();
+            if (text) {
+                this.copyToClipboard(text);
+            }
+        },
+
+        /**
+         * Paste from the menu.
+         * @returns {Promise<void>}
+         */
+        async menuPaste() {
+            this.closeMenu();
+            await this.handlePaste();
+        },
+
+        /**
+         * Send text that the browser pasted. A page that is not on https has
+         * no clipboard object, so this event is the only way to paste there.
+         * @param {ClipboardEvent} e the paste event
+         * @returns {void}
+         */
+        handleNativePaste(e) {
+            if (!this.canInput) {
+                return;
+            }
+            const text = e.clipboardData?.getData("text");
+            if (text) {
+                e.preventDefault();
+                this.pasteText(text);
             }
         },
 
@@ -395,15 +514,36 @@ export default {
         },
 
         /**
-         * Copy text to clipboard
+         * Copy text to the clipboard.
+         *
+         * A page that is not on https has no navigator.clipboard. The old
+         * execCommand still works there, so use it as a second choice.
+         * @param {string} text the text to copy
+         * @returns {Promise<void>}
          */
         async copyToClipboard(text) {
+            if (navigator.clipboard?.writeText) {
+                try {
+                    await navigator.clipboard.writeText(text);
+                    return;
+                } catch (error) {
+                    console.error("Failed to copy to clipboard:", error);
+                }
+            }
+
+            const box = document.createElement("textarea");
+            box.value = text;
+            box.setAttribute("readonly", "");
+            box.style.position = "fixed";
+            box.style.opacity = "0";
+            document.body.appendChild(box);
+            box.select();
             try {
-                await navigator.clipboard.writeText(text);
-                console.debug("Text copied to clipboard:", text);
+                document.execCommand("copy");
             } catch (error) {
                 console.error("Failed to copy to clipboard:", error);
             }
+            document.body.removeChild(box);
         },
     }
 };
@@ -416,6 +556,37 @@ export default {
 
 .main-terminal {
     height: 100%;
+}
+
+// Fixed, so a terminal inside a box that scrolls cannot cut the menu off
+.term-menu {
+    position: fixed;
+    z-index: 1080;
+    min-width: 140px;
+    padding: 0.25rem 0;
+    background-color: var(--bs-body-bg);
+    border: 1px solid var(--bs-border-color);
+    border-radius: var(--bs-border-radius);
+    box-shadow: 0 0.5rem 1rem rgb(0 0 0 / 18%);
+}
+
+.term-menu-item {
+    display: block;
+    width: 100%;
+    padding: 0.3rem 0.9rem;
+    border: 0;
+    background: transparent;
+    text-align: left;
+    font-size: 13px;
+    color: var(--bs-body-color);
+
+    &:hover:not(:disabled) {
+        background-color: var(--bs-tertiary-bg);
+    }
+
+    &:disabled {
+        color: var(--bs-secondary-color);
+    }
 }
 </style>
 
