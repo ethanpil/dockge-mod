@@ -6,6 +6,12 @@ The base is dockge commit [f809ae1](https://github.com/louislam/dockge/commit/f8
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). This project has no releases, so each entry is a commit. The newest entry comes first. A commit that changes only this file or the project rules has no entry.
 
+## [3c27d54](../../commit/3c27d54) - 2026-08-07
+
+### Added
+
+- Drag handles below the compose panels, the logs panel, and the editors in edit mode. A drag changes the height of the panel. A double click gives the default height back. The heights are not saved.
+
 ## [45bb0f5](../../commit/45bb0f5) - 2026-08-07
 
 ### Added
