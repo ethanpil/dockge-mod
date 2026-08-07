@@ -86,6 +86,9 @@ export default {
                 globalEnv: {
                     title: this.$t("GlobalEnv"),
                 },
+                composeOverride: {
+                    title: this.$t("composeOverrideTemplate"),
+                },
                 about: {
                     title: this.$t("About"),
                 },

@@ -20,6 +20,7 @@ import jwt from "jsonwebtoken";
 import { Settings } from "../settings";
 import fs, { promises as fsAsync } from "fs";
 import path from "path";
+import { composeOverrideTemplateFileName, defaultComposeOverrideTemplate } from "../../common/util-common";
 
 export class MainSocketHandler extends SocketHandler {
     create(socket : DockgeSocket, server : DockgeServer) {
@@ -250,6 +251,13 @@ export class MainSocketHandler extends SocketHandler {
                     data.globalENV = "# VARIABLE=value #comment";
                 }
 
+                const overrideTemplatePath = path.join(server.config.dataDir, composeOverrideTemplateFileName);
+                if (fs.existsSync(overrideTemplatePath)) {
+                    data.composeOverrideTemplate = fs.readFileSync(overrideTemplatePath, "utf-8");
+                } else {
+                    data.composeOverrideTemplate = defaultComposeOverrideTemplate;
+                }
+
                 callback({
                     ok: true,
                     data: data,
@@ -288,6 +296,20 @@ export class MainSocketHandler extends SocketHandler {
                     });
                 }
                 delete data.globalENV;
+
+                // Handle the template of the override file. The default needs
+                // no file, thus the file goes away when the text is the same.
+                const overrideTemplatePath = path.join(server.config.dataDir, composeOverrideTemplateFileName);
+                if (typeof data.composeOverrideTemplate === "string") {
+                    if (data.composeOverrideTemplate.trim() !== "" && data.composeOverrideTemplate !== defaultComposeOverrideTemplate) {
+                        await fsAsync.writeFile(overrideTemplatePath, data.composeOverrideTemplate);
+                    } else {
+                        await fsAsync.rm(overrideTemplatePath, {
+                            force: true
+                        });
+                    }
+                }
+                delete data.composeOverrideTemplate;
 
                 await Settings.setSettings("general", data);
 

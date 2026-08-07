@@ -127,6 +127,22 @@ export const acceptedComposeOverrideFileNames = [
 ];
 
 /**
+ * The file in the data directory that holds the template of a new override
+ * file. The settings page writes it.
+ */
+export const composeOverrideTemplateFileName = "compose.override.template.yaml";
+
+/**
+ * The content of a new override file, when the settings hold no other text.
+ * An empty services map is necessary, because docker refuses a compose file
+ * that holds no data.
+ */
+export const defaultComposeOverrideTemplate = `# This file merges with the compose file of the stack.
+# Put your changes here. An update of the base file keeps them.
+services: {}
+`;
+
+/**
  * Make the name of a new override file from the name of the base file.
  * Docker accepts each of the accepted names, but a name that agrees with
  * the base file is more clear to the user.

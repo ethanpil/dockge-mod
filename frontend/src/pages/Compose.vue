@@ -513,7 +513,8 @@ import {
     getComposeTerminalName,
     parseDockerPort,
     PROGRESS_TERMINAL_ROWS,
-    RUNNING
+    RUNNING,
+    defaultComposeOverrideTemplate
 } from "../../../common/util-common";
 import { formatPorts, formatUptime } from "../util-frontend";
 import NetworkInput from "../components/NetworkInput.vue";
@@ -1629,7 +1630,13 @@ export default {
                 this.discardedOverride = null;
                 return;
             }
-            this.stack.composeOverrideYAML = "# This file merges with " + this.stack.composeFileName + ".\n# Put your changes here. An update of the base file keeps them.\nservices: {}\n";
+
+            // The settings page holds the template. A server that does not
+            // send one, or an error, gives the default text.
+            this.$root.getSocket().emit("getSettings", (res) => {
+                const template = res?.ok ? res.data?.composeOverrideTemplate : null;
+                this.stack.composeOverrideYAML = template || defaultComposeOverrideTemplate;
+            });
         },
 
         /**
