@@ -168,8 +168,7 @@
                                         <th class="c-img">{{ $t("dockerImage") }}</th>
                                         <th class="c-state">{{ $t("state") }}</th>
                                         <th class="c-up">{{ $t("uptime") }}</th>
-                                        <th class="c-ip">{{ $t("ip") }}</th>
-                                        <th class="c-ports">{{ $tc("port", 2) }}</th>
+                                        <th class="c-addr">{{ $t("ip") }} / {{ $tc("port", 2) }}</th>
                                         <th class="c-num">{{ $t("CPU") }}</th>
                                         <th class="c-num">{{ $t("memory") }}</th>
                                         <th class="c-num c-net">{{ $t("networkIO") }}</th>
@@ -186,24 +185,35 @@
                                         <td class="c-img cell-muted">{{ imageOf(row.service) }}</td>
                                         <td class="c-state"><span class="badge state-badge" :class="stateBadgeClass(row.status)">{{ row.status }}</span></td>
                                         <td class="c-up mono">{{ row.uptime ?? "—" }}</td>
-                                        <td class="c-ip mono">{{ row.ip || "—" }}</td>
-                                        <td class="c-ports mono cell-muted">
-                                            <template v-if="row.ports">
-                                                <a
-                                                    v-for="link in portLinks(row.ports)"
-                                                    :key="link.text"
-                                                    :href="link.url"
-                                                    target="_blank"
-                                                    rel="noopener"
-                                                    class="port-link"
-                                                >{{ link.text }}</a>
+                                        <td class="c-addr mono">
+                                            <div v-if="row.ip">{{ row.ip }}</div>
+                                            <div v-for="link in row.portLinks" :key="link.text" class="cell-muted">
+                                                <a :href="link.url" target="_blank" rel="noopener" class="port-link">{{ link.text }}</a>
+                                            </div>
+                                            <template v-if="!row.ip && row.portLinks.length === 0">—</template>
+                                        </td>
+                                        <td class="c-num mono">{{ row.stat?.CPUPerc ?? "—" }}</td>
+                                        <td class="c-num mono" :title="memoryTitleOf(row.stat)">
+                                            <template v-if="row.memUsed">
+                                                <div>{{ row.memUsed }}</div>
+                                                <div v-if="row.memPerc" class="cell-muted">{{ row.memPerc }}</div>
                                             </template>
                                             <template v-else>—</template>
                                         </td>
-                                        <td class="c-num mono">{{ row.stat?.CPUPerc ?? "—" }}</td>
-                                        <td class="c-num mono" :title="memoryTitleOf(row.stat)">{{ memoryOf(row.stat) }}</td>
-                                        <td class="c-num c-net mono cell-muted">{{ row.stat?.NetIO ?? "—" }}</td>
-                                        <td class="c-num c-blk mono cell-muted">{{ row.stat?.BlockIO ?? "—" }}</td>
+                                        <td class="c-num c-net mono cell-muted">
+                                            <template v-if="row.net">
+                                                <div><span class="io-k">I</span>{{ row.net.in }}</div>
+                                                <div><span class="io-k">O</span>{{ row.net.out }}</div>
+                                            </template>
+                                            <template v-else>—</template>
+                                        </td>
+                                        <td class="c-num c-blk mono cell-muted">
+                                            <template v-if="row.blk">
+                                                <div><span class="io-k">I</span>{{ row.blk.in }}</div>
+                                                <div><span class="io-k">O</span>{{ row.blk.out }}</div>
+                                            </template>
+                                            <template v-else>—</template>
+                                        </td>
                                         <td class="c-act">
                                             <!-- Actions are service-scoped (docker compose has no per-replica
                                              stop), so they render once per service, on its first row. -->
@@ -248,15 +258,10 @@
                                     <span class="k">{{ $t("uptime") }}</span><span class="mono">{{ row.uptime ?? "—" }}</span>
                                     <span class="k">{{ $t("ip") }}</span><span class="mono">{{ row.ip || "—" }}</span>
                                     <span class="k">{{ $tc("port", 2) }}</span><span class="mono">
-                                        <template v-if="row.ports">
-                                            <a
-                                                v-for="link in portLinks(row.ports)"
-                                                :key="link.text"
-                                                :href="link.url"
-                                                target="_blank"
-                                                rel="noopener"
-                                                class="port-link"
-                                            >{{ link.text }}</a>
+                                        <template v-if="row.portLinks.length">
+                                            <div v-for="link in row.portLinks" :key="link.text">
+                                                <a :href="link.url" target="_blank" rel="noopener" class="port-link">{{ link.text }}</a>
+                                            </div>
                                         </template>
                                         <template v-else>—</template>
                                     </span>
@@ -657,6 +662,8 @@ export default {
                 const instances = this.serviceStatusList[service];
                 if (Array.isArray(instances) && instances.length > 0) {
                     for (const [ i, instance ] of instances.entries()) {
+                        const stat = this.dockerStats?.[instance.name] ?? null;
+                        const ports = formatPorts(instance.ports);
                         rows.push({
                             key: `${service}#${i}`,
                             service,
@@ -668,8 +675,13 @@ export default {
                             color: this.rowColor(instance.status),
                             uptime: formatUptime(instance.uptime),
                             ip: instance.ip ?? "",
-                            ports: formatPorts(instance.ports),
-                            stat: this.dockerStats?.[instance.name] ?? null,
+                            ports,
+                            portLinks: this.portLinks(ports),
+                            stat,
+                            memUsed: stat?.MemUsage ? stat.MemUsage.split(" /")[0] : "",
+                            memPerc: stat?.MemPerc ?? "",
+                            net: this.splitIO(stat?.NetIO),
+                            blk: this.splitIO(stat?.BlockIO),
                         });
                     }
                 } else {
@@ -684,7 +696,12 @@ export default {
                         uptime: null,
                         ip: "",
                         ports: "",
+                        portLinks: [],
                         stat: null,
+                        memUsed: "",
+                        memPerc: "",
+                        net: null,
+                        blk: null,
                     });
                 }
             }
@@ -905,19 +922,6 @@ export default {
         },
 
         /**
-         * Memory cell: usage plus percentage, for example "2.77MiB (0.07%)".
-         * @param {object|null} stat docker stats entry
-         * @returns {string} formatted memory usage
-         */
-        memoryOf(stat) {
-            if (!stat?.MemUsage) {
-                return "—";
-            }
-            const used = stat.MemUsage.split(" /")[0];
-            return stat.MemPerc ? `${used} (${stat.MemPerc})` : used;
-        },
-
-        /**
          * Full memory usage for the cell tooltip. The cell has no room for
          * the limit, but the limit is what makes the percentage meaningful.
          * @param {object|null} stat docker stats entry
@@ -925,6 +929,23 @@ export default {
          */
         memoryTitleOf(stat) {
             return stat?.MemUsage ?? "";
+        },
+
+        /**
+         * Divide a docker "in / out" value into its two parts, so the cell
+         * can show them on two lines and stay narrow.
+         * @param {string|undefined} value for example "2.4kB / 126B"
+         * @returns {object|null} the in and out parts, or null when no value
+         */
+        splitIO(value) {
+            if (!value) {
+                return null;
+            }
+            const parts = value.split("/").map((part) => part.trim());
+            return {
+                in: parts[0] || "—",
+                out: parts[1] || "—",
+            };
         },
 
         /**
@@ -1671,9 +1692,25 @@ export default {
     // Cells that must never wrap
     .c-svc,
     .c-up,
+    .c-addr,
     .c-act {
         white-space: nowrap;
     }
+
+    // Stacked cells: two short lines are narrower than one long line
+    .c-num div,
+    .c-addr div {
+        line-height: 1.25;
+    }
+}
+
+// Marks the in line and the out line of a two line I/O cell
+.io-k {
+    display: inline-block;
+    min-width: 1.1em;
+    margin-right: 0.15rem;
+    color: var(--bs-secondary-color);
+    font-size: 0.85em;
 }
 
 // A narrow window scrolls the table sideways. To hide the columns instead
@@ -1689,11 +1726,6 @@ export default {
     &:hover {
         color: var(--bs-link-color);
         text-decoration: underline;
-    }
-
-    + .port-link::before {
-        content: ", ";
-        color: var(--bs-secondary-color);
     }
 }
 
