@@ -1,0 +1,115 @@
+<template>
+    <div>
+        <div class="my-3">
+            <p class="note">{{ $t("dockgeHealthNote") }}</p>
+
+            <div v-if="!loaded" class="my-3">
+                <font-awesome-icon icon="spinner" spin />
+            </div>
+
+            <div v-else class="health-list">
+                <div v-for="item in health" :key="item.key" class="health-item">
+                    <font-awesome-icon
+                        :icon="item.ok ? 'check-circle' : 'times-circle'"
+                        :class="item.ok ? 'text-success' : 'text-danger'"
+                    />
+                    <div class="health-text">
+                        <div class="health-name">{{ labelOf(item.key) }}</div>
+                        <div class="health-info">{{ item.info }}</div>
+                    </div>
+                </div>
+            </div>
+
+            <button class="btn btn-normal mt-3" type="button" :disabled="!loaded" @click="load">
+                <font-awesome-icon icon="rotate" class="me-1" />
+                {{ $t("refresh") }}
+            </button>
+        </div>
+    </div>
+</template>
+
+<script>
+import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
+
+export default {
+    name: "Health",
+    components: {
+        FontAwesomeIcon,
+    },
+
+    data() {
+        return {
+            loaded: false,
+            health: [],
+        };
+    },
+
+    mounted() {
+        this.load();
+    },
+
+    methods: {
+        /**
+         * Get the health report from the server.
+         * @returns {void}
+         */
+        load() {
+            this.loaded = false;
+            this.$root.getSocket().emit("getDockgeHealth", (res) => {
+                this.loaded = true;
+                if (res.ok) {
+                    this.health = res.health;
+                } else {
+                    this.$root.toastRes(res);
+                }
+            });
+        },
+
+        /**
+         * The display name of a check. An unknown key shows as itself, so a
+         * new check on the server still gets a line.
+         * @param {string} key key of the check
+         * @returns {string} display name
+         */
+        labelOf(key) {
+            const labels = {
+                docker: this.$t("healthDocker"),
+                dockerCompose: this.$t("healthDockerCompose"),
+                git: this.$t("healthGit"),
+                stacksDir: this.$t("healthStacksDir"),
+                dataDir: this.$t("healthDataDir"),
+            };
+            return labels[key] ?? key;
+        },
+    },
+};
+</script>
+
+<style scoped>
+.note {
+    font-size: 0.9em;
+    color: var(--bs-secondary-color);
+}
+
+.health-item {
+    display: flex;
+    align-items: baseline;
+    gap: 0.6rem;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--bs-border-color);
+}
+
+.health-item:last-child {
+    border-bottom: 0;
+}
+
+.health-name {
+    font-weight: 600;
+}
+
+.health-info {
+    font-size: 0.85em;
+    color: var(--bs-secondary-color);
+    overflow-wrap: anywhere;
+}
+</style>

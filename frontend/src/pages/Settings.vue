@@ -89,6 +89,9 @@ export default {
                 composeOverride: {
                     title: this.$t("composeOverrideTemplate"),
                 },
+                health: {
+                    title: this.$t("dockgeHealth"),
+                },
                 about: {
                     title: this.$t("About"),
                 },

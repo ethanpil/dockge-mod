@@ -20,7 +20,69 @@ import jwt from "jsonwebtoken";
 import { Settings } from "../settings";
 import fs, { promises as fsAsync } from "fs";
 import path from "path";
+import childProcessAsync from "promisify-child-process";
 import { composeOverrideTemplateFileName, defaultComposeOverrideTemplate } from "../../common/util-common";
+
+/**
+ * One item of the health report. `ok` says if the check passed. `info`
+ * holds the version of a tool, or the reason of a failure.
+ */
+interface HealthItem {
+    key : string;
+    ok : boolean;
+    info : string;
+}
+
+/**
+ * Run a tool with a version argument and make a health item from the first
+ * line of its output.
+ * @param key Name of the check in the report
+ * @param file The program to run
+ * @param args The arguments of the program
+ * @returns The health item
+ */
+async function checkTool(key : string, file : string, args : string[]) : Promise<HealthItem> {
+    try {
+        const res = await childProcessAsync.spawn(file, args, {
+            encoding: "utf-8",
+        });
+        const firstLine = (res.stdout?.toString() ?? "").trim().split("\n")[0];
+        return {
+            key,
+            ok: true,
+            info: firstLine,
+        };
+    } catch (e) {
+        return {
+            key,
+            ok: false,
+            info: e instanceof Error ? e.message : String(e),
+        };
+    }
+}
+
+/**
+ * Make a health item that says if the server can write in a directory.
+ * @param key Name of the check in the report
+ * @param dir The directory to examine
+ * @returns The health item
+ */
+async function checkWritableDir(key : string, dir : string) : Promise<HealthItem> {
+    try {
+        await fsAsync.access(dir, fs.constants.W_OK);
+        return {
+            key,
+            ok: true,
+            info: path.resolve(dir),
+        };
+    } catch (e) {
+        return {
+            key,
+            ok: false,
+            info: e instanceof Error ? e.message : String(e),
+        };
+    }
+}
 
 export class MainSocketHandler extends SocketHandler {
     create(socket : DockgeSocket, server : DockgeServer) {
@@ -339,6 +401,30 @@ export class MainSocketHandler extends SocketHandler {
                 if (e instanceof Error) {
                     log.warn("disconnectOtherSocketClients", e.message);
                 }
+            }
+        });
+
+        // Health report for the settings page. The checks examine the tools
+        // that the features of this application need. This event only adds a
+        // function to the socket API.
+        socket.on("getDockgeHealth", async (callback) => {
+            try {
+                checkLogin(socket);
+
+                const health : HealthItem[] = await Promise.all([
+                    checkTool("docker", "docker", [ "--version" ]),
+                    checkTool("dockerCompose", "docker", [ "compose", "version" ]),
+                    checkTool("git", "git", [ "--version" ]),
+                    checkWritableDir("stacksDir", server.stacksDir),
+                    checkWritableDir("dataDir", server.config.dataDir),
+                ]);
+
+                callback({
+                    ok: true,
+                    health,
+                });
+            } catch (e) {
+                callbackError(e, callback);
             }
         });
 

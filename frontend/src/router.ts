@@ -16,6 +16,7 @@ import General from "./components/settings/General.vue";
 const Security = () => import("./components/settings/Security.vue");
 const GlobalEnv = () => import("./components/settings/GlobalEnv.vue");
 const ComposeOverride = () => import("./components/settings/ComposeOverride.vue");
+const Health = () => import("./components/settings/Health.vue");
 import About from "./components/settings/About.vue";
 
 const routes = [
@@ -87,6 +88,10 @@ const routes = [
                             {
                                 path: "composeOverride",
                                 component: ComposeOverride,
+                            },
+                            {
+                                path: "health",
+                                component: Health,
                             },
                             {
                                 path: "about",

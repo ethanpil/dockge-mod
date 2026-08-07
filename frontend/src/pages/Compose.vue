@@ -11,6 +11,11 @@
                     <span v-if="$root.agentCount > 1 && endpoint !== ''" class="agent-name">
                         ({{ endpointDisplay }})
                     </span>
+                    <!-- Git state of the stack directory. Only a stack from
+                         an agent with git support carries this data. -->
+                    <span v-if="gitInfo" class="git-badge" :title="gitInfo.isDirty ? $t('gitDirtyMsg') : ''">
+                        <font-awesome-icon icon="code-branch" class="me-1" />{{ gitInfo.branch }}<template v-if="gitInfo.isDirty"> &#9679;</template>
+                    </span>
                     <span v-if="!isEditMode && serviceCount > 0" class="panel-note d-none d-sm-inline">{{ serviceCount }} {{ $tc("container", serviceCount).toLowerCase() }}</span>
                 </template>
 
@@ -50,6 +55,11 @@
                         <button v-if="!isEditMode" class="btn btn-normal" :disabled="processing" @click="updateStack">
                             <font-awesome-icon icon="cloud-arrow-down" class="me-1" />
                             {{ $t("updateStack") }}
+                        </button>
+
+                        <button v-if="!isEditMode && gitInfo" class="btn btn-normal" :disabled="processing" @click="gitPullStack">
+                            <font-awesome-icon icon="code-branch" class="me-1" />
+                            {{ $t("gitPullRedeploy") }}
                         </button>
 
                         <button v-if="!isEditMode && active" class="btn btn-normal" :disabled="processing" @click="stopStack">
@@ -711,6 +721,16 @@ export default {
 
         overrideFileName() {
             return this.stack.composeOverrideFileName;
+        },
+
+        /**
+         * The git state of the stack directory, or null. A stack from an
+         * agent without git support has no gitInfo field, thus the badge and
+         * the pull button stay hidden for it.
+         * @return {object|null}
+         */
+        gitInfo() {
+            return this.stack.gitInfo ?? null;
         },
 
         /**
@@ -1454,6 +1474,25 @@ export default {
             });
         },
 
+        /**
+         * Pull the git checkout of the stack, then deploy it. The output of
+         * git goes to the progress terminal. After a good pull the page
+         * loads the stack again, because the files and the git state changed.
+         * @returns {void}
+         */
+        gitPullStack() {
+            this.processing = true;
+
+            this.$root.emitAgent(this.endpoint, "gitPullStack", this.stack.name, (res) => {
+                this.processing = false;
+                this.$root.toastRes(res);
+
+                if (res.ok) {
+                    this.loadStack();
+                }
+            });
+        },
+
         deleteDialog() {
             this.$root.emitAgent(this.endpoint, "deleteStack", this.stack.name, (res) => {
                 this.$root.toastRes(res);
@@ -1731,6 +1770,17 @@ export default {
 .agent-name {
     font-size: 13px;
     color: var(--bs-secondary-color);
+}
+
+/* Branch and dirty mark of a stack that is a git checkout */
+.git-badge {
+    font-size: 12px;
+    color: var(--bs-secondary-color);
+    border: 1px solid var(--bs-border-color);
+    border-radius: 4px;
+    padding: 0.05rem 0.4rem;
+    white-space: nowrap;
+    flex: 0 0 auto;
 }
 
 /* ---------- compact title + toolbar row ---------- */

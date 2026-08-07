@@ -179,5 +179,15 @@
     "saveAndLeave": "Save and leave",
     "envAbbrev": "env",
     "deleteContainerMsg": "Are you sure you want to delete the container {0}?",
-    "saveTimeout": "The server did not answer. The stack is not saved."
+    "saveTimeout": "The server did not answer. The stack is not saved.",
+    "gitPullRedeploy": "Pull & Redeploy",
+    "gitDirtyMsg": "The checkout has changes that are not committed.",
+    "dockgeHealth": "Health",
+    "dockgeHealthNote": "These checks examine the tools that this application needs on the server.",
+    "refresh": "Refresh",
+    "healthDocker": "Docker",
+    "healthDockerCompose": "Docker Compose",
+    "healthGit": "Git",
+    "healthStacksDir": "Stacks directory is writable",
+    "healthDataDir": "Data directory is writable"
 }

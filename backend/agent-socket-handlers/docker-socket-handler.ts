@@ -221,6 +221,37 @@ export class DockerSocketHandler extends AgentSocketHandler {
             }
         });
 
+        // Pull the git checkout of a stack, then deploy it. This event only
+        // adds a function. The frontend shows the button only when the stack
+        // object holds git data, thus an old agent never gets this event.
+        agentSocket.on("gitPullStack", async (stackName : unknown, callback) => {
+            try {
+                checkLogin(socket);
+
+                if (typeof(stackName) !== "string") {
+                    throw new ValidationError("Stack name must be a string");
+                }
+
+                const stack = await Stack.getStack(server, stackName);
+
+                if (!stack.isGitRepo) {
+                    throw new ValidationError("The stack directory is not a git checkout");
+                }
+
+                await stack.gitPull(socket);
+                await stack.deploy(socket);
+                server.sendStackList();
+                callbackResult({
+                    ok: true,
+                    msg: "Deployed",
+                    msgi18n: true,
+                }, callback);
+                stack.joinCombinedTerminal(socket);
+            } catch (e) {
+                callbackError(e, callback);
+            }
+        });
+
         // down stack
         agentSocket.on("downStack", async (stackName : unknown, callback) => {
             try {

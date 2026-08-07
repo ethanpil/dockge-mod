@@ -58,6 +58,60 @@ export class Stack {
         }
     }
 
+    /**
+     * True when the stack directory is a git checkout. The .git entry can be
+     * a directory, or a file for a worktree or a submodule.
+     */
+    get isGitRepo() : boolean {
+        return fs.existsSync(path.join(this.path, ".git"));
+    }
+
+    /**
+     * The git state of the stack directory: the branch, and a flag that
+     * shows work that is not committed. The result is null when the
+     * directory is not a git checkout, or when git gives an error, for
+     * example when git is not installed. The stack object then looks the
+     * same as one from an agent without git support.
+     */
+    async getGitInfo() : Promise<{ branch : string, isDirty : boolean } | null> {
+        if (!this.isGitRepo) {
+            return null;
+        }
+
+        try {
+            const branchRes = await childProcessAsync.spawn("git", [ "rev-parse", "--abbrev-ref", "HEAD" ], {
+                cwd: this.path,
+                encoding: "utf-8",
+            });
+
+            const statusRes = await childProcessAsync.spawn("git", [ "status", "--porcelain" ], {
+                cwd: this.path,
+                encoding: "utf-8",
+            });
+
+            return {
+                branch: (branchRes.stdout?.toString() ?? "").trim(),
+                isDirty: (statusRes.stdout?.toString() ?? "").trim() !== "",
+            };
+        } catch (e) {
+            log.debug("getGitInfo", "git failed for stack " + this.name + ": " + (e instanceof Error ? e.message : String(e)));
+            return null;
+        }
+    }
+
+    /**
+     * Run `git pull` in the stack directory. The output goes to the compose
+     * terminal of the stack, so the user can read it on the stack page.
+     */
+    async gitPull(socket : DockgeSocket) : Promise<number> {
+        const terminalName = getComposeTerminalName(socket.endpoint, this.name);
+        const exitCode = await Terminal.exec(this.server, socket, terminalName, "git", [ "pull" ], this.path);
+        if (exitCode !== 0) {
+            throw new Error("Failed to pull, please check the terminal output for more information.");
+        }
+        return exitCode;
+    }
+
     async toJSON(endpoint : string) : Promise<object> {
 
         // Since we have multiple agents now, embed primary hostname in the stack object too.
@@ -83,6 +137,7 @@ export class Stack {
             composeENV: this.composeENV,
             composeOverrideYAML: this.composeOverrideYAML,
             composeOverrideFileName: this.composeOverrideFileName,
+            gitInfo: await this.getGitInfo(),
             primaryHostname,
         };
     }
