@@ -129,12 +129,11 @@ export class Stack {
         // Check YAML format
         yaml.parse(this.composeYAML);
 
-        // Check the override YAML only when this save carries content for it
+        // Check the format of the override YAML only when this save carries
+        // content for it. A file that holds only comments is correct, because
+        // docker accepts it.
         if (this.hasOverrideContent()) {
-            const parsed = yaml.parse(this._composeOverrideYAML as string);
-            if (parsed === null) {
-                throw new ValidationError("The override file needs content. Remove the file to disable it.");
-            }
+            yaml.parse(this._composeOverrideYAML as string);
         }
 
         let lines = this.composeENV.split("\n");

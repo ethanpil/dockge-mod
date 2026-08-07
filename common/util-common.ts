@@ -134,12 +134,18 @@ export const composeOverrideTemplateFileName = "compose.override.template.yaml";
 
 /**
  * The content of a new override file, when the settings hold no other text.
- * An empty services map is necessary, because docker refuses a compose file
- * that holds no data.
+ * Docker accepts a file that holds only comments, thus the template needs no
+ * empty map.
  */
 export const defaultComposeOverrideTemplate = `# This file merges with the compose file of the stack.
 # Put your changes here. An update of the base file keeps them.
-services: {}
+#
+# Example:
+#
+# services:
+#   web:
+#     environment:
+#       - EXAMPLE=1
 `;
 
 /**
