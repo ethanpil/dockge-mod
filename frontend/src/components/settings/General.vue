@@ -67,10 +67,10 @@
                     v-model.number="settings.pollInterval"
                     type="number"
                     class="form-control"
-                    min="2"
-                    max="3600"
+                    :min="pollIntervalMin"
+                    :max="pollIntervalMax"
                     step="1"
-                    placeholder="5"
+                    :placeholder="String(pollIntervalDefault)"
                 />
                 <div class="form-text">{{ $t("pollIntervalNote") }}</div>
             </div>
@@ -89,6 +89,7 @@
 
 import dayjs from "dayjs";
 import { timezoneList } from "../../util-frontend";
+import { POLL_INTERVAL_DEFAULT, POLL_INTERVAL_MAX, POLL_INTERVAL_MIN } from "../../../../common/util-common";
 
 export default {
     components: {
@@ -98,6 +99,9 @@ export default {
     data() {
         return {
             timezoneList: timezoneList(),
+            pollIntervalMin: POLL_INTERVAL_MIN,
+            pollIntervalMax: POLL_INTERVAL_MAX,
+            pollIntervalDefault: POLL_INTERVAL_DEFAULT,
         };
     },
 

@@ -572,7 +572,10 @@ import {
     parseDockerPort,
     PROGRESS_TERMINAL_ROWS,
     RUNNING,
-    defaultComposeOverrideTemplate
+    defaultComposeOverrideTemplate,
+    POLL_INTERVAL_DEFAULT,
+    POLL_INTERVAL_MAX,
+    POLL_INTERVAL_MIN
 } from "../../../common/util-common";
 import { formatPorts, formatUptime } from "../util-frontend";
 import NetworkInput from "../components/NetworkInput.vue";
@@ -830,16 +833,17 @@ export default {
 
         /**
          * Milliseconds between two status polls. The seconds come from the
-         * settings, over the info event. A value outside the limits gives
-         * the default of 5 seconds, which is also the value of dockge.
+         * settings, through the info event. A value outside the limits
+         * gives the default of 5 seconds. This is the same value as
+         * dockge uses.
          * @return {number}
          */
         pollIntervalMs() {
             const seconds = Number(this.$root.info.pollInterval);
-            if (Number.isFinite(seconds) && seconds >= 2 && seconds <= 3600) {
+            if (Number.isFinite(seconds) && seconds >= POLL_INTERVAL_MIN && seconds <= POLL_INTERVAL_MAX) {
                 return seconds * 1000;
             }
-            return 5000;
+            return POLL_INTERVAL_DEFAULT * 1000;
         },
 
         /**
@@ -965,6 +969,19 @@ export default {
                 }
             },
             deep: true,
+        },
+
+        /**
+         * A new interval applies to the timers that already run. Without
+         * this, a pending timer serves one more cycle with the old time.
+         */
+        pollIntervalMs() {
+            if (!this.stopServiceStatusTimeout) {
+                this.startServiceStatusTimeout();
+            }
+            if (!this.stopDockerStatsTimeout) {
+                this.startDockerStatsTimeout();
+            }
         },
 
         jsonConfig: {

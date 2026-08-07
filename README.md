@@ -220,6 +220,8 @@ The `.git` entry is not visible in the Dockge interface, and Dockge does not tou
 
 An open stack page asks the server for container status and statistics every 5 seconds. Each poll runs docker commands on the server. Set a different time under **Settings** > **General** > **Poll interval**. A larger value decreases the load on a slow host.
 
+The setting comes from the server whose interface is open. The stacks of an agent also get this interval, not the interval of the agent.
+
 ### Examine the Health of the Server
 
 The **Health** page under **Settings** shows if the tools that dockge-mod needs are on the server: Docker, Docker Compose, and Git. It also shows if the server can write in the stacks directory and the data directory.

@@ -22,7 +22,7 @@ import { Settings } from "../settings";
 import fs, { promises as fsAsync } from "fs";
 import path from "path";
 import childProcessAsync from "promisify-child-process";
-import { composeOverrideTemplateFileName, defaultComposeOverrideTemplate } from "../../common/util-common";
+import { composeOverrideTemplateFileName, defaultComposeOverrideTemplate, POLL_INTERVAL_DEFAULT, POLL_INTERVAL_MAX, POLL_INTERVAL_MIN } from "../../common/util-common";
 
 /**
  * One item of the health report. `ok` says if the check passed. `info`
@@ -378,6 +378,18 @@ export class MainSocketHandler extends SocketHandler {
                 }
                 delete data.composeOverrideTemplate;
 
+                // Keep the stored poll interval in its limits. The form
+                // limits are only in the browser, and a different client
+                // can send any value.
+                if ("pollInterval" in data) {
+                    const n = Number(data.pollInterval);
+                    if (Number.isFinite(n)) {
+                        data.pollInterval = Math.min(POLL_INTERVAL_MAX, Math.max(POLL_INTERVAL_MIN, Math.round(n)));
+                    } else {
+                        data.pollInterval = POLL_INTERVAL_DEFAULT;
+                    }
+                }
+
                 await Settings.setSettings("general", data);
 
                 callback({
@@ -385,7 +397,9 @@ export class MainSocketHandler extends SocketHandler {
                     msg: "Saved"
                 });
 
-                server.sendInfo(socket);
+                // Each client with a login gets the new values, not only
+                // the client that saved
+                server.sendInfoToAllClients();
 
             } catch (e) {
                 if (e instanceof Error) {

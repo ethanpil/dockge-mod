@@ -18,7 +18,7 @@ import { SocketHandler } from "./socket-handler";
 import { Settings } from "./settings";
 import dayjs from "dayjs";
 import { R } from "redbean-node";
-import { genSecret, isDev, LooseObject } from "../common/util-common";
+import { genSecret, isDev, LooseObject, POLL_INTERVAL_DEFAULT } from "../common/util-common";
 import { generatePasswordHash } from "./password-hash";
 import { Bean } from "redbean-node/dist/bean";
 import { Arguments, Config, DockgeSocket } from "./util-server";
@@ -442,12 +442,26 @@ export class DockgeServer {
             version: versionProperty,
             isContainer,
             primaryHostname: await Settings.get("primaryHostname"),
-            // Seconds between the status polls of the interface. This
-            // field only adds data to the event.
-            pollInterval: await Settings.get("pollInterval") || 5,
+            // Seconds between the status polls of the interface. A client
+            // without this feature ignores the field. Only a client with a
+            // login gets the value.
+            pollInterval: hideVersion ? undefined : (await Settings.get("pollInterval") || POLL_INTERVAL_DEFAULT),
             //serverTimezone: await this.getTimezone(),
             //serverTimezoneOffset: this.getTimezoneOffset(),
         });
+    }
+
+    /**
+     * Send the info event to each client with a login. A settings save
+     * must reach the open pages of the other clients too.
+     */
+    async sendInfoToAllClients() {
+        for (const rawSocket of this.io.sockets.sockets.values()) {
+            const socket = rawSocket as DockgeSocket;
+            if (socket.userID) {
+                await this.sendInfo(socket);
+            }
+        }
     }
 
     /**
