@@ -6,6 +6,59 @@ The base is dockge commit [f809ae1](https://github.com/louislam/dockge/commit/f8
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). This project has no releases, so each entry is a commit. The newest entry comes first. A commit that changes only this file or the project rules has no entry.
 
+## [a8df589](../../commit/a8df589) - 2026-08-07
+
+### Added
+
+- A settings page that holds the template of a new override file. The stack page reads this text when the user makes an override file. The template is a file in the data directory, and it exists only when the text is different from the default.
+
+## [cf5e9cf](../../commit/cf5e9cf) - 2026-08-07
+
+### Removed
+
+- The comparison of the frontend version with the backend version on the About page. The two come from one image and one build, thus they cannot be different.
+
+## [967f91a](../../commit/967f91a) - 2026-08-07
+
+### Fixed
+
+- An empty networks key no longer goes in the compose file. The network panel wrote the key each time edit mode opened, thus a save put it in the file of a user who changed nothing.
+
+## [ea22fc0](../../commit/ea22fc0) - 2026-08-07
+
+### Fixed
+
+- The stack list hides the stack of the manager itself when its name is dockge-mod. Before, it looked only for the name dockge, and the README gives the directory /opt/dockge-mod.
+- The healthcheck reads DOCKGE_HOSTNAME. The server binds the address of that variable, thus a container stayed unhealthy when a user set it.
+
+### Changed
+
+- Three messages of the agent dialog say agent, not Dockge. An agent can be either program.
+
+### Removed
+
+- The @actions/github package, which the removed workflow used.
+
+## [0dbd0e7](../../commit/0dbd0e7) - 2026-08-07
+
+### Added
+
+- Each published image gets the version 1.5.0-mod-SHORTSHA, as a tag and in the interface. A user can now select a version and go back to an earlier image. Only the master branch moves the latest tag.
+- A CI job that builds the image. Before, only the publish workflow built it, and that workflow pushes.
+
+### Fixed
+
+- The interface reloads itself after an update. Before, each image gave the same version, thus an open page kept a request for a file that the new image does not hold.
+
+### Changed
+
+- The publish workflow has a concurrency group, and a cache error no longer fails a build that is already pushed. The tag and the platform inputs go away, because a wrong value could put a partial image on the latest tag.
+
+### Security
+
+- The CI workflow asks for the read permission only.
+- The healthcheck binary joins the ignore list of the build context, so a local build of it cannot take the place of the binary for the target architecture.
+
 ## [5dc0c7c](../../commit/5dc0c7c) - 2026-08-07
 
 ### Removed
@@ -42,43 +95,51 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Thi
 
 - The Dockerfile builds its base layer and its healthcheck binary from the source in this repository. Before, it took two images from the registry of the upstream project, and the build stopped if those images went away. The healthcheck compiles for the target architecture on the build platform, thus it does not run under emulation.
 
+### Removed
+
+- The npm scripts that push to the registry of the upstream project, with their helpers env2arg.js and test-docker.ts. The workflow of the repository now builds the image.
+
 ## [9261414](../../commit/9261414) - 2026-08-07
 
 ### Fixed
 
-- The CI workflow runs again. The checkout step had a run key and a uses key together, which is not a valid step, and the matrix named self-hosted runners that do not exist for this repository.
+- The CI workflow runs again. The checkout step had a run key and a uses key together, which is not a valid step.
+
+### Changed
+
+- CI runs on Ubuntu only. Before, the matrix also named Windows, macOS, and two self-hosted runners that do not exist for this repository. The workflow could not start, thus no system had a test.
 
 ## [e77eb25](../../commit/e77eb25) - 2026-08-07
 
 ### Removed
 
-- The automation and the community files of the upstream project: the nightly release, the issue automation, the file guard, the funding file, and the issue, discussion, and pull request templates.
+- The automation and the community files of the upstream project: the nightly release, the issue automation, the file guard, the JSON and YAML validation, the funding file, and the issue, discussion, and pull request templates.
 
-## [fb3b473](../../commit/fb3b473) - 2026-08-07
+## [fb3b473](../../commit/fb3b473) - 2026-08-06
 
 ### Changed
 
 - The README says that the fork adds new features, and not only interface changes. A new section tells how to go back to Dockge, and gives the two conditions that apply after that.
 
-## [ced7f7d](../../commit/ced7f7d) - 2026-08-07
+## [ced7f7d](../../commit/ced7f7d) - 2026-08-06
 
 ### Changed
 
 - The README gives the features and the use of the override file, and the names that dockge-mod examines.
 
-## [d4a5589](../../commit/d4a5589) - 2026-08-07
+## [d4a5589](../../commit/d4a5589) - 2026-08-06
 
 ### Fixed
 
 - A stack directory whose name starts with two dots opens again. The new path guard refused each such name, but a name such as ..foo stays in the stacks directory.
 
-## [a9a3f0a](../../commit/a9a3f0a) - 2026-08-07
+## [a9a3f0a](../../commit/a9a3f0a) - 2026-08-06
 
 ### Changed
 
 - The editors on the stack page use one set of properties, and the dirty test compares the full edit state. A new field in the edit state now gets a dirty mark without a second change.
 
-## [df54017](../../commit/df54017) - 2026-08-07
+## [df54017](../../commit/df54017) - 2026-08-06
 
 ### Fixed
 
@@ -88,13 +149,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Thi
 - The Create override button gives back the content of a file that the user deleted in the same session. Before, it put the template in the editor and the content went away.
 - Discard leaves edit mode after the stack arrives, so view mode does not show the content that the user discarded.
 
-## [312c5d9](../../commit/312c5d9) - 2026-08-07
+## [312c5d9](../../commit/312c5d9) - 2026-08-06
 
 ### Changed
 
 - The deployStack and the saveStack handlers use one helper for their arguments. The two copies of that block had to stay the same, or one event would accept the old clients and the other would not.
 
-## [d4f1ce9](../../commit/d4f1ce9) - 2026-08-07
+## [d4f1ce9](../../commit/d4f1ce9) - 2026-08-06
 
 ### Fixed
 
@@ -102,7 +163,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Thi
 - The save refuses a link or a directory that has the name of the override file. Such a file could look absent in the interface, and then go away in a subsequent save.
 - The search for the file name is lazy, so the stack list does not examine the disk for a name that it does not use.
 
-## [5f5a30d](../../commit/5f5a30d) - 2026-08-07
+## [5f5a30d](../../commit/5f5a30d) - 2026-08-06
 
 ### Security
 
