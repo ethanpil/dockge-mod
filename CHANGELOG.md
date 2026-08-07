@@ -6,6 +6,24 @@ The base is dockge commit [f809ae1](https://github.com/louislam/dockge/commit/f8
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). This project has no releases, so each entry is a commit. The newest entry comes first. A commit that changes only this file or the project rules has no entry.
 
+## [09b1471](../../commit/09b1471) - 2026-08-06
+
+### Added
+
+- An editor for the compose override file on the stack page. Edit mode shows the editor when the file exists, and a Create override button when it does not. Delete override, or an empty editor, removes the file on the next save. View mode shows the compose file and the override file side by side, and the logs fill the row below them.
+
+## [de484b4](../../commit/de484b4) - 2026-08-06
+
+### Added
+
+- Support for the compose override file, for example compose.override.yaml. Docker compose merges the override file with the base file, so changes to a stack from an upstream source survive an update of the base file. The saveStack and deployStack events accept the override content as a new fifth argument. An old client that does not send it keeps the old behavior.
+
+## [b7155bc](../../commit/b7155bc) - 2026-08-06
+
+### Fixed
+
+- The save writes the .env file again. Commit [46ce422](../../commit/46ce422) removed the write, so the editor showed the .env content but a save did not put it on the disk.
+
 ## [844328c](../../commit/844328c) - 2026-08-06
 
 ### Added
