@@ -42,6 +42,15 @@ The base is dockge commit [f809ae1](https://github.com/louislam/dockge/commit/f8
 - The status dot has a text label for screen readers.
 - The Escape key and the backdrop close the expanded panel in all conditions.
 
+### Interface work, August 2026
+
+- The logs panel and the compose file panel have an adjustable width. Drag the divider, or use its three buttons to hide one side or to give both the same width. ([835664f](../../commit/835664f))
+- A right click in any terminal opens a menu with Copy and Paste. Ctrl+V now works on a page that is not https, where the browser gives no clipboard object. ([5eb5559](../../commit/5eb5559))
+- The container terminal page has a Return to Stack button. ([66ade2f](../../commit/66ade2f))
+- The container table is narrower. Memory shows the percent on a second line, Network I/O and Block I/O show I and O on their own lines, and IP and Ports are one column. ([d3d0603](../../commit/d3d0603))
+- The Actions menu opens over the table. The table scrolls sideways, and the menu was cut off before. ([6176d4a](../../commit/6176d4a))
+- The long syntax message in the network list is translated. ([931ed8b](../../commit/931ed8b))
+
 ### Code review, August 2026
 
 - The unsaved-changes dialog no longer stops navigation with no message. The dialog stays on screen while the save runs. ([7fa5109](../../commit/7fa5109))
