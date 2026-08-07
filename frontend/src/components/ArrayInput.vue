@@ -112,7 +112,20 @@ export default {
             this.array.push("");
         },
         remove(index) {
+            const service = this.service;
             this.array.splice(index, 1);
+
+            // An empty list must not stay in the compose file. Without this,
+            // the removal of the last item keeps "urls: []" or "ports: []" in
+            // the file of the user.
+            if (Array.isArray(service[this.name]) && service[this.name].length === 0) {
+                delete service[this.name];
+
+                // The x-dockge object also goes away when it holds nothing
+                if (this.objectType === "x-dockge" && Object.keys(service).length === 0) {
+                    delete this.$parent.$parent.jsonConfig["x-dockge"];
+                }
+            }
         },
     }
 };
