@@ -8,10 +8,16 @@ export class DockerSocketHandler extends AgentSocketHandler {
     create(socket : DockgeSocket, server : DockgeServer, agentSocket : AgentSocket) {
         // Do not call super.create()
 
-        agentSocket.on("deployStack", async (name : unknown, composeYAML : unknown, composeENV : unknown, isAdd : unknown, callback) => {
+        agentSocket.on("deployStack", async (name : unknown, composeYAML : unknown, composeENV : unknown, isAdd : unknown, composeOverrideYAML : unknown, callback?) => {
+            // A client without override support sends four arguments, so the
+            // acknowledge function arrives in the override position.
+            if (typeof composeOverrideYAML === "function" && callback === undefined) {
+                callback = composeOverrideYAML;
+                composeOverrideYAML = undefined;
+            }
             try {
                 checkLogin(socket);
-                const stack = await this.saveStack(server, name, composeYAML, composeENV, isAdd);
+                const stack = await this.saveStack(server, name, composeYAML, composeENV, isAdd, composeOverrideYAML);
                 await stack.deploy(socket);
                 server.sendStackList();
                 callbackResult({
@@ -25,10 +31,16 @@ export class DockerSocketHandler extends AgentSocketHandler {
             }
         });
 
-        agentSocket.on("saveStack", async (name : unknown, composeYAML : unknown, composeENV : unknown, isAdd : unknown, callback) => {
+        agentSocket.on("saveStack", async (name : unknown, composeYAML : unknown, composeENV : unknown, isAdd : unknown, composeOverrideYAML : unknown, callback?) => {
+            // A client without override support sends four arguments, so the
+            // acknowledge function arrives in the override position.
+            if (typeof composeOverrideYAML === "function" && callback === undefined) {
+                callback = composeOverrideYAML;
+                composeOverrideYAML = undefined;
+            }
             try {
                 checkLogin(socket);
-                await this.saveStack(server, name, composeYAML, composeENV, isAdd);
+                await this.saveStack(server, name, composeYAML, composeENV, isAdd, composeOverrideYAML);
                 callbackResult({
                     ok: true,
                     msg: "Saved",
@@ -348,7 +360,7 @@ export class DockerSocketHandler extends AgentSocketHandler {
         });
     }
 
-    async saveStack(server : DockgeServer, name : unknown, composeYAML : unknown, composeENV : unknown, isAdd : unknown) : Promise<Stack> {
+    async saveStack(server : DockgeServer, name : unknown, composeYAML : unknown, composeENV : unknown, isAdd : unknown, composeOverrideYAML : unknown) : Promise<Stack> {
         // Check types
         if (typeof(name) !== "string") {
             throw new ValidationError("Name must be a string");
@@ -362,8 +374,11 @@ export class DockerSocketHandler extends AgentSocketHandler {
         if (typeof(isAdd) !== "boolean") {
             throw new ValidationError("isAdd must be a boolean");
         }
+        if (composeOverrideYAML !== undefined && composeOverrideYAML !== null && typeof(composeOverrideYAML) !== "string") {
+            throw new ValidationError("Compose override YAML must be a string");
+        }
 
-        const stack = new Stack(server, name, composeYAML, composeENV, false);
+        const stack = new Stack(server, name, composeYAML, composeENV, composeOverrideYAML, false);
         await stack.save(isAdd);
         return stack;
     }

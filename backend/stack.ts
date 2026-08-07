@@ -26,25 +26,41 @@ export class Stack {
     protected _status: number = UNKNOWN;
     protected _composeYAML?: string;
     protected _composeENV?: string;
+    protected _composeOverrideYAML?: string | null;
     protected _configFilePath?: string;
     protected _composeFileName: string = "compose.yaml";
+    protected _composeOverrideFileName: string = "compose.override.yaml";
     protected server: DockgeServer;
 
     protected combinedTerminal? : Terminal;
 
     protected static managedStackList: Map<string, Stack> = new Map();
 
-    constructor(server : DockgeServer, name : string, composeYAML? : string, composeENV? : string, skipFSOperations = false) {
+    constructor(server : DockgeServer, name : string, composeYAML? : string, composeENV? : string, composeOverrideYAML? : string | null, skipFSOperations = false) {
         this.name = name;
         this.server = server;
         this._composeYAML = composeYAML;
         this._composeENV = composeENV;
+        this._composeOverrideYAML = composeOverrideYAML;
 
         if (!skipFSOperations) {
             // Check if compose file name is different from compose.yaml
             for (const filename of acceptedComposeFileNames) {
                 if (fs.existsSync(path.join(this.path, filename))) {
                     this._composeFileName = filename;
+                    break;
+                }
+            }
+
+            // Docker pairs the override file with the base file name.
+            // Use the name of a file that exists. If no file exists, use
+            // the extension of the base file.
+            const extension = path.extname(this._composeFileName);
+            const stem = this._composeFileName.slice(0, -extension.length);
+            this._composeOverrideFileName = stem + ".override" + extension;
+            for (const overrideExtension of [ ".yaml", ".yml" ]) {
+                if (fs.existsSync(path.join(this.path, stem + ".override" + overrideExtension))) {
+                    this._composeOverrideFileName = stem + ".override" + overrideExtension;
                     break;
                 }
             }
@@ -74,6 +90,8 @@ export class Stack {
             ...obj,
             composeYAML: this.composeYAML,
             composeENV: this.composeENV,
+            composeOverrideYAML: this.composeOverrideYAML,
+            composeOverrideFileName: this._composeOverrideFileName,
             primaryHostname,
         };
     }
@@ -120,6 +138,14 @@ export class Stack {
         // Check YAML format
         yaml.parse(this.composeYAML);
 
+        // Check the override YAML only when this save carries content for it
+        if (typeof this._composeOverrideYAML === "string" && this._composeOverrideYAML.trim() !== "") {
+            const parsed = yaml.parse(this._composeOverrideYAML);
+            if (parsed === null) {
+                throw new ValidationError("The override file needs content. Remove the file to disable it.");
+            }
+        }
+
         let lines = this.composeENV.split("\n");
 
         // Check if the .env is able to pass docker-compose
@@ -150,6 +176,22 @@ export class Stack {
             }
         }
         return this._composeENV;
+    }
+
+    get composeOverrideYAML() : string | null {
+        if (this._composeOverrideYAML === undefined) {
+            try {
+                this._composeOverrideYAML = fs.readFileSync(path.join(this.path, this._composeOverrideFileName), "utf-8");
+            } catch (e) {
+                // No override file
+                this._composeOverrideYAML = null;
+            }
+        }
+        return this._composeOverrideYAML;
+    }
+
+    get composeOverrideFileName() : string {
+        return this._composeOverrideFileName;
     }
 
     get path() : string {
@@ -204,6 +246,19 @@ export class Stack {
             fs.writeFileSync(envPath, this.composeENV);
         }
 
+        // Write, or remove, the override file. An undefined value means the
+        // save does not carry override data, so the file stays as it is.
+        const overridePath = path.join(dir, this._composeOverrideFileName);
+        let writeOverride = false;
+        if (this._composeOverrideYAML !== undefined) {
+            if (this._composeOverrideYAML === null || this._composeOverrideYAML.trim() === "") {
+                fs.rmSync(overridePath, { force: true });
+            } else {
+                fs.writeFileSync(overridePath, this._composeOverrideYAML);
+                writeOverride = true;
+            }
+        }
+
         if (process.env.PUID && process.env.PGID) {
             const uid = Number(process.env.PUID);
             const gid = Number(process.env.PGID);
@@ -211,6 +266,9 @@ export class Stack {
             fs.chownSync(path.join(dir, this._composeFileName), uid, gid);
             if (writeEnv) {
                 fs.chownSync(envPath, uid, gid);
+            }
+            if (writeOverride) {
+                fs.chownSync(overridePath, uid, gid);
             }
         }
     }
@@ -408,7 +466,7 @@ export class Stack {
         if (!skipFSOperations) {
             stack = new Stack(server, stackName);
         } else {
-            stack = new Stack(server, stackName, undefined, undefined, true);
+            stack = new Stack(server, stackName, undefined, undefined, undefined, true);
         }
 
         stack._status = UNKNOWN;
