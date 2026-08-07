@@ -175,17 +175,29 @@ export default {
                 return;
             }
 
-            this.jsonConfig.networks = {};
+            const networks = {};
 
             // Internal networks
             for (const networkRow of this.networkList) {
-                this.jsonConfig.networks[networkRow.key] = networkRow.value;
+                networks[networkRow.key] = networkRow.value;
             }
 
             // External networks
             for (const networkName in this.externalList) {
-                this.jsonConfig.networks[networkName] = this.externalList[networkName];
+                networks[networkName] = this.externalList[networkName];
             }
+
+            // A stack with no network must keep no networks key. This method
+            // runs when edit mode opens, thus an empty key here would put
+            // "networks: {}" in a compose file that the user did not change.
+            if (Object.keys(networks).length === 0) {
+                if (this.jsonConfig.networks) {
+                    delete this.jsonConfig.networks;
+                }
+                return;
+            }
+
+            this.jsonConfig.networks = networks;
 
             console.debug("applyToYAML", this.jsonConfig.networks);
         }
