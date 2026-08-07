@@ -6,6 +6,13 @@ The base is dockge commit [f809ae1](https://github.com/louislam/dockge/commit/f8
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). This project has no releases, so each entry is a commit. The newest entry comes first. A commit that changes only this file or the project rules has no entry.
 
+## [5681d78](../../commit/5681d78) - 2026-08-07
+
+### Added
+
+- The stack page shows the git branch when the stack directory is a git checkout, with a dot when the checkout has changes that are not committed. A **Pull & Redeploy** button runs `git pull` and then deploys the stack. This works well with an override file: git holds the base file, and the local changes stay in the override file.
+- A **Health** page under **Settings**. It shows if Docker, Docker Compose, and Git are on the server, and if the server can write in the stacks directory and the data directory.
+
 ## [d89d469](../../commit/d89d469) - 2026-08-07
 
 ### Fixed
