@@ -13,23 +13,23 @@
             <ul class="dropdown-menu dropdown-menu-end">
                 <li v-if="running">
                     <router-link class="dropdown-item" :to="bashTo">
-                        <font-awesome-icon icon="terminal" class="me-1" /> Bash
+                        <font-awesome-icon icon="terminal" fixed-width class="me-2" /> Bash
                     </router-link>
                 </li>
                 <li v-if="running && serviceCount > 1"><hr class="dropdown-divider"></li>
                 <li v-if="!running && serviceCount > 1">
                     <button class="dropdown-item" :disabled="processing" @click="$emit('start')">
-                        <font-awesome-icon icon="play" class="me-1" /> {{ $t("startStack") }}
+                        <font-awesome-icon icon="play" fixed-width class="me-2" /> {{ $t("startStack") }}
                     </button>
                 </li>
                 <li v-if="restartable && serviceCount > 1">
                     <button class="dropdown-item" :disabled="processing" @click="$emit('restart')">
-                        <font-awesome-icon icon="rotate" class="me-1" /> {{ $t("restartStack") }}
+                        <font-awesome-icon icon="rotate" fixed-width class="me-2" /> {{ $t("restartStack") }}
                     </button>
                 </li>
                 <li v-if="restartable && serviceCount > 1">
                     <button class="dropdown-item" :disabled="processing" @click="$emit('stop')">
-                        <font-awesome-icon icon="stop" class="me-1" /> {{ $t("stopStack") }}
+                        <font-awesome-icon icon="stop" fixed-width class="me-2" /> {{ $t("stopStack") }}
                     </button>
                 </li>
             </ul>
