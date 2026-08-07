@@ -40,6 +40,12 @@ export class Terminal {
     protected _rows : number = TERMINAL_ROWS;
     protected _cols : number = TERMINAL_COLS;
 
+    // Size before the first client hint. applyClientSize goes back to it when
+    // no client with a hint is left, so a client that leaves cannot keep its
+    // size on the pty for the next client.
+    protected defaultRows? : number;
+    protected defaultCols? : number;
+
     public enableKeepAlive : boolean = false;
     protected keepAliveInterval? : NodeJS.Timeout;
     protected kickDisconnectedClientsInterval? : NodeJS.Timeout;
@@ -62,14 +68,7 @@ export class Terminal {
     }
 
     set rows(rows : number) {
-        this._rows = rows;
-        try {
-            this.ptyProcess?.resize(this.cols, this.rows);
-        } catch (e) {
-            if (e instanceof Error) {
-                log.debug("Terminal", "Failed to resize terminal: " + e.message);
-            }
-        }
+        this.setSize(rows, this._cols);
     }
 
     get cols() {
@@ -77,10 +76,25 @@ export class Terminal {
     }
 
     set cols(cols : number) {
+        this.setSize(this._rows, cols);
+    }
+
+    /**
+     * Set both dimensions with one resize. Two separate assignments send two
+     * SIGWINCH signals, and the first has a size that no client asked for,
+     * which makes a full screen program draw a frame it must then discard.
+     * @param rows new row count
+     * @param cols new column count
+     */
+    public setSize(rows : number, cols : number) {
+        if (rows === this._rows && cols === this._cols) {
+            return;
+        }
+        this._rows = rows;
         this._cols = cols;
-        log.debug("Terminal", `Terminal cols: ${this._cols}`); // Added to check if cols is being set when changing terminal size.
+        log.debug("Terminal", `Terminal size: ${cols}x${rows}`);
         try {
-            this.ptyProcess?.resize(this.cols, this.rows);
+            this.ptyProcess?.resize(cols, rows);
         } catch (e) {
             if (e instanceof Error) {
                 log.debug("Terminal", "Failed to resize terminal: " + e.message);
@@ -234,28 +248,35 @@ export class Terminal {
 
     /**
      * Resize the pty to the minimum size over the currently joined clients
-     * that have reported one. No-op when no joined client has reported.
+     * that have reported one. Go back to the size the caller set when no
+     * such client is left.
      */
     public applyClientSize() {
         const hints = Terminal.sizeHints.get(this.name);
-        if (!hints) {
-            return;
-        }
 
         let rows = Infinity;
         let cols = Infinity;
         for (const socketID in this.socketList) {
-            const hint = hints.get(socketID);
+            const hint = hints?.get(socketID);
             if (hint) {
                 rows = Math.min(rows, hint.rows);
                 cols = Math.min(cols, hint.cols);
             }
         }
 
-        if (Number.isFinite(rows) && Number.isFinite(cols)) {
-            this.rows = rows;
-            this.cols = cols;
+        if (!Number.isFinite(rows) || !Number.isFinite(cols)) {
+            if (this.defaultRows !== undefined && this.defaultCols !== undefined) {
+                this.setSize(this.defaultRows, this.defaultCols);
+            }
+            return;
         }
+
+        if (this.defaultRows === undefined) {
+            this.defaultRows = this._rows;
+            this.defaultCols = this._cols;
+        }
+
+        this.setSize(rows, cols);
     }
 
     public get ptyProcess() {

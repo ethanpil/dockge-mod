@@ -689,13 +689,16 @@ export class DockgeServer {
             return this.hostStatsPromise;
         }
 
+        // Release the guard for a failure too. A rejected promise that stays
+        // here would answer every later call with the same old failure.
         this.hostStatsPromise = this.collectHostStats().then((data) => {
             this.hostStatsCache = {
                 time: Date.now(),
                 data,
             };
-            this.hostStatsPromise = null;
             return data;
+        }).finally(() => {
+            this.hostStatsPromise = null;
         });
         return this.hostStatsPromise;
     }
@@ -718,11 +721,10 @@ export class DockgeServer {
             log.debug("hostStats", "Cannot read /proc/meminfo");
         }
 
-        // os.loadavg() cannot throw and works without /proc (it reports zeros
-        // on platforms with no load concept, which the frontend hides)
-        const load = os.loadavg();
-        if (load.some((n) => n > 0)) {
-            stats.load = load.map((n) => n.toFixed(2)).join(" ");
+        // Windows has no load average and always reports zeros. Every other
+        // platform has one, where zero is a real value for an idle host.
+        if (os.platform() !== "win32") {
+            stats.load = os.loadavg().map((n) => n.toFixed(2)).join(" ");
         }
         stats.cpus = os.cpus().length;
 

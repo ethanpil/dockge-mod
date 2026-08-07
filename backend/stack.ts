@@ -513,11 +513,15 @@ export class Stack {
     }
 
     /**
-     * IPs by container ID. A container's address is fixed for its lifetime and
-     * a recreate produces a new ID, so entries never go stale — this reduces
-     * the steady state of the 5-second status poll to zero inspect processes.
+     * IPs by container ID. Docker can give a container a different address
+     * when it starts again, and a stopped container has no address at all,
+     * so an entry is correct for a short time only. The short life still
+     * keeps most of the 5-second status polls free of inspect processes.
      */
-    protected static ipCache : Map<string, string> = new Map();
+    protected static ipCache : Map<string, { ip : string, time : number }> = new Map();
+
+    /** How long an address in ipCache stays good, in milliseconds. */
+    protected static readonly ipCacheTTL = 30000;
 
     /**
      * Resolve container IP addresses with a single batched `docker inspect`
@@ -534,7 +538,12 @@ export class Stack {
             Stack.ipCache.clear();
         }
 
-        const uncached = containers.filter((c) => !c.id || !Stack.ipCache.has(c.id));
+        const now = Date.now();
+        const fresh = (id : string) => {
+            const hit = Stack.ipCache.get(id);
+            return hit !== undefined && now - hit.time < Stack.ipCacheTTL;
+        };
+        const uncached = containers.filter((c) => !c.id || !fresh(c.id));
 
         if (uncached.length > 0) {
             const parse = (out : string) => {
@@ -570,14 +579,17 @@ export class Stack {
 
             for (const c of uncached) {
                 if (c.id && map.has(c.name)) {
-                    Stack.ipCache.set(c.id, map.get(c.name) ?? "");
+                    Stack.ipCache.set(c.id, {
+                        ip: map.get(c.name) ?? "",
+                        time: now,
+                    });
                 }
             }
         }
 
         for (const c of containers) {
             if (!map.has(c.name) && c.id) {
-                map.set(c.name, Stack.ipCache.get(c.id) ?? "");
+                map.set(c.name, Stack.ipCache.get(c.id)?.ip ?? "");
             }
         }
 
