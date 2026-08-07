@@ -204,7 +204,7 @@ dockge-mod uses the same names as docker: `compose.override.yml`, `compose.overr
 
 Docker merges the compose file, the override file, and the env files into one configuration. Click **Merged config** at the top of the compose panel to see the result of `docker compose config`. The view is read only, and it shows the files on the disk. If the configuration is not correct, the view shows the error text of docker.
 
-In edit mode, click **Validate** to examine the editor content before you save it. The server puts the content in a temporary directory and runs `docker compose config` there. The files of the stack do not change. Docker finds problems that a YAML check cannot see, for example an unknown key or a wrong service reference.
+In edit mode, click **Validate** to examine the editor content before you save it. The server puts the content in a temporary directory and runs `docker compose config` on it. The files of the stack do not change, and a reference to a file of the stack directory stays correct. Docker finds problems that a YAML check cannot see, for example an unknown key or a wrong service reference.
 
 ### Use a Git Checkout as a Stack
 

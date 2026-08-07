@@ -381,15 +381,16 @@ export class Stack {
     }
 
     /**
-     * The configuration that docker makes from the compose file, the
-     * override file, and the env files, with `docker compose config`.
-     * On a failure the content holds the error text of docker itself,
-     * which also names problems that a YAML parser cannot see.
+     * Run `docker compose ... config` and collect the result. On a failure
+     * the content holds the error text of docker itself, which also names
+     * problems that a YAML parser cannot see.
+     * @param args The full argument list, with "compose" first
+     * @param cwd The work directory of the process
      */
-    async getComposeConfig() : Promise<{ ok : boolean, content : string }> {
+    protected static async runComposeConfig(args : string[], cwd : string) : Promise<{ ok : boolean, content : string }> {
         try {
-            const res = await childProcessAsync.spawn("docker", this.getComposeOptions("config"), {
-                cwd: this.path,
+            const res = await childProcessAsync.spawn("docker", args, {
+                cwd,
                 encoding: "utf-8",
                 // The merged output of a large stack goes over the default
                 // limit of 200 KiB
@@ -411,6 +412,14 @@ export class Stack {
     }
 
     /**
+     * The configuration that docker makes from the compose file, the
+     * override file, and the env files, with `docker compose config`.
+     */
+    async getComposeConfig() : Promise<{ ok : boolean, content : string }> {
+        return Stack.runComposeConfig(this.getComposeOptions("config"), this.path);
+    }
+
+    /**
      * Examine editor content with `docker compose config`, before a save
      * writes it to the stack directory. The content goes to a temporary
      * directory, thus the files of the stack do not change. The answer
@@ -425,51 +434,61 @@ export class Stack {
         const dir = await fsAsync.mkdtemp(path.join(os.tmpdir(), "dockge-validate-"));
 
         try {
-            await fsAsync.writeFile(path.join(dir, "compose.yaml"), composeYAML);
+            const composePath = path.join(dir, "compose.yaml");
+            const envPath = path.join(dir, ".env");
+            await fsAsync.writeFile(composePath, composeYAML);
 
-            if (composeENV.trim() !== "") {
-                await fsAsync.writeFile(path.join(dir, ".env"), composeENV);
+            // The file exists also when the content is empty. The explicit
+            // --env-file below stops the automatic load of the .env of the
+            // stack directory, thus docker uses the editor content only.
+            await fsAsync.writeFile(envPath, composeENV);
+
+            const args = [ "compose", "-f", composePath ];
+
+            if (composeOverrideYAML !== null && composeOverrideYAML.trim() !== "") {
+                const overridePath = path.join(dir, "compose.override.yaml");
+                await fsAsync.writeFile(overridePath, composeOverrideYAML);
+                args.push("-f", overridePath);
             }
 
-            if (typeof composeOverrideYAML === "string" && composeOverrideYAML.trim() !== "") {
-                await fsAsync.writeFile(path.join(dir, "compose.override.yaml"), composeOverrideYAML);
-            }
-
-            // The name of the temporary directory is not a correct project
-            // name for docker. Use the name of the stack when it is one.
-            const projectName = name.match(/^[a-z0-9_-]+$/) ? name : "dockge-validate";
-
-            // The same env files as getComposeOptions: global.env comes
-            // first, then the local .env of the stack
-            const options = [ "compose", "-p", projectName ];
-            if (fs.existsSync(path.join(server.stacksDir, "global.env"))) {
-                options.push("--env-file", path.resolve(server.stacksDir, "global.env"));
-                if (composeENV.trim() !== "") {
-                    options.push("--env-file", "./.env");
+            // Relative paths of the content, for example env_file or a
+            // bind mount, resolve against the project directory. Use the
+            // stack directory if it exists, so a reference to a file of
+            // the stack stays correct. Docker also takes the project name
+            // from this directory, the same as a deploy. The name check
+            // keeps the path inside the stacks directory.
+            let projectDir = dir;
+            if (name.match(/^[a-z0-9_-]+$/)) {
+                const stackDir = path.resolve(server.stacksDir, name);
+                if (await fileExists(stackDir)) {
+                    projectDir = stackDir;
                 }
             }
-            options.push("config");
+            args.push("--project-directory", projectDir);
 
-            const res = await childProcessAsync.spawn("docker", options, {
-                cwd: dir,
-                encoding: "utf-8",
-                maxBuffer: 10 * 1024 * 1024,
-                timeout: 30000,
-            });
-            return {
-                ok: true,
-                content: res.stdout?.toString() ?? "",
-            };
-        } catch (e) {
-            return {
-                ok: false,
-                content: stderrOf(e) || (e instanceof Error ? e.message : String(e)),
-            };
+            // The same sequence as getComposeOptions: global.env comes
+            // first, then the .env of the stack
+            const globalEnvPath = path.resolve(server.stacksDir, "global.env");
+            if (await fileExists(globalEnvPath)) {
+                args.push("--env-file", globalEnvPath);
+            }
+            args.push("--env-file", envPath);
+            args.push("config");
+
+            return await Stack.runComposeConfig(args, dir);
         } finally {
-            await fsAsync.rm(dir, {
-                recursive: true,
-                force: true,
-            });
+            // A failure here must not replace the result. Windows can hold
+            // the directory for a short time after the timeout stops the
+            // process.
+            try {
+                await fsAsync.rm(dir, {
+                    recursive: true,
+                    force: true,
+                    maxRetries: 3,
+                });
+            } catch (e) {
+                log.warn("validateConfig", "Cannot remove " + dir + ": " + (e instanceof Error ? e.message : String(e)));
+            }
         }
     }
 

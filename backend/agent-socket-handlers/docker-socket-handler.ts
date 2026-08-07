@@ -12,6 +12,44 @@ import { AgentSocket } from "../../common/agent-socket";
  * @param callback Argument in the acknowledge position
  * @returns The two arguments in their correct positions
  */
+/**
+ * Make sure that the content arguments of a save or a validation have the
+ * correct types.
+ * @param name Name of the stack
+ * @param composeYAML Content of the compose file
+ * @param composeENV Content of the .env file
+ * @param composeOverrideYAML Content of the override file, or null
+ */
+function checkComposeStrings(name : unknown, composeYAML : unknown, composeENV : unknown, composeOverrideYAML : unknown) {
+    if (typeof(name) !== "string") {
+        throw new ValidationError("Name must be a string");
+    }
+    if (typeof(composeYAML) !== "string") {
+        throw new ValidationError("Compose YAML must be a string");
+    }
+    if (typeof(composeENV) !== "string") {
+        throw new ValidationError("Compose ENV must be a string");
+    }
+    if (composeOverrideYAML !== undefined && composeOverrideYAML !== null && typeof(composeOverrideYAML) !== "string") {
+        throw new ValidationError("Compose override YAML must be a string");
+    }
+}
+
+/**
+ * The answer of an event that runs `docker compose config`. The ok field
+ * shows that the event was successful. A configuration error is a normal
+ * answer here, and it goes in its own field.
+ * @param result The result of the docker process
+ * @returns The answer for the client
+ */
+function composeConfigResult(result : { ok : boolean, content : string }) {
+    return {
+        ok: true,
+        composeConfig: result.ok ? result.content : "",
+        configError: result.ok ? "" : result.content,
+    };
+}
+
 function acceptSaveArgs(composeOverrideYAML : unknown, callback : unknown) {
     if (typeof composeOverrideYAML === "function" && callback === undefined) {
         return {
@@ -399,14 +437,7 @@ export class DockerSocketHandler extends AgentSocketHandler {
 
                 const stack = await Stack.getStack(server, stackName);
                 const result = await stack.getComposeConfig();
-
-                // ok says that this event worked. A configuration error is
-                // a normal answer here, and it goes in its own field.
-                callbackResult({
-                    ok: true,
-                    composeConfig: result.ok ? result.content : "",
-                    configError: result.ok ? "" : result.content,
-                }, callback);
+                callbackResult(composeConfigResult(result), callback);
             } catch (e) {
                 callbackError(e, callback);
             }
@@ -417,29 +448,10 @@ export class DockerSocketHandler extends AgentSocketHandler {
         agentSocket.on("validateCompose", async (name : unknown, composeYAML : unknown, composeENV : unknown, composeOverrideYAML : unknown, callback) => {
             try {
                 checkLogin(socket);
+                checkComposeStrings(name, composeYAML, composeENV, composeOverrideYAML);
 
-                if (typeof(name) !== "string") {
-                    throw new ValidationError("Name must be a string");
-                }
-                if (typeof(composeYAML) !== "string") {
-                    throw new ValidationError("Compose YAML must be a string");
-                }
-                if (typeof(composeENV) !== "string") {
-                    throw new ValidationError("Compose ENV must be a string");
-                }
-                if (composeOverrideYAML !== undefined && composeOverrideYAML !== null && typeof(composeOverrideYAML) !== "string") {
-                    throw new ValidationError("Compose override YAML must be a string");
-                }
-
-                const result = await Stack.validateConfig(server, name, composeYAML, composeENV, composeOverrideYAML ?? null);
-
-                // ok says that this event worked. A configuration error is
-                // a normal answer here, and it goes in its own field.
-                callbackResult({
-                    ok: true,
-                    composeConfig: result.ok ? result.content : "",
-                    configError: result.ok ? "" : result.content,
-                }, callback);
+                const result = await Stack.validateConfig(server, name as string, composeYAML as string, composeENV as string, (composeOverrideYAML ?? null) as string | null);
+                callbackResult(composeConfigResult(result), callback);
             } catch (e) {
                 callbackError(e, callback);
             }
@@ -462,23 +474,12 @@ export class DockerSocketHandler extends AgentSocketHandler {
 
     async saveStack(server : DockgeServer, name : unknown, composeYAML : unknown, composeENV : unknown, isAdd : unknown, composeOverrideYAML : unknown) : Promise<Stack> {
         // Check types
-        if (typeof(name) !== "string") {
-            throw new ValidationError("Name must be a string");
-        }
-        if (typeof(composeYAML) !== "string") {
-            throw new ValidationError("Compose YAML must be a string");
-        }
-        if (typeof(composeENV) !== "string") {
-            throw new ValidationError("Compose ENV must be a string");
-        }
+        checkComposeStrings(name, composeYAML, composeENV, composeOverrideYAML);
         if (typeof(isAdd) !== "boolean") {
             throw new ValidationError("isAdd must be a boolean");
         }
-        if (composeOverrideYAML !== undefined && composeOverrideYAML !== null && typeof(composeOverrideYAML) !== "string") {
-            throw new ValidationError("Compose override YAML must be a string");
-        }
 
-        const stack = new Stack(server, name, composeYAML, composeENV, composeOverrideYAML, false);
+        const stack = new Stack(server, name as string, composeYAML as string, composeENV as string, composeOverrideYAML as string | null | undefined, false);
         await stack.save(isAdd);
         return stack;
     }

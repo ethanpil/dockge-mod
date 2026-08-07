@@ -27,9 +27,11 @@
                         </button>
 
                         <!-- Examine the editor content with docker, before a
-                             save writes it. Hidden for a stack from an agent
-                             without the event. -->
-                        <button v-if="isEditMode && (isAdd || overrideSupported)" class="btn btn-normal" :disabled="processing" :title="$t('validateConfigNote')" @click="validateCompose">
+                             save writes it. The guard is approximate: it
+                             tests override support. An agent without the
+                             event does not answer, and the timer of the
+                             overlay then ends the wait. -->
+                        <button v-if="isEditMode && (isAdd || overrideSupported)" class="btn btn-normal" :disabled="processing || mergedConfigLoading" :title="$t('validateConfigNote')" @click="validateCompose">
                             <font-awesome-icon icon="check-double" class="me-1" />
                             {{ $t("validateConfig") }}
                         </button>
@@ -320,7 +322,7 @@
                                      not send the override field. The timer in
                                      showMergedConfig covers an agent of an
                                      older dockge-mod build. -->
-                                <button v-if="overrideSupported" class="mini-btn" :title="$t('mergedConfigNote')" @click="showMergedConfig">
+                                <button v-if="overrideSupported" class="mini-btn" :disabled="mergedConfigLoading" :title="$t('mergedConfigNote')" @click="showMergedConfig">
                                     <font-awesome-icon icon="layer-group" class="me-1" />{{ $t("mergedConfig") }}
                                 </button>
                                 <button class="mini-btn" :title="expandedPanel === 'yaml' ? $t('cancel') : $t('expand')" @click="toggleExpand('yaml')">
@@ -401,7 +403,7 @@
                     <div v-if="expandedPanel === 'merged'" class="panel pop">
                         <div class="panel-head">
                             <span class="panel-title">{{ $t("mergedConfig") }}</span>
-                            <span class="panel-note">{{ $t(mergedConfigSource === "disk" ? "mergedConfigDiskNote" : "mergedConfigEditorNote") }}</span>
+                            <span class="panel-note">{{ $t(mergedConfigNoteKey) }}</span>
                             <button class="mini-btn expand-btn" :title="$t('cancel')" @click="toggleExpand('merged')">
                                 <font-awesome-icon icon="compress" />
                             </button>
@@ -711,9 +713,9 @@ export default {
             mergedConfigError: "",
             mergedConfigYAML: "",
             mergedConfigSeq: 0,
-            // "disk" for the files of the stack, "editor" for a validation
-            // of the editor content
-            mergedConfigSource: "disk",
+            // The i18n key of the note in the overlay head. It names the
+            // source of the content.
+            mergedConfigNoteKey: "mergedConfigDiskNote",
         };
     },
     computed: {
@@ -1536,14 +1538,14 @@ export default {
          * content. The overlay shows the error text of docker if the
          * configuration is not correct. A timer ends the wait if an agent
          * does not answer.
-         * @param {string} source "disk" or "editor", for the note text
+         * @param {string} noteKey i18n key of the note in the overlay head
          * @param {string} event name of the socket event
          * @param {...*} args arguments of the event
          * @returns {void}
          */
-        openMergedConfig(source, event, ...args) {
+        openMergedConfig(noteKey, event, ...args) {
             this.expandedPanel = "merged";
-            this.mergedConfigSource = source;
+            this.mergedConfigNoteKey = noteKey;
             this.mergedConfigLoading = true;
             this.mergedConfigError = "";
             this.mergedConfigYAML = "";
@@ -1583,7 +1585,7 @@ export default {
          * @returns {void}
          */
         showMergedConfig() {
-            this.openMergedConfig("disk", "getComposeConfig", this.stack.name);
+            this.openMergedConfig("mergedConfigDiskNote", "getComposeConfig", this.stack.name);
         },
 
         /**
@@ -1594,7 +1596,7 @@ export default {
          */
         validateCompose() {
             this.openMergedConfig(
-                "editor",
+                "mergedConfigEditorNote",
                 "validateCompose",
                 this.stack.name ?? "",
                 this.stack.composeYAML,
