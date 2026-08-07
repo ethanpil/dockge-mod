@@ -35,7 +35,7 @@ Two conditions apply after you go back:
 - Make, edit, start, stop, restart, and delete compose stacks.
 - Update the Docker images of a stack.
 - Edit `compose.yaml` in an interactive editor.
-- Make and edit an optional override file. Docker merges it with `compose.yaml`.
+- Make and edit an optional override file. Docker merges it with `compose.yaml`. A settings page holds the text of a new override file.
 - Open a web terminal for a stack or for the host.
 - Manage stacks on more than one Docker host from one interface.
 - Change a `docker run` command into a `compose.yaml` file.
@@ -56,6 +56,8 @@ Debian Buster and Raspbian Buster are too old. Windows is not supported.
 ## Install
 
 The image is on Docker Hub as [`ethanpil/dockge-mod`](https://hub.docker.com/r/ethanpil/dockge-mod). It is available for amd64, arm64, and armv7. You do not need the source code to run it.
+
+Each image has two tags: `latest`, and a version such as `1.5.0-mod-a1b2c3d`. The version tag does not change, thus you can select an image and go back to it. The About page shows the version of the image that you run. A new image goes to Docker Hub at a release, and not at each change of the code, thus `latest` can be older than the source code.
 
 ### Step 1. Make the Directories
 
