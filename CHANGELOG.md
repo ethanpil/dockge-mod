@@ -10,7 +10,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Thi
 
 ### Added
 
-- Drag handles below the compose panels, the logs panel, and the editors in edit mode. A drag changes the height of the panel. A double click gives the default height back. The heights are not saved.
+- Drag handles below the compose panels, the logs panel, and the compose and override editors in edit mode. A drag changes the height of the panel. A double click gives the default height back. The heights are not saved.
 
 ## [45bb0f5](../../commit/45bb0f5) - 2026-08-07
 

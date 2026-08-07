@@ -511,7 +511,7 @@
                         <EnvEditor
                             v-else
                             v-model="stack.composeENV"
-                            @change="yamlCodeChange"
+                            @change="envCodeChange"
                         />
                     </div>
 
@@ -578,7 +578,6 @@
                     <strong>{{ stack.name }}</strong>
                 </i18n-t>
             </Confirm>
-
         </div>
     </transition>
 </template>
@@ -1105,6 +1104,16 @@ export default {
         this.endSplitDrag();
         this.endHeightDrag();
         clearTimeout(this.mergedConfigTimer);
+        clearTimeout(this.gitPullTimer);
+
+        // The page can be destroyed without a route change, for example
+        // when a failed login hides the router view. The status polls run
+        // from timeouts that arm each other, so they must stop here too, or
+        // the destroyed page keeps its requests on the socket for ever.
+        this.stopServiceStatusTimeout = true;
+        this.stopDockerStatsTimeout = true;
+        clearTimeout(serviceStatusTimeout);
+        clearTimeout(dockerStatsTimeout);
     },
     methods: {
         /**
@@ -1113,6 +1122,11 @@ export default {
          * @returns {void}
          */
         onComposeKeydown(e) {
+            // A dialog on top owns the Escape key. Without this, one press
+            // closes the dialog and the overlay below it together.
+            if (document.querySelector(".modal.show")) {
+                return;
+            }
             if (e.key === "Escape" && this.expandedPanel) {
                 this.toggleExpand(this.expandedPanel);
             }
@@ -1141,7 +1155,26 @@ export default {
          */
         toggleExpand(which) {
             // The terminal watches its own box, so it fits itself again
-            this.expandedPanel = (this.expandedPanel === which) ? null : which;
+            const opening = this.expandedPanel !== which;
+            this.expandedPanel = opening ? which : null;
+
+            // A close of the merged overlay ends the request that fills it.
+            // Without this, the buttons that watch mergedConfigLoading stay
+            // disabled until the timer fires.
+            if (which === "merged" && !opening) {
+                this.cancelMergedConfig();
+            }
+        },
+
+        /**
+         * End the wait for a merged configuration request. The next
+         * sequence number makes a late answer and the timer stale.
+         * @returns {void}
+         */
+        cancelMergedConfig() {
+            this.mergedConfigSeq++;
+            clearTimeout(this.mergedConfigTimer);
+            this.mergedConfigLoading = false;
         },
 
         /**
@@ -1787,7 +1820,28 @@ export default {
         gitPullStack() {
             this.processing = true;
 
+            // A pull and a deploy is the longest action of the page. An
+            // agent that disconnects during it never answers, and the
+            // toolbar would stay disabled until a page reload. The timer
+            // gives the buttons back. A pull can be slow, thus the time is
+            // longer than the other timers.
+            let settled = false;
+            clearTimeout(this.gitPullTimer);
+            this.gitPullTimer = setTimeout(() => {
+                if (settled) {
+                    return;
+                }
+                settled = true;
+                this.processing = false;
+                this.$root.toastError(this.$t("requestTimeout"));
+            }, 300000);
+
             this.$root.emitAgent(this.endpoint, "gitPullStack", this.stack.name, (res) => {
+                clearTimeout(this.gitPullTimer);
+                if (settled) {
+                    return;
+                }
+                settled = true;
                 this.processing = false;
                 this.$root.toastRes(res);
                 this.loadStack();
@@ -1849,16 +1903,45 @@ export default {
                 clearTimeout(yamlErrorTimeout);
                 this.yamlError = "";
             } catch (e) {
+                this.showYamlError(e);
+            }
+        },
+
+        /**
+         * Recompute the substituted view after an env change from the row
+         * editor. This does not rebuild jsonConfig, because a rebuild
+         * writes the compose YAML again and loses the formatting of the
+         * user. The compose text did not change here.
+         * @returns {void}
+         */
+        envCodeChange() {
+            try {
+                const env = dotenv.parse(this.stack.composeENV);
+                const envYAML = envsubstYAML(this.stack.composeYAML, env);
+                this.envsubstJSONConfig = this.yamlToJSON(envYAML).config;
+
                 clearTimeout(yamlErrorTimeout);
+                this.yamlError = "";
+            } catch (e) {
+                this.showYamlError(e);
+            }
+        },
 
-                if (this.yamlError) {
+        /**
+         * Show a YAML error message. The first error waits, so a message
+         * does not flash during typing.
+         * @param {Error} e the error
+         * @returns {void}
+         */
+        showYamlError(e) {
+            clearTimeout(yamlErrorTimeout);
+
+            if (this.yamlError) {
+                this.yamlError = e.message;
+            } else {
+                yamlErrorTimeout = setTimeout(() => {
                     this.yamlError = e.message;
-
-                } else {
-                    yamlErrorTimeout = setTimeout(() => {
-                        this.yamlError = e.message;
-                    }, 3000);
-                }
+                }, 3000);
             }
         },
 
@@ -2338,6 +2421,9 @@ export default {
 }
 
 .editor-box.h-fixed {
+    // Beats the `.panel .editor-box { min-height: 300px }` rule, so the
+    // drag can go down to the same 150px floor as the other panels
+    min-height: 150px;
     overflow: auto;
 }
 

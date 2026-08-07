@@ -74,7 +74,10 @@ export function callbackError(error : unknown, callback : unknown) {
     } else {
         // A rejection can carry a plain string, for example from
         // Terminal.exec. The client must get an answer for each error, or
-        // its buttons stay disabled.
+        // its buttons stay disabled. The log keeps the value for the
+        // operator, because a string that is not a message reads badly in
+        // a toast.
+        log.debug("console", "Non-error rejection: " + String(error));
         callback({
             ok: false,
             msg: String(error),
@@ -116,6 +119,16 @@ export async function doubleCheckPassword(socket : DockgeSocket, currentPassword
 export function stderrOf(error : unknown) : string | undefined {
     const stderr = (error as { stderr ?: string | Buffer })?.stderr?.toString().trim();
     return stderr || undefined;
+}
+
+/**
+ * The message of an error value. An Error object gives its message, and a
+ * different value gives its string form.
+ * @param error The value from a catch
+ * @returns A message for a person to read
+ */
+export function errorMessage(error : unknown) : string {
+    return error instanceof Error ? error.message : String(error);
 }
 
 export function fileExists(file : string) {

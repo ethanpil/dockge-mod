@@ -64,18 +64,43 @@ export default {
         this.load();
     },
 
+    unmounted() {
+        clearTimeout(this.healthTimer);
+    },
+
     methods: {
         /**
-         * Get the health report from the server.
+         * Get the health report from the server. A timer ends the wait if
+         * the server does not answer, so the button does not stay disabled
+         * for ever. An error keeps no old results on the screen.
          * @returns {void}
          */
         load() {
             this.loaded = false;
+
+            let settled = false;
+            clearTimeout(this.healthTimer);
+            this.healthTimer = setTimeout(() => {
+                if (settled) {
+                    return;
+                }
+                settled = true;
+                this.loaded = true;
+                this.health = [];
+                this.$root.toastError(this.$t("requestTimeout"));
+            }, 30000);
+
             this.$root.getSocket().emit("getDockgeHealth", (res) => {
+                clearTimeout(this.healthTimer);
+                if (settled) {
+                    return;
+                }
+                settled = true;
                 this.loaded = true;
                 if (res.ok) {
                     this.health = res.health;
                 } else {
+                    this.health = [];
                     this.$root.toastRes(res);
                 }
             });

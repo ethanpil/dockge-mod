@@ -2,7 +2,7 @@ import { DockgeServer } from "./dockge-server";
 import fs, { promises as fsAsync } from "fs";
 import { log } from "./log";
 import yaml from "yaml";
-import { DockgeSocket, fileExists, stderrOf, ValidationError } from "./util-server";
+import { DockgeSocket, errorMessage, fileExists, stderrOf, ValidationError } from "./util-server";
 import path from "path";
 import os from "os";
 import {
@@ -71,12 +71,11 @@ export class Stack {
      * The git state of the stack directory: the branch, a flag that shows
      * tracked work that is not committed, and a flag for a detached HEAD.
      * On a detached HEAD the branch field holds the short commit hash. The
-     * dirty flag does not count untracked files, because an override file
-     * or a .env file next to the checkout is the usual condition, not
-     * drift. The result is null when the directory is not a git checkout,
-     * or when git gives an error, for example when git is not installed.
-     * The stack object then looks the same as one from an agent without
-     * git support.
+     * dirty flag does not count untracked files. An override file or a
+     * .env file next to the checkout is the usual condition, not drift.
+     * The result is null when the directory is not a git checkout, or when
+     * git gives an error, for example when git is not installed. The stack
+     * object then looks the same as one from an agent without git support.
      */
     async getGitInfo() : Promise<{ branch : string, isDirty : boolean, isDetached : boolean } | null> {
         if (!this.isGitRepo) {
@@ -86,6 +85,11 @@ export class Stack {
         const git = (...args : string[]) => childProcessAsync.spawn("git", args, {
             cwd: this.path,
             encoding: "utf-8",
+            // The output of a dirty repo can go over the default limit of
+            // 200 KiB, and a hung filesystem must not block the page for
+            // ever. The same values as runComposeConfig.
+            maxBuffer: 10 * 1024 * 1024,
+            timeout: 30000,
         });
 
         try {
@@ -110,7 +114,7 @@ export class Stack {
                 isDetached,
             };
         } catch (e) {
-            log.debug("getGitInfo", "git failed for stack " + this.name + ": " + (e instanceof Error ? e.message : String(e)));
+            log.debug("getGitInfo", "git failed for stack " + this.name + ": " + errorMessage(e));
             return null;
         }
     }
@@ -406,16 +410,24 @@ export class Stack {
         } catch (e) {
             return {
                 ok: false,
-                content: stderrOf(e) || (e instanceof Error ? e.message : String(e)),
+                content: stderrOf(e) || errorMessage(e),
             };
         }
     }
 
     /**
      * The configuration that docker makes from the compose file, the
-     * override file, and the env files, with `docker compose config`.
+     * override file, and the env files, with `docker compose config`. The
+     * stack must be one that this application manages, because the process
+     * runs in the stack directory.
      */
     async getComposeConfig() : Promise<{ ok : boolean, content : string }> {
+        if (!this.isManagedByDockge) {
+            return {
+                ok: false,
+                content: "This stack is not managed by dockge-mod.",
+            };
+        }
         return Stack.runComposeConfig(this.getComposeOptions("config"), this.path);
     }
 
@@ -487,7 +499,7 @@ export class Stack {
                     maxRetries: 3,
                 });
             } catch (e) {
-                log.warn("validateConfig", "Cannot remove " + dir + ": " + (e instanceof Error ? e.message : String(e)));
+                log.warn("validateConfig", "Cannot remove " + dir + ": " + errorMessage(e));
             }
         }
     }

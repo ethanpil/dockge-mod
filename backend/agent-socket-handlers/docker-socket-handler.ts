@@ -12,6 +12,19 @@ import { AgentSocket } from "../../common/agent-socket";
  * @param callback Argument in the acknowledge position
  * @returns The two arguments in their correct positions
  */
+function acceptSaveArgs(composeOverrideYAML : unknown, callback : unknown) {
+    if (typeof composeOverrideYAML === "function" && callback === undefined) {
+        return {
+            composeOverrideYAML: undefined,
+            callback: composeOverrideYAML,
+        };
+    }
+    return {
+        composeOverrideYAML,
+        callback,
+    };
+}
+
 /**
  * Make sure that the content arguments of a save or a validation have the
  * correct types.
@@ -47,19 +60,6 @@ function composeConfigResult(result : { ok : boolean, content : string }) {
         ok: true,
         composeConfig: result.ok ? result.content : "",
         configError: result.ok ? "" : result.content,
-    };
-}
-
-function acceptSaveArgs(composeOverrideYAML : unknown, callback : unknown) {
-    if (typeof composeOverrideYAML === "function" && callback === undefined) {
-        return {
-            composeOverrideYAML: undefined,
-            callback: composeOverrideYAML,
-        };
-    }
-    return {
-        composeOverrideYAML,
-        callback,
     };
 }
 

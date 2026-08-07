@@ -9,9 +9,11 @@ import { generatePasswordHash, needRehashPassword, shake256, SHAKE256_LENGTH, ve
 import { User } from "../models/user";
 import {
     callbackError,
+    callbackResult,
     checkLogin,
     DockgeSocket,
     doubleCheckPassword,
+    errorMessage,
     JWTDecoded,
     stderrOf,
     ValidationError
@@ -47,7 +49,7 @@ async function checkTool(key : string, file : string, args : string[]) : Promise
         const res = await childProcessAsync.spawn(file, args, {
             encoding: "utf-8",
         });
-        const firstLine = (res.stdout?.toString() ?? "").trim().split("\n")[0];
+        const firstLine = (res.stdout?.toString() ?? "").trim().split(/\r?\n/)[0];
         return {
             key,
             ok: true,
@@ -57,11 +59,11 @@ async function checkTool(key : string, file : string, args : string[]) : Promise
         // The first line of stderr holds the reason from the tool itself,
         // for example "docker: 'compose' is not a docker command". The
         // generic message only says that the process failed.
-        const stderr = stderrOf(e)?.split("\n")[0];
+        const stderr = stderrOf(e)?.split(/\r?\n/)[0];
         return {
             key,
             ok: false,
-            info: stderr || (e instanceof Error ? e.message : String(e)),
+            info: stderr || errorMessage(e),
         };
     }
 }
@@ -84,7 +86,7 @@ async function checkWritableDir(key : string, dir : string) : Promise<HealthItem
         return {
             key,
             ok: false,
-            info: e instanceof Error ? e.message : String(e),
+            info: errorMessage(e),
         };
     }
 }
@@ -380,13 +382,17 @@ export class MainSocketHandler extends SocketHandler {
 
                 // Keep the stored poll interval in its limits. The form
                 // limits are only in the browser, and a different client
-                // can send any value.
+                // can send any value. An empty field gives the default,
+                // not the minimum, because Number("") is 0.
                 if ("pollInterval" in data) {
-                    const n = Number(data.pollInterval);
-                    if (Number.isFinite(n)) {
-                        data.pollInterval = Math.min(POLL_INTERVAL_MAX, Math.max(POLL_INTERVAL_MIN, Math.round(n)));
-                    } else {
+                    const raw = data.pollInterval;
+                    const empty = raw === "" || raw === null || raw === undefined ||
+                        (typeof raw === "string" && raw.trim() === "");
+                    const n = Number(raw);
+                    if (empty || !Number.isFinite(n)) {
                         data.pollInterval = POLL_INTERVAL_DEFAULT;
+                    } else {
+                        data.pollInterval = Math.min(POLL_INTERVAL_MAX, Math.max(POLL_INTERVAL_MIN, Math.round(n)));
                     }
                 }
 
@@ -398,8 +404,11 @@ export class MainSocketHandler extends SocketHandler {
                 });
 
                 // Each client with a login gets the new values, not only
-                // the client that saved
-                server.sendInfoToAllClients();
+                // the client that saved. A failure of this broadcast must
+                // not become an unhandled rejection.
+                server.sendInfoToAllClients().catch((err) => {
+                    log.warn("setSettings", "Cannot send info to all clients: " + (err instanceof Error ? err.message : String(err)));
+                });
 
             } catch (e) {
                 if (e instanceof Error) {
@@ -438,10 +447,10 @@ export class MainSocketHandler extends SocketHandler {
                     checkWritableDir("dataDir", server.config.dataDir),
                 ]);
 
-                callback({
+                callbackResult({
                     ok: true,
                     health,
-                });
+                }, callback);
             } catch (e) {
                 callbackError(e, callback);
             }

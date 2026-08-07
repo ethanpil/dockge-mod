@@ -201,7 +201,7 @@
     "pollIntervalNote": "The time between the status polls of a stack page. The default is 5 seconds. A larger value decreases the load on a slow host.",
     "envKey": "Key",
     "envValue": "Value",
-    "addVariable": "Add Variable",
+    "addVariable": "Add variable",
     "deleteVariable": "Delete variable",
     "envRowsView": "Rows",
     "envTextView": "Text",

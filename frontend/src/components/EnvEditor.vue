@@ -130,6 +130,8 @@ export default {
          * @returns {void}
          */
         parse(text) {
+            // A binding can give null. Treat it as an empty file.
+            text = text ?? "";
             this.lastSerialized = text;
             this.entries = [];
             this.eol = text.includes("\r\n") ? "\r\n" : "\n";
@@ -191,15 +193,17 @@ export default {
         },
 
         /**
-         * Make the .env text from the entries. A pair with a bad key
-         * gives no line, and its row shows a message.
+         * Make the .env text from the entries. A pair with a bad key keeps
+         * its text in the file, so a toggle to the text view does not lose
+         * it. Its row shows a message. Only a pair that is empty gives no
+         * line.
          * @returns {string} the .env text
          */
         serialize() {
             const lines = [];
             for (const entry of this.entries) {
                 if (entry.type === "pair") {
-                    if (this.keyOK(entry)) {
+                    if (entry.key !== "" || entry.value !== "") {
                         lines.push(entry.prefix + entry.key + "=" + entry.value);
                     }
                 } else {

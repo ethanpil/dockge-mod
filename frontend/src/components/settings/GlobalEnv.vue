@@ -2,7 +2,7 @@
     <div>
         <div v-if="settingsLoaded" class="my-3">
             <form class="my-3" autocomplete="off" @submit.prevent="saveGeneral">
-                <div class="env-toggle mb-2">
+                <div class="mb-2">
                     <button type="button" class="mini-btn" @click="envEditorText = !envEditorText">
                         {{ envEditorText ? $t("envRowsView") : $t("envTextView") }}
                     </button>
@@ -53,13 +53,6 @@ export default {
         EnvEditor,
     },
 
-    data() {
-        return {
-            // True shows the text editor, false shows the rows
-            envEditorText: false,
-        };
-    },
-
     setup() {
         const editorFocus = ref(false);
 
@@ -77,6 +70,13 @@ export default {
 
         return { editorFocus,
             extensionsEnv };
+    },
+
+    data() {
+        return {
+            // True shows the text editor, false shows the rows
+            envEditorText: false,
+        };
     },
 
     computed: {
