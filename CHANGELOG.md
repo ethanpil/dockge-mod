@@ -6,6 +6,12 @@ The base is dockge commit [f809ae1](https://github.com/louislam/dockge/commit/f8
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). This project has no releases, so each entry is a commit. The newest entry comes first. A commit that changes only this file or the project rules has no entry.
 
+## [cece10d](../../commit/cece10d) - 2026-08-07
+
+### Fixed
+
+- An empty list no longer stays in the compose file. When the user removed the last item of a list, such as a URL or a port, the key stayed with an empty value, and a save put it in the file. The x-dockge object also goes away when it holds nothing more.
+
 ## [1a33365](../../commit/1a33365) - 2026-08-07
 
 ### Changed
