@@ -46,7 +46,7 @@ The base is dockge commit [f809ae1](https://github.com/louislam/dockge/commit/f8
 
 - Each terminal now watches its own box. Before, a terminal fitted itself only when the window changed size, so text went past the right edge after a panel changed width or became visible. ([ebe91e7](../../commit/ebe91e7))
 - The panel divider is 6 pixels wide. Its buttons use icons and appear when the pointer is on the divider. A grip icon marks it the rest of the time. ([b86bc28](../../commit/b86bc28))
-- The terminal menu also has Select all and Clear. ([5e6ffe6](../../commit/5e6ffe6))
+- The terminal menu also has Select all, Save output, and Clear. Save output writes the text of the terminal to a file. ([5e6ffe6](../../commit/5e6ffe6), [844328c](../../commit/844328c))
 - The icons in the Actions menu have the same width, so the text of each item starts at the same position. ([4aa67f6](../../commit/4aa67f6))
 - Below 1080 pixels the stack list uses smaller rows. ([30c66e2](../../commit/30c66e2))
 
