@@ -379,6 +379,31 @@ export class Stack {
         }
     }
 
+    /**
+     * The configuration that docker makes from the compose file, the
+     * override file, and the env files, with `docker compose config`.
+     * On a failure the content holds the error text of docker itself,
+     * which also names problems that a YAML parser cannot see.
+     */
+    async getComposeConfig() : Promise<{ ok : boolean, content : string }> {
+        try {
+            const res = await childProcessAsync.spawn("docker", this.getComposeOptions("config"), {
+                cwd: this.path,
+                encoding: "utf-8",
+            });
+            return {
+                ok: true,
+                content: res.stdout?.toString() ?? "",
+            };
+        } catch (e) {
+            const stderr = (e as { stderr ?: string | Buffer })?.stderr?.toString().trim();
+            return {
+                ok: false,
+                content: stderr || (e instanceof Error ? e.message : String(e)),
+            };
+        }
+    }
+
     async deploy(socket : DockgeSocket) : Promise<number> {
         const terminalName = getComposeTerminalName(socket.endpoint, this.name);
         let exitCode = await Terminal.exec(this.server, socket, terminalName, "docker", this.getComposeOptions("up", "-d", "--remove-orphans"), this.path);

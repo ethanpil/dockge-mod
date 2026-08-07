@@ -307,7 +307,12 @@
                         <div class="panel split-a" :class="{ pop: expandedPanel === 'yaml', 'split-solo': !hasOverride, 'split-gone': hasOverride && splitLeft === 0 }">
                             <div class="panel-head">
                                 <span class="panel-title">{{ stack.composeFileName }}</span>
-                                <button class="mini-btn expand-btn" :title="expandedPanel === 'yaml' ? $t('cancel') : $t('expand')" @click="toggleExpand('yaml')">
+                                <!-- Only an agent with override support knows
+                                     the getComposeConfig event -->
+                                <button v-if="overrideSupported" class="mini-btn expand-btn" :title="$t('mergedConfigNote')" @click="showMergedConfig">
+                                    <font-awesome-icon icon="layer-group" class="me-1" />{{ $t("mergedConfig") }}
+                                </button>
+                                <button class="mini-btn" :class="{ 'expand-btn': !overrideSupported }" :title="expandedPanel === 'yaml' ? $t('cancel') : $t('expand')" @click="toggleExpand('yaml')">
                                     <font-awesome-icon :icon="expandedPanel === 'yaml' ? 'compress' : 'expand'" />
                                 </button>
                             </div>
@@ -502,6 +507,33 @@
                     <strong>{{ stack.name }}</strong>
                 </i18n-t>
             </Confirm>
+
+            <!-- Merged configuration dialog: the output of
+                 `docker compose config`, read only -->
+            <div ref="mergedModal" class="modal fade" tabindex="-1">
+                <div class="modal-dialog modal-xl modal-dialog-scrollable">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">{{ $t("mergedConfig") }}</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" :aria-label="$t('cancel')" />
+                        </div>
+                        <div class="modal-body merged-body">
+                            <div v-if="mergedConfigLoading" class="p-3">
+                                <font-awesome-icon icon="spinner" spin />
+                            </div>
+                            <pre v-else-if="mergedConfigError" class="merged-error">{{ mergedConfigError }}</pre>
+                            <div v-else class="editor-fill merged-editor">
+                                <code-mirror
+                                    v-model="mergedConfigYAML"
+                                    v-bind="editorProps"
+                                    :extensions="extensions"
+                                    :disabled="true"
+                                />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </transition>
 </template>
@@ -528,6 +560,7 @@ import {
     defaultComposeOverrideTemplate
 } from "../../../common/util-common";
 import { formatPorts, formatUptime } from "../util-frontend";
+import { Modal } from "bootstrap";
 import NetworkInput from "../components/NetworkInput.vue";
 import Confirm from "../components/Confirm.vue";
 import Container from "../components/Container.vue";
@@ -659,6 +692,10 @@ export default {
             leaving: false,
             // Resolves the open dialog with the user's choice
             leaveResolve: null,
+            // State of the merged configuration dialog
+            mergedConfigLoading: false,
+            mergedConfigError: "",
+            mergedConfigYAML: "",
         };
     },
     computed: {
@@ -973,6 +1010,9 @@ export default {
         window.removeEventListener("beforeunload", this.onBeforeUnload);
         this.wideLayoutQuery?.removeEventListener("change", this.onWideLayoutChange);
         this.endSplitDrag();
+        this.mergedModal?.hide();
+        this.mergedModal?.dispose();
+        this.mergedModal = null;
     },
     methods: {
         /**
@@ -1472,6 +1512,45 @@ export default {
             this.$root.emitAgent(this.endpoint, "updateStack", this.stack.name, (res) => {
                 this.processing = false;
                 this.$root.toastRes(res);
+            });
+        },
+
+        /**
+         * Open the merged configuration dialog and get the output of
+         * `docker compose config` from the agent. The dialog shows the
+         * error text of docker when the configuration is not correct. A
+         * timer ends the wait when an old agent does not answer.
+         * @returns {void}
+         */
+        showMergedConfig() {
+            this.mergedConfigLoading = true;
+            this.mergedConfigError = "";
+            this.mergedConfigYAML = "";
+
+            if (!this.mergedModal) {
+                this.mergedModal = new Modal(this.$refs.mergedModal);
+            }
+            this.mergedModal.show();
+
+            let settled = false;
+            const timer = setTimeout(() => {
+                settled = true;
+                this.mergedConfigLoading = false;
+                this.mergedConfigError = this.$t("requestTimeout");
+            }, 30000);
+
+            this.$root.emitAgent(this.endpoint, "getComposeConfig", this.stack.name, (res) => {
+                if (settled) {
+                    return;
+                }
+                clearTimeout(timer);
+                this.mergedConfigLoading = false;
+
+                if (res.ok) {
+                    this.mergedConfigYAML = res.composeConfig;
+                } else {
+                    this.mergedConfigError = res.msg;
+                }
             });
         },
 
@@ -2024,6 +2103,24 @@ export default {
     inset: 0;
     z-index: 1050;
     background: rgba(0, 0, 0, 0.55);
+}
+
+/* ---------- merged configuration dialog ---------- */
+.merged-body {
+    padding: 0;
+    // The scroll stays inside the dialog body
+    overflow: auto;
+}
+
+.merged-editor {
+    border-radius: 0 0 var(--bs-modal-border-radius) var(--bs-modal-border-radius);
+}
+
+.merged-error {
+    margin: 0;
+    padding: 1rem;
+    color: var(--bs-danger);
+    white-space: pre-wrap;
 }
 
 /* ---------- unsaved changes ---------- */

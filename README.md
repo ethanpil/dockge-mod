@@ -200,6 +200,10 @@ To remove the file, click **Delete override**, then save. An empty editor also r
 
 dockge-mod uses the same names as docker: `compose.override.yml`, `compose.override.yaml`, `docker-compose.override.yml`, and `docker-compose.override.yaml`. It uses the first file that it finds. The Dockge interface does not show this file, but `docker compose` continues to merge it. Thus the stacks directory stays compatible.
 
+### See the Merged Configuration
+
+Docker merges the compose file, the override file, and the env files into one configuration. Click **Merged config** at the top of the compose panel to see the result of `docker compose config`. The view is read only. When the configuration is not correct, the view shows the error text of docker itself.
+
 ### Use a Git Checkout as a Stack
 
 A stack directory can be a git checkout. dockge-mod then shows the branch next to the stack name. A dot after the branch shows tracked changes that are not committed. Files that git does not track, for example an override file or a `.env` file, do not cause the dot. A **Pull & Redeploy** button also appears. The button runs `git pull` in the stack directory and then deploys the stack.

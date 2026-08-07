@@ -189,5 +189,8 @@
     "healthDockerCompose": "Docker Compose",
     "healthGit": "Git",
     "healthStacksDir": "Stacks directory is writable",
-    "healthDataDir": "Data directory is writable"
+    "healthDataDir": "Data directory is writable",
+    "mergedConfig": "Merged config",
+    "mergedConfigNote": "Show the configuration that docker makes from all files of the stack",
+    "requestTimeout": "The server did not answer."
 }

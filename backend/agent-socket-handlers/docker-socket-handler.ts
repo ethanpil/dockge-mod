@@ -387,6 +387,28 @@ export class DockerSocketHandler extends AgentSocketHandler {
             }
         });
 
+        // The configuration that docker makes from the files of a stack.
+        // This event only adds a function to the socket API.
+        agentSocket.on("getComposeConfig", async (stackName : unknown, callback) => {
+            try {
+                checkLogin(socket);
+
+                if (typeof(stackName) !== "string") {
+                    throw new ValidationError("Stack name must be a string");
+                }
+
+                const stack = await Stack.getStack(server, stackName);
+                const result = await stack.getComposeConfig();
+                callbackResult({
+                    ok: result.ok,
+                    composeConfig: result.ok ? result.content : "",
+                    msg: result.ok ? "" : result.content,
+                }, callback);
+            } catch (e) {
+                callbackError(e, callback);
+            }
+        });
+
         // getExternalNetworkList
         agentSocket.on("getDockerNetworkList", async (callback) => {
             try {

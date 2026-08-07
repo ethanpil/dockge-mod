@@ -68,6 +68,7 @@ import {
     faEraser,
     faFileArrowDown,
     faCodeBranch,
+    faLayerGroup,
 } from "@fortawesome/free-solid-svg-icons";
 
 library.add(
@@ -137,6 +138,7 @@ library.add(
     faEraser,
     faFileArrowDown,
     faCodeBranch,
+    faLayerGroup,
 );
 
 export { FontAwesomeIcon };
