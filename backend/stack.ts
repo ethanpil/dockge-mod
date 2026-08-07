@@ -473,7 +473,7 @@ export class Stack {
         // Keep the directory in the stacks directory. A name that contains
         // path parts must not give access to the other directories.
         const relative = path.relative(path.resolve(server.stacksDir), path.resolve(dir));
-        if (relative === "" || relative.startsWith("..") || path.isAbsolute(relative)) {
+        if (relative === "" || relative === ".." || relative.startsWith(".." + path.sep) || path.isAbsolute(relative)) {
             throw new ValidationError("Stack not found");
         }
 
