@@ -203,6 +203,16 @@
             margin-top: -4px;
         }
     }
+
+    // A narrow window gives the list a narrow column. Smaller rows keep more
+    // of each stack name on screen and give the page more width.
+    @media (max-width: 1079.98px) {
+        .item {
+            min-height: 32px;
+            padding: 1px 6px;
+            font-size: 13px;
+        }
+    }
 }
 
 .action {
