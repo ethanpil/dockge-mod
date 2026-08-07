@@ -5,7 +5,8 @@
             <div class="panel">
                 <div class="panel-head">
                     <span class="panel-title">{{ $t("home") }}</span>
-                    <span v-if="hostStats.load" class="panel-note mono">load {{ hostStats.load }}<template v-if="hostStats.cpus"> · {{ hostStats.cpus }} cpu</template></span>
+                    <!-- Windows sends no load average, but it still has a CPU count -->
+                    <span v-if="hostStats.load || hostStats.cpus" class="panel-note mono"><template v-if="hostStats.load">load {{ hostStats.load }}</template><template v-if="hostStats.load && hostStats.cpus"> · </template><template v-if="hostStats.cpus">{{ hostStats.cpus }} cpu</template></span>
                 </div>
                 <div class="tiles">
                     <div class="tile">
@@ -43,12 +44,12 @@
                     <div v-if="dfImages" class="tile">
                         <div class="tile-label">{{ $t("images") }}</div>
                         <div class="tile-value">{{ dfImages.TotalCount }}</div>
-                        <div class="tile-sub">{{ dfImages.Size }}</div>
+                        <div class="tile-sub">{{ dockerSize(dfImages.Size) }}</div>
                     </div>
                     <div v-if="dfVolumes" class="tile">
                         <div class="tile-label">{{ $tc("volume", 2) }}</div>
                         <div class="tile-value">{{ dfVolumes.TotalCount }}</div>
-                        <div class="tile-sub">{{ dfVolumes.Size }}</div>
+                        <div class="tile-sub">{{ dockerSize(dfVolumes.Size) }}</div>
                     </div>
                 </div>
             </div>
@@ -191,6 +192,9 @@ export default {
             },
             hostStats: {},
             hostStatsTimer: null,
+            // Set when the page is destroyed. A reply that comes after that
+            // must not start the poll again on a page that is gone.
+            stopHostStats: false,
         };
     },
 
@@ -266,11 +270,23 @@ export default {
 
     beforeUnmount() {
         window.removeEventListener("resize", this.updatePerPage);
+        this.stopHostStats = true;
         clearTimeout(this.hostStatsTimer);
     },
 
     methods: {
         formatBytes,
+
+        /**
+         * Show a docker size in the units the other tiles use. Docker prints
+         * decimal units, and the tiles print binary units, so the total must
+         * not look smaller than one of its parts.
+         * @param {string} size size from `docker system df`
+         * @returns {string} the same size in binary units
+         */
+        dockerSize(size) {
+            return formatBytes(parseDockerSize(size));
+        },
 
         /** Row of `docker system df` by type, or null when unavailable. */
         dfRow(type) {
@@ -288,12 +304,15 @@ export default {
          */
         requestHostStats() {
             this.$root.emitAgent("", "hostStats", (res) => {
+                if (this.stopHostStats) {
+                    return;
+                }
                 if (res.ok && res.hostStats) {
                     this.hostStats = res.hostStats;
                 }
                 // Re-arm only after the response, like the other polls in this
-                // app — re-arming at emit time lets slow responses overlap
-                // and pile up docker system df processes.
+                // app. To re-arm when the request goes out lets slow responses
+                // overlap and collect docker system df processes.
                 clearTimeout(this.hostStatsTimer);
                 this.hostStatsTimer = setTimeout(() => {
                     if (this.$route.name === "DashboardHome") {

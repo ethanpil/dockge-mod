@@ -75,6 +75,12 @@ export default {
             lastSentCols: null,
         };
     },
+    watch: {
+        // Report the size again when the name arrives after the mount
+        name() {
+            this.emitResize();
+        },
+    },
     created() {
 
     },
@@ -302,6 +308,14 @@ export default {
          * ones whose box did not move.
          */
         emitResize() {
+            // The parent can set the name after this component mounts, which
+            // bind() also works around. A size for an empty name goes to a
+            // terminal that does not exist, and it must not stop the correct
+            // message that the name watcher sends later.
+            if (!this.name) {
+                return;
+            }
+
             const rows = this.terminal.rows;
             const cols = this.terminal.cols;
             if (rows === this.lastSentRows && cols === this.lastSentCols) {
