@@ -6,6 +6,25 @@ The base is dockge commit [f809ae1](https://github.com/louislam/dockge/commit/f8
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). This project has no releases, so each entry is a commit. The newest entry comes first. A commit that changes only this file or the project rules has no entry.
 
+## [920cbe0](../../commit/920cbe0) - 2026-08-07
+
+### Fixed
+
+- The git processes of a stack have a timeout and a large buffer. A slow filesystem or a repository with many changes stopped the stack page before.
+- An edit in the env rows does not write the compose file again. Before, it made the YAML text again and lost the format of the user.
+- The **Pull & Redeploy** action has a timeout. An agent that disconnected during the pull left each button disabled before.
+- The status polls stop when the page goes away without a route change, for example after a failed login.
+- An empty poll interval field saves the default of 5 seconds. It saved the minimum of 2 seconds before.
+- A close of the merged configuration view ends its request. The two buttons stayed disabled until the timer before.
+- A failure of the info broadcast cannot stop the server.
+- A variable with a bad key keeps its text in the file. A change to the text view lost the value before.
+- The **Health** page has a timeout, and an error removes the old results.
+- The merged configuration refuses a stack that this application does not manage.
+- A dialog on top owns the Escape key.
+- An editor in edit mode can go down to the same height as the other panels.
+- The health checks accept the line ends of Windows.
+- A rejection that is not an Error object goes in the log again.
+
 ## [3c27d54](../../commit/3c27d54) - 2026-08-07
 
 ### Added
