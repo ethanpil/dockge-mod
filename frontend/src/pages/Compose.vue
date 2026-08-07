@@ -659,6 +659,9 @@ export default {
             // the compose panel and 100 hides the override panel.
             splitLeft: 50,
             editSnapshot: null,
+            // Content of an override file that the user deleted. The save
+            // removes the file, so a new create gives this content back.
+            discardedOverride: null,
             // True when the container table fits. Below this the page shows
             // cards instead. Only one of the two renders at a time.
             wideLayout: true,
@@ -1287,14 +1290,21 @@ export default {
             this.$refs.progressTerminal?.bind(this.endpoint, this.terminalName);
         },
 
-        loadStack() {
+        /**
+         * Get the stack from the server.
+         * @param {Function} [callback] runs after the stack arrives
+         * @returns {void}
+         */
+        loadStack(callback) {
             this.processing = true;
             this.$root.emitAgent(this.endpoint, "getStack", this.stack.name, (res) => {
+                this.processing = false;
                 if (res.ok) {
                     this.stack = res.stack;
+                    this.discardedOverride = null;
                     this.yamlCodeChange();
-                    this.processing = false;
                     this.bindTerminal();
+                    callback?.();
                 } else {
                     this.$root.toastRes(res);
                 }
@@ -1333,23 +1343,16 @@ export default {
 
             this.bindTerminal();
 
-            // An old agent reads the acknowledge function as the fifth
-            // argument, so the override goes only to an agent that sent the
-            // field in its stack data.
-            const deployArgs = [ this.stack.name, this.stack.composeYAML, this.stack.composeENV, this.isAdd ];
-            if (this.overrideSupported) {
-                deployArgs.push(this.stack.composeOverrideYAML ?? null);
-            }
+            // Hold the values that go to the server, because the editors stay
+            // usable while the reply travels
+            const sent = this.currentEditState();
 
-            this.$root.emitAgent(this.stack.endpoint, "deployStack", ...deployArgs, (res) => {
+            this.$root.emitAgent(this.stack.endpoint, "deployStack", ...this.stackSaveArgs(sent), (res) => {
                 this.processing = false;
                 this.$root.toastRes(res);
 
                 if (res.ok) {
-                    // An empty override means the save removed the file
-                    if (typeof this.stack.composeOverrideYAML === "string" && this.stack.composeOverrideYAML.trim() === "") {
-                        this.stack.composeOverrideYAML = null;
-                    }
+                    this.applySavedState(sent);
                     this.isEditMode = false;
                     this.$router.push(this.url);
                 }
@@ -1383,31 +1386,16 @@ export default {
                     resolve(false);
                 }, 30000);
 
-                // An old agent reads the acknowledge function as the fifth
-                // argument, so the override goes only to an agent that sent
-                // the field in its stack data.
-                const saveArgs = [ this.stack.name, sent.yaml, sent.env, this.isAdd ];
-                if (this.overrideSupported) {
-                    saveArgs.push(sent.override);
-                }
-
-                this.$root.emitAgent(this.stack.endpoint, "saveStack", ...saveArgs, (res) => {
+                this.$root.emitAgent(this.stack.endpoint, "saveStack", ...this.stackSaveArgs(sent), (res) => {
                     clearTimeout(timer);
                     this.processing = false;
                     this.$root.toastRes(res);
 
                     if (res.ok) {
-                        // The baseline is what the server has, not the
-                        // buffer. A reply that comes after the timeout must
-                        // still clear the dirty mark, or the editor asks to
-                        // save a file that the server already has.
-                        this.editSnapshot = sent;
-
-                        // An empty override means the save removed the file
-                        if (typeof sent.override === "string" && sent.override.trim() === "" && this.stack.composeOverrideYAML === sent.override) {
-                            this.stack.composeOverrideYAML = null;
-                            this.editSnapshot = this.currentEditState();
-                        }
+                        // A reply that comes after the timeout must still
+                        // clear the dirty mark, or the editor asks to save a
+                        // file that the server already has.
+                        this.applySavedState(sent);
                     }
 
                     if (settled) {
@@ -1485,8 +1473,11 @@ export default {
         },
 
         discardStack() {
-            this.loadStack();
-            this.isEditMode = false;
+            // Leave edit mode only after the stack arrives, or view mode
+            // shows the content that the user discarded
+            this.loadStack(() => {
+                this.isEditMode = false;
+            });
         },
 
         yamlToJSON(yaml) {
@@ -1579,20 +1570,85 @@ export default {
         },
 
         /**
-         * Put a start template in the override editor. The template holds an
-         * empty services map, so a save without more edits gives a file that
-         * docker accepts.
+         * True when the override of this state is different from the file on
+         * the server. The snapshot always holds what the server has.
+         * @param {object} state a state from currentEditState
+         * @returns {boolean}
+         */
+        overrideChanged(state) {
+            return this.overrideSupported && state.override !== (this.editSnapshot?.override ?? null);
+        },
+
+        /**
+         * The arguments for a saveStack or a deployStack event.
+         *
+         * The override goes to the server only when the user changed it. A
+         * save that always sent the override could remove a file that another
+         * user made after this page loaded. An old agent also reads a fifth
+         * argument as the acknowledge function, thus an agent without override
+         * support always gets four arguments.
+         * @param {object} sent the state that goes to the server
+         * @returns {Array} the arguments for the event
+         */
+        stackSaveArgs(sent) {
+            const args = [ sent.name, sent.yaml, sent.env, this.isAdd ];
+            if (this.overrideChanged(sent)) {
+                args.push(sent.override);
+            }
+            return args;
+        },
+
+        /**
+         * Record the state that the server accepted. The baseline is what the
+         * server has, not the buffer, because the user can edit while the
+         * reply travels. An empty override tells the server to remove the
+         * file, so the editor then shows no override.
+         * @param {object} sent the state that went to the server
+         * @returns {void}
+         */
+        applySavedState(sent) {
+            let override = sent.override;
+
+            if (this.overrideChanged(sent) && typeof override === "string" && override.trim() === "") {
+                override = null;
+            }
+
+            // Change the editor only when the user did not edit it in the
+            // interval, and only for an agent that supports the override
+            if (this.overrideSupported && (this.stack.composeOverrideYAML ?? null) === sent.override) {
+                this.stack.composeOverrideYAML = override;
+            }
+
+            this.discardedOverride = null;
+            this.editSnapshot = {
+                ...sent,
+                override,
+            };
+        },
+
+        /**
+         * Put content in the override editor. A delete keeps the content
+         * until the save, thus the user gets it back here. If there is no
+         * such content, the template gives an empty services map, which is a
+         * file that docker accepts.
          * @returns {void}
          */
         createOverride() {
+            if (this.discardedOverride !== null) {
+                this.stack.composeOverrideYAML = this.discardedOverride;
+                this.discardedOverride = null;
+                return;
+            }
             this.stack.composeOverrideYAML = "# This file merges with " + this.stack.composeFileName + ".\n# Put your changes here. An update of the base file keeps them.\nservices: {}\n";
         },
 
         /**
-         * Mark the override file for removal. The save removes the file.
+         * Mark the override file for removal. The save removes the file. The
+         * content stays here until then, so a new create can give it back.
          * @returns {void}
          */
         deleteOverride() {
+            this.discardedOverride = this.stack.composeOverrideYAML;
             this.stack.composeOverrideYAML = null;
         },
 
