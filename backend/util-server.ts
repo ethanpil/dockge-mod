@@ -106,6 +106,18 @@ export async function doubleCheckPassword(socket : DockgeSocket, currentPassword
     return user;
 }
 
+/**
+ * The stderr text of a failed child process, or undefined when the error
+ * carries none. The text from the tool itself gives the reason. The
+ * message of the error object only says that the process failed.
+ * @param error The rejection value of a spawn
+ * @returns The stderr text, without space at the ends
+ */
+export function stderrOf(error : unknown) : string | undefined {
+    const stderr = (error as { stderr ?: string | Buffer })?.stderr?.toString().trim();
+    return stderr || undefined;
+}
+
 export function fileExists(file : string) {
     return fs.promises.access(file, fs.constants.F_OK)
         .then(() => true)

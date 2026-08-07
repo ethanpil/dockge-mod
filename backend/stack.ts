@@ -2,7 +2,7 @@ import { DockgeServer } from "./dockge-server";
 import fs, { promises as fsAsync } from "fs";
 import { log } from "./log";
 import yaml from "yaml";
-import { DockgeSocket, fileExists, ValidationError } from "./util-server";
+import { DockgeSocket, fileExists, stderrOf, ValidationError } from "./util-server";
 import path from "path";
 import {
     acceptedComposeFileNames,
@@ -390,16 +390,21 @@ export class Stack {
             const res = await childProcessAsync.spawn("docker", this.getComposeOptions("config"), {
                 cwd: this.path,
                 encoding: "utf-8",
+                // The merged output of a large stack goes over the default
+                // limit of 200 KiB
+                maxBuffer: 10 * 1024 * 1024,
+                // Do not keep a process of a docker daemon that does not
+                // answer. The frontend stops its wait after the same time.
+                timeout: 30000,
             });
             return {
                 ok: true,
                 content: res.stdout?.toString() ?? "",
             };
         } catch (e) {
-            const stderr = (e as { stderr ?: string | Buffer })?.stderr?.toString().trim();
             return {
                 ok: false,
-                content: stderr || (e instanceof Error ? e.message : String(e)),
+                content: stderrOf(e) || (e instanceof Error ? e.message : String(e)),
             };
         }
     }

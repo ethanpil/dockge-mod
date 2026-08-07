@@ -10,7 +10,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Thi
 
 ### Added
 
-- A **Merged config** button on the stack page. It opens a read-only dialog with the output of `docker compose config`. A configuration error shows the error text of docker itself.
+- A **Merged config** button on the stack page. It opens a read-only view with the output of `docker compose config`. If the configuration is not correct, the view shows the error text of docker.
 
 ## [5681d78](../../commit/5681d78) - 2026-08-07
 

@@ -192,5 +192,6 @@
     "healthDataDir": "Data directory is writable",
     "mergedConfig": "Merged config",
     "mergedConfigNote": "Show the configuration that docker makes from all files of the stack",
+    "mergedConfigSource": "From the files on the disk",
     "requestTimeout": "The server did not answer."
 }

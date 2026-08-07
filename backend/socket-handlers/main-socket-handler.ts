@@ -13,6 +13,7 @@ import {
     DockgeSocket,
     doubleCheckPassword,
     JWTDecoded,
+    stderrOf,
     ValidationError
 } from "../util-server";
 import { passwordStrength } from "check-password-strength";
@@ -56,7 +57,7 @@ async function checkTool(key : string, file : string, args : string[]) : Promise
         // The first line of stderr holds the reason from the tool itself,
         // for example "docker: 'compose' is not a docker command". The
         // generic message only says that the process failed.
-        const stderr = (e as { stderr ?: string | Buffer })?.stderr?.toString().trim().split("\n")[0];
+        const stderr = stderrOf(e)?.split("\n")[0];
         return {
             key,
             ok: false,

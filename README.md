@@ -202,7 +202,7 @@ dockge-mod uses the same names as docker: `compose.override.yml`, `compose.overr
 
 ### See the Merged Configuration
 
-Docker merges the compose file, the override file, and the env files into one configuration. Click **Merged config** at the top of the compose panel to see the result of `docker compose config`. The view is read only. When the configuration is not correct, the view shows the error text of docker itself.
+Docker merges the compose file, the override file, and the env files into one configuration. Click **Merged config** at the top of the compose panel to see the result of `docker compose config`. The view is read only, and it shows the files on the disk. If the configuration is not correct, the view shows the error text of docker.
 
 ### Use a Git Checkout as a Stack
 

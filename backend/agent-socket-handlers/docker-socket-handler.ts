@@ -399,10 +399,13 @@ export class DockerSocketHandler extends AgentSocketHandler {
 
                 const stack = await Stack.getStack(server, stackName);
                 const result = await stack.getComposeConfig();
+
+                // ok says that this event worked. A configuration error is
+                // a normal answer here, and it goes in its own field.
                 callbackResult({
-                    ok: result.ok,
+                    ok: true,
                     composeConfig: result.ok ? result.content : "",
-                    msg: result.ok ? "" : result.content,
+                    configError: result.ok ? "" : result.content,
                 }, callback);
             } catch (e) {
                 callbackError(e, callback);

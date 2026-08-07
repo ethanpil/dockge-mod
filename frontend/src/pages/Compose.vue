@@ -305,14 +305,17 @@
                          override file the compose file takes the full row. -->
                     <div v-show="!isEditMode" ref="split" class="panel-split" :style="{ '--split-left': splitLeft + '%' }">
                         <div class="panel split-a" :class="{ pop: expandedPanel === 'yaml', 'split-solo': !hasOverride, 'split-gone': hasOverride && splitLeft === 0 }">
-                            <div class="panel-head">
+                            <div class="panel-head head-grow">
                                 <span class="panel-title">{{ stack.composeFileName }}</span>
-                                <!-- Only an agent with override support knows
-                                     the getComposeConfig event -->
-                                <button v-if="overrideSupported" class="mini-btn expand-btn" :title="$t('mergedConfigNote')" @click="showMergedConfig">
+                                <!-- An upstream dockge agent does not have the
+                                     getComposeConfig event, and it also does
+                                     not send the override field. The timer in
+                                     showMergedConfig covers an agent of an
+                                     older dockge-mod build. -->
+                                <button v-if="overrideSupported" class="mini-btn" :title="$t('mergedConfigNote')" @click="showMergedConfig">
                                     <font-awesome-icon icon="layer-group" class="me-1" />{{ $t("mergedConfig") }}
                                 </button>
-                                <button class="mini-btn" :class="{ 'expand-btn': !overrideSupported }" :title="expandedPanel === 'yaml' ? $t('cancel') : $t('expand')" @click="toggleExpand('yaml')">
+                                <button class="mini-btn" :title="expandedPanel === 'yaml' ? $t('cancel') : $t('expand')" @click="toggleExpand('yaml')">
                                     <font-awesome-icon :icon="expandedPanel === 'yaml' ? 'compress' : 'expand'" />
                                 </button>
                             </div>
@@ -383,6 +386,34 @@
                             ></Terminal>
                         </div>
                     </div>
+                    <!-- Merged configuration overlay: the output of
+                         `docker compose config`, read only. This uses the
+                         same overlay system as the expanded panels, thus
+                         Escape and the backdrop close it. -->
+                    <div v-if="expandedPanel === 'merged'" class="panel pop">
+                        <div class="panel-head">
+                            <span class="panel-title">{{ $t("mergedConfig") }}</span>
+                            <span class="panel-note">{{ $t("mergedConfigSource") }}</span>
+                            <button class="mini-btn expand-btn" :title="$t('cancel')" @click="toggleExpand('merged')">
+                                <font-awesome-icon icon="compress" />
+                            </button>
+                        </div>
+                        <div class="panel-fill merged-body">
+                            <div v-if="mergedConfigLoading" class="p-3">
+                                <font-awesome-icon icon="spinner" spin />
+                            </div>
+                            <pre v-else-if="mergedConfigError" class="merged-error">{{ mergedConfigError }}</pre>
+                            <div v-else class="editor-fill">
+                                <code-mirror
+                                    :model-value="mergedConfigYAML"
+                                    v-bind="editorProps"
+                                    :extensions="extensions"
+                                    :disabled="true"
+                                />
+                            </div>
+                        </div>
+                    </div>
+
                     <div v-if="expandedPanel" class="panel-backdrop" @click="toggleExpand(expandedPanel)"></div>
                 </div>
                 <div v-if="isEditMode" class="col-12">
@@ -508,32 +539,6 @@
                 </i18n-t>
             </Confirm>
 
-            <!-- Merged configuration dialog: the output of
-                 `docker compose config`, read only -->
-            <div ref="mergedModal" class="modal fade" tabindex="-1">
-                <div class="modal-dialog modal-xl modal-dialog-scrollable">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h5 class="modal-title">{{ $t("mergedConfig") }}</h5>
-                            <button type="button" class="btn-close" data-bs-dismiss="modal" :aria-label="$t('cancel')" />
-                        </div>
-                        <div class="modal-body merged-body">
-                            <div v-if="mergedConfigLoading" class="p-3">
-                                <font-awesome-icon icon="spinner" spin />
-                            </div>
-                            <pre v-else-if="mergedConfigError" class="merged-error">{{ mergedConfigError }}</pre>
-                            <div v-else class="editor-fill merged-editor">
-                                <code-mirror
-                                    v-model="mergedConfigYAML"
-                                    v-bind="editorProps"
-                                    :extensions="extensions"
-                                    :disabled="true"
-                                />
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
         </div>
     </transition>
 </template>
@@ -560,7 +565,6 @@ import {
     defaultComposeOverrideTemplate
 } from "../../../common/util-common";
 import { formatPorts, formatUptime } from "../util-frontend";
-import { Modal } from "bootstrap";
 import NetworkInput from "../components/NetworkInput.vue";
 import Confirm from "../components/Confirm.vue";
 import Container from "../components/Container.vue";
@@ -692,10 +696,13 @@ export default {
             leaving: false,
             // Resolves the open dialog with the user's choice
             leaveResolve: null,
-            // State of the merged configuration dialog
+            // State of the merged configuration overlay. The sequence
+            // number makes the answer and the timer of an earlier request
+            // stale, so they cannot write over a later request.
             mergedConfigLoading: false,
             mergedConfigError: "",
             mergedConfigYAML: "",
+            mergedConfigSeq: 0,
         };
     },
     computed: {
@@ -1010,9 +1017,7 @@ export default {
         window.removeEventListener("beforeunload", this.onBeforeUnload);
         this.wideLayoutQuery?.removeEventListener("change", this.onWideLayoutChange);
         this.endSplitDrag();
-        this.mergedModal?.hide();
-        this.mergedModal?.dispose();
-        this.mergedModal = null;
+        clearTimeout(this.mergedConfigTimer);
     },
     methods: {
         /**
@@ -1516,40 +1521,44 @@ export default {
         },
 
         /**
-         * Open the merged configuration dialog and get the output of
-         * `docker compose config` from the agent. The dialog shows the
-         * error text of docker when the configuration is not correct. A
-         * timer ends the wait when an old agent does not answer.
+         * Open the merged configuration overlay and get the output of
+         * `docker compose config` from the agent. The overlay shows the
+         * error text of docker if the configuration is not correct. A
+         * timer ends the wait if an agent does not answer.
          * @returns {void}
          */
         showMergedConfig() {
+            this.expandedPanel = "merged";
             this.mergedConfigLoading = true;
             this.mergedConfigError = "";
             this.mergedConfigYAML = "";
 
-            if (!this.mergedModal) {
-                this.mergedModal = new Modal(this.$refs.mergedModal);
-            }
-            this.mergedModal.show();
-
-            let settled = false;
-            const timer = setTimeout(() => {
-                settled = true;
+            const seq = ++this.mergedConfigSeq;
+            clearTimeout(this.mergedConfigTimer);
+            this.mergedConfigTimer = setTimeout(() => {
+                if (seq !== this.mergedConfigSeq) {
+                    return;
+                }
                 this.mergedConfigLoading = false;
                 this.mergedConfigError = this.$t("requestTimeout");
             }, 30000);
 
             this.$root.emitAgent(this.endpoint, "getComposeConfig", this.stack.name, (res) => {
-                if (settled) {
+                if (seq !== this.mergedConfigSeq) {
                     return;
                 }
-                clearTimeout(timer);
+                clearTimeout(this.mergedConfigTimer);
                 this.mergedConfigLoading = false;
 
                 if (res.ok) {
                     this.mergedConfigYAML = res.composeConfig;
+                    this.mergedConfigError = res.configError || "";
                 } else {
-                    this.mergedConfigError = res.msg;
+                    // A protocol error, for example an expired login. This
+                    // is not an error of the configuration, thus it also
+                    // goes to the usual toast.
+                    this.$root.toastRes(res);
+                    this.mergedConfigError = res.msg ?? "";
                 }
             });
         },
@@ -2105,15 +2114,9 @@ export default {
     background: rgba(0, 0, 0, 0.55);
 }
 
-/* ---------- merged configuration dialog ---------- */
+/* ---------- merged configuration overlay ---------- */
 .merged-body {
-    padding: 0;
-    // The scroll stays inside the dialog body
     overflow: auto;
-}
-
-.merged-editor {
-    border-radius: 0 0 var(--bs-modal-border-radius) var(--bs-modal-border-radius);
 }
 
 .merged-error {
@@ -2121,6 +2124,12 @@ export default {
     padding: 1rem;
     color: var(--bs-danger);
     white-space: pre-wrap;
+}
+
+/* The title takes the free space, so the buttons of this head need no
+   margin of their own */
+.head-grow .panel-title {
+    margin-right: auto;
 }
 
 /* ---------- unsaved changes ---------- */
