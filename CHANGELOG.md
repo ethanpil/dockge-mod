@@ -6,6 +6,24 @@ The base is dockge commit [f809ae1](https://github.com/louislam/dockge/commit/f8
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). This project has no releases, so each entry is a commit. The newest entry comes first. A commit that changes only this file or the project rules has no entry.
 
+## [eb8e5ff](../../commit/eb8e5ff) - 2026-08-07
+
+### Fixed
+
+- The env row editor does not write a variable with a bad key. A line such as `=value` stops each docker command of the stack. The **Global .env** page has the same editor, thus one bad line there stopped each stack.
+- The timers of the **Pull & Redeploy** action and the **Health** page keep their handles in their own function. A late answer of an earlier request stopped the timer of a later request before.
+- A late answer of a pull loads the stack again. The editor kept the files from before the pull, and a save wrote them back.
+- The env row editor examines the raw compose text again. A check of the substituted text only cleared a real error message.
+- A dialog on top owns the Escape key. The previous test did not work, because bootstrap removes its class before the handler of the page.
+- Edit mode ends a merged configuration request that still waits.
+- The status polls keep their timers in the page object. Two pages could stop the timers of each other before.
+- The unmount does the same operations as the router guard, thus the server does not keep this client in the log terminal.
+- The health checks have a timeout and a large buffer.
+- A failure for one client does not stop the info broadcast to the other clients.
+- The poll interval goes in each info event. A value that was absent one time put the polls back to the default after each new connection.
+- A settings save answers each error, thus the settings page does not wait.
+- The end of a height drag takes the last position of the pointer.
+
 ## [ab0c817](../../commit/ab0c817) - 2026-08-07
 
 ### Fixed
