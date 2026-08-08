@@ -232,7 +232,7 @@ The setting comes from the server whose interface is open. The stacks of an agen
 
 ### Examine the Health of the Server
 
-The **Health** page under **Settings** shows if the tools that dockge-mod needs are on the server: Docker, Docker Compose, and Git. It also shows if the server can write in the stacks directory and the data directory.
+The **Health** page under **Settings** shows if the tools that dockge-mod needs are on the server: Docker, Docker Compose, and Git. It also shows if the server can write in the stacks directory and the data directory. The image holds these tools. If you run dockge-mod from the source, install them yourself.
 
 ### Use the Terminal
 

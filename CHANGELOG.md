@@ -6,6 +6,12 @@ The base is dockge commit [f809ae1](https://github.com/louislam/dockge/commit/f8
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). This project has no releases, so each entry is a commit. The newest entry comes first. A commit that changes only this file or the project rules has no entry.
 
+## Unreleased
+
+### Fixed
+
+- The image holds git. Without it the branch of a stack that is a git checkout did not show, and the **Pull & Redeploy** button did not show. The **Health** page made this visible.
+
 ## [eb8e5ff](../../commit/eb8e5ff) - 2026-08-07
 
 ### Fixed

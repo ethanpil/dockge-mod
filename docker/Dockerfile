@@ -1,9 +1,12 @@
 ############################################
 # Base
 # The runtime environment: Node.js, the docker CLI, the compose
-# plugin, dumb-init, and tsx. The upstream project publishes this
-# layer as an image. This file builds it from the source, so the
-# image does not depend on that registry.
+# plugin, git, dumb-init, and tsx. The upstream project publishes
+# this layer as an image. This file builds it from the source, so
+# the image does not depend on that registry.
+#
+# git is necessary for the stack directory that is a git checkout.
+# Without it the branch does not show and a pull is not possible.
 ############################################
 FROM node:22-bookworm-slim AS base
 RUN apt update && apt install --yes --no-install-recommends \
@@ -11,6 +14,7 @@ RUN apt update && apt install --yes --no-install-recommends \
     ca-certificates \
     gnupg \
     unzip \
+    git \
     dumb-init \
     && install -m 0755 -d /etc/apt/keyrings \
     && curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg \
