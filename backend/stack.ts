@@ -68,6 +68,18 @@ export class Stack {
     }
 
     /**
+     * Arguments that let git use the stack directory when a different
+     * user is its owner. The server runs as root in the container, and
+     * the PUID and PGID variables give the files to a different user.
+     * Git refuses such a directory without this exception. The
+     * application selects the directory itself, thus the exception adds
+     * no new access.
+     */
+    protected get gitSafeArgs() : string[] {
+        return [ "-c", "safe.directory=" + this.fullPath ];
+    }
+
+    /**
      * The git state of the stack directory: the branch, a flag that shows
      * tracked work that is not committed, and a flag for a detached HEAD.
      * On a detached HEAD the branch field holds the short commit hash. The
@@ -82,7 +94,7 @@ export class Stack {
             return null;
         }
 
-        const git = (...args : string[]) => childProcessAsync.spawn("git", args, {
+        const git = (...args : string[]) => childProcessAsync.spawn("git", [ ...this.gitSafeArgs, ...args ], {
             cwd: this.path,
             encoding: "utf-8",
             // The output of a git checkout with many changes can go over
@@ -135,7 +147,7 @@ export class Stack {
         if (!process.env.GIT_SSH_COMMAND) {
             env.GIT_SSH_COMMAND = "ssh -o BatchMode=yes";
         }
-        const exitCode = await Terminal.exec(this.server, socket, terminalName, "git", [ "pull" ], this.path, env);
+        const exitCode = await Terminal.exec(this.server, socket, terminalName, "git", [ ...this.gitSafeArgs, "pull" ], this.path, env);
         if (exitCode !== 0) {
             throw new Error("Failed to pull, please check the terminal output for more information.");
         }

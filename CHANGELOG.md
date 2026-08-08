@@ -6,6 +6,12 @@ The base is dockge commit [f809ae1](https://github.com/louislam/dockge/commit/f8
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). This project has no releases, so each entry is a commit. The newest entry comes first. A commit that changes only this file or the project rules has no entry.
 
+## Unreleased
+
+### Fixed
+
+- Git accepts a stack directory that a different user owns. The server runs as root in the container, and the `PUID` and `PGID` variables give the files to a different user. Git refused such a directory, thus the branch did not show for those users.
+
 ## [4e97712](../../commit/4e97712) - 2026-08-07
 
 ### Fixed
