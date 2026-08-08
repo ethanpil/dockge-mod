@@ -608,7 +608,7 @@ import {
 } from "../../../common/util-common";
 import { formatPorts, formatUptime } from "../util-frontend";
 import NetworkInput from "../components/NetworkInput.vue";
-import Confirm from "../components/Confirm.vue";
+import Confirm, { isDialogOpen } from "../components/Confirm.vue";
 import Container from "../components/Container.vue";
 import ContainerActions from "../components/ContainerActions.vue";
 import EnvEditor from "../components/EnvEditor.vue";
@@ -629,9 +629,6 @@ services:
 const envDefault = "# VARIABLE=value #comment";
 
 let yamlErrorTimeout = null;
-
-let serviceStatusTimeout = null;
-let dockerStatsTimeout = null;
 
 export default {
     components: {
@@ -1104,16 +1101,14 @@ export default {
         this.endSplitDrag();
         this.endHeightDrag();
         clearTimeout(this.mergedConfigTimer);
-        clearTimeout(this.gitPullTimer);
+        clearTimeout(yamlErrorTimeout);
 
         // The page can be destroyed without a route change, for example
-        // when a failed login hides the router view. The status polls run
-        // from timeouts that arm each other, so they must stop here too, or
-        // the destroyed page keeps its requests on the socket for ever.
-        this.stopServiceStatusTimeout = true;
-        this.stopDockerStatsTimeout = true;
-        clearTimeout(serviceStatusTimeout);
-        clearTimeout(dockerStatsTimeout);
+        // when a failed login hides the router view. The router guard does
+        // not run then. The status polls arm each other and would
+        // continue, and the server would keep this client in the log
+        // terminal. A second call does no damage.
+        this.exitAction();
     },
     methods: {
         /**
@@ -1122,14 +1117,19 @@ export default {
          * @returns {void}
          */
         onComposeKeydown(e) {
-            // A dialog on top owns the Escape key. Without this, one press
-            // closes the dialog and the overlay below it together.
-            if (document.querySelector(".modal.show")) {
+            if (e.key !== "Escape" || !this.expandedPanel) {
                 return;
             }
-            if (e.key === "Escape" && this.expandedPanel) {
-                this.toggleExpand(this.expandedPanel);
+
+            // A dialog on top owns the Escape key. Without this, one press
+            // closes the dialog and the overlay below it together. The
+            // count comes from the dialog component, because bootstrap
+            // removes its own class before this handler runs.
+            if (isDialogOpen()) {
+                return;
             }
+
+            this.toggleExpand(this.expandedPanel);
         },
 
         /**
@@ -1158,10 +1158,10 @@ export default {
             const opening = this.expandedPanel !== which;
             this.expandedPanel = opening ? which : null;
 
-            // A close of the merged overlay ends the request that fills it.
-            // Without this, the buttons that watch mergedConfigLoading stay
-            // disabled until the timer fires.
-            if (which === "merged" && !opening) {
+            // The merged overlay is no longer on screen, thus the request
+            // that fills it must end. Without this, the buttons that watch
+            // mergedConfigLoading stay disabled until the timer fires.
+            if (this.expandedPanel !== "merged") {
                 this.cancelMergedConfig();
             }
         },
@@ -1305,14 +1305,25 @@ export default {
                 return;
             }
             this.heightDrag.raf = requestAnimationFrame(() => {
-                const drag = this.heightDrag;
-                if (!drag) {
+                if (!this.heightDrag) {
                     return;
                 }
-                drag.raf = null;
-                const height = drag.startHeight + drag.lastY - drag.startY;
-                this.panelHeights[drag.key] = Math.min(window.innerHeight * 2, Math.max(150, Math.round(height)));
+                this.heightDrag.raf = null;
+                this.applyDragHeight();
             });
+        },
+
+        /**
+         * Write the height that the last pointer position gives.
+         * @returns {void}
+         */
+        applyDragHeight() {
+            const drag = this.heightDrag;
+            if (!drag) {
+                return;
+            }
+            const height = drag.startHeight + drag.lastY - drag.startY;
+            this.panelHeights[drag.key] = Math.min(window.innerHeight * 2, Math.max(150, Math.round(height)));
         },
 
         /**
@@ -1320,8 +1331,13 @@ export default {
          * @returns {void}
          */
         endHeightDrag() {
-            if (this.heightDrag?.raf) {
-                cancelAnimationFrame(this.heightDrag.raf);
+            if (this.heightDrag) {
+                // Take the last position of the pointer. A frame that
+                // waits holds it, and a cancel alone would lose it.
+                if (this.heightDrag.raf) {
+                    cancelAnimationFrame(this.heightDrag.raf);
+                    this.applyDragHeight();
+                }
             }
             this.heightDrag = null;
             document.removeEventListener("pointermove", this.onHeightDrag);
@@ -1441,15 +1457,15 @@ export default {
         },
 
         startServiceStatusTimeout() {
-            clearTimeout(serviceStatusTimeout);
-            serviceStatusTimeout = setTimeout(async () => {
+            clearTimeout(this.serviceStatusTimeout);
+            this.serviceStatusTimeout = setTimeout(async () => {
                 this.requestServiceStatus();
             }, this.pollIntervalMs);
         },
 
         startDockerStatsTimeout() {
-            clearTimeout(dockerStatsTimeout);
-            dockerStatsTimeout = setTimeout(async () => {
+            clearTimeout(this.dockerStatsTimeout);
+            this.dockerStatsTimeout = setTimeout(async () => {
                 this.requestDockerStats();
             }, this.pollIntervalMs);
         },
@@ -1552,8 +1568,8 @@ export default {
             console.log("exitAction");
             this.stopServiceStatusTimeout = true;
             this.stopDockerStatsTimeout = true;
-            clearTimeout(serviceStatusTimeout);
-            clearTimeout(dockerStatsTimeout);
+            clearTimeout(this.serviceStatusTimeout);
+            clearTimeout(this.dockerStatsTimeout);
 
             // Leave Combined Terminal
             console.debug("leaveCombinedTerminal", this.endpoint, this.stack.name);
@@ -1779,7 +1795,7 @@ export default {
                     // is not an error of the configuration, thus it also
                     // goes to the usual toast.
                     this.$root.toastRes(res);
-                    this.mergedConfigError = res.msg ?? "";
+                    this.mergedConfigError = res.msgi18n ? this.$t(res.msg) : (res.msg ?? "");
                 }
             });
         },
@@ -1810,11 +1826,10 @@ export default {
         },
 
         /**
-         * Pull the git checkout of the stack, then deploy it. The output of
-         * git goes to the progress terminal. The page then loads the stack
-         * again, also after a failure: the pull can change the files on the
-         * disk although the deploy fails, and the editor must show the
-         * files that the disk holds.
+         * Pull the git checkout of the stack, then deploy it. The output
+         * of git goes to the progress terminal. The page then loads the
+         * stack again, also after a failure. A pull can change the files
+         * on the disk although the deploy fails.
          * @returns {void}
          */
         gitPullStack() {
@@ -1824,10 +1839,11 @@ export default {
             // agent that disconnects during it never answers, and the
             // toolbar would stay disabled until a page reload. The timer
             // gives the buttons back. A pull can be slow, thus the time is
-            // longer than the other timers.
+            // longer than the other timers. The handle stays in this
+            // function, so a later action cannot stop the timer of an
+            // earlier one.
             let settled = false;
-            clearTimeout(this.gitPullTimer);
-            this.gitPullTimer = setTimeout(() => {
+            const timer = setTimeout(() => {
                 if (settled) {
                     return;
                 }
@@ -1837,14 +1853,18 @@ export default {
             }, 300000);
 
             this.$root.emitAgent(this.endpoint, "gitPullStack", this.stack.name, (res) => {
-                clearTimeout(this.gitPullTimer);
+                clearTimeout(timer);
+
+                // A pull changes the files on the disk. The page must show
+                // them, also when the answer comes after the timeout.
+                this.loadStack();
+
                 if (settled) {
                     return;
                 }
                 settled = true;
                 this.processing = false;
                 this.$root.toastRes(res);
-                this.loadStack();
             });
         },
 
@@ -1916,6 +1936,12 @@ export default {
          */
         envCodeChange() {
             try {
+                // The raw text goes through the same examination as in
+                // yamlCodeChange. envsubstYAML writes the document again
+                // and can hide an error of the raw text, thus a check of
+                // the substituted text only is not sufficient.
+                this.yamlToJSON(this.stack.composeYAML);
+
                 const env = dotenv.parse(this.stack.composeENV);
                 const envYAML = envsubstYAML(this.stack.composeYAML, env);
                 this.envsubstJSONConfig = this.yamlToJSON(envYAML).config;
@@ -1947,8 +1973,10 @@ export default {
 
         enableEditMode() {
             // The expanded overlay lives in view mode; leaving it set would
-            // strand a full-viewport backdrop over the edit form.
+            // strand a full-viewport backdrop over the edit form. A merged
+            // configuration request that still waits must end here too.
             this.expandedPanel = null;
+            this.cancelMergedConfig();
             this.isEditMode = true;
             this.takeEditSnapshot();
         },

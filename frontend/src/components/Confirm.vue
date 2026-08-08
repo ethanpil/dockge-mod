@@ -34,6 +34,15 @@ import { Modal } from "bootstrap";
 // are open, so that only the last dialog to close removes them.
 let openCount = 0;
 
+/**
+ * True while a dialog of this type is open. A page that has its own key
+ * handler must let the dialog on top use the Escape key first.
+ * @returns {boolean}
+ */
+export function isDialogOpen() {
+    return openCount > 0;
+}
+
 export default {
     props: {
         /** Style of button */

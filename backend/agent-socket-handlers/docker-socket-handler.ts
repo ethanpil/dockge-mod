@@ -436,6 +436,15 @@ export class DockerSocketHandler extends AgentSocketHandler {
                 }
 
                 const stack = await Stack.getStack(server, stackName);
+
+                // The process runs in the stack directory, thus the
+                // directory must exist. The interface shows the button for
+                // a managed stack only, so this refuses a request that
+                // does not come from the interface.
+                if (!stack.isManagedByDockge) {
+                    throw new ValidationError("stackNotManagedByDockgeMsg");
+                }
+
                 const result = await stack.getComposeConfig();
                 callbackResult(composeConfigResult(result), callback);
             } catch (e) {

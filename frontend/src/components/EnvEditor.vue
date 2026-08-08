@@ -29,9 +29,9 @@
                         @input="onEdit"
                     />
                 </div>
-                <!-- A pair with a bad key does not go in the file. The
-                     message makes that visible, so no data goes away
-                     without a sign. -->
+                <!-- A pair with a bad key does not go in the file, because
+                     docker refuses a file that holds such a line. The
+                     message makes that visible. -->
                 <div v-if="!keyOK(entry)" class="env-key-warning">
                     {{ $t("envKeyInvalid") }}
                 </div>
@@ -193,17 +193,17 @@ export default {
         },
 
         /**
-         * Make the .env text from the entries. A pair with a bad key keeps
-         * its text in the file, so a toggle to the text view does not lose
-         * it. Its row shows a message. Only a pair that is empty gives no
-         * line.
+         * Make the .env text from the entries. A pair with a bad key gives
+         * no line, because docker refuses a file that holds one. The row
+         * of that pair shows a message, thus the user can see why the
+         * variable is not in the file yet.
          * @returns {string} the .env text
          */
         serialize() {
             const lines = [];
             for (const entry of this.entries) {
                 if (entry.type === "pair") {
-                    if (entry.key !== "" || entry.value !== "") {
+                    if (this.keyOK(entry)) {
                         lines.push(entry.prefix + entry.key + "=" + entry.value);
                     }
                 } else {

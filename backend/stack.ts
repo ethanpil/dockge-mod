@@ -60,7 +60,7 @@ export class Stack {
     }
 
     /**
-     * True when the stack directory is a git checkout. The .git entry can be
+     * True if the stack directory is a git checkout. The .git entry can be
      * a directory, or a file for a worktree or a submodule.
      */
     get isGitRepo() : boolean {
@@ -73,8 +73,8 @@ export class Stack {
      * On a detached HEAD the branch field holds the short commit hash. The
      * dirty flag does not count untracked files. An override file or a
      * .env file next to the checkout is the usual condition, not drift.
-     * The result is null when the directory is not a git checkout, or when
-     * git gives an error, for example when git is not installed. The stack
+     * The result is null if the directory is not a git checkout, or if git
+     * gives an error, for example if git is not installed. The stack
      * object then looks the same as one from an agent without git support.
      */
     async getGitInfo() : Promise<{ branch : string, isDirty : boolean, isDetached : boolean } | null> {
@@ -85,9 +85,10 @@ export class Stack {
         const git = (...args : string[]) => childProcessAsync.spawn("git", args, {
             cwd: this.path,
             encoding: "utf-8",
-            // The output of a dirty repo can go over the default limit of
-            // 200 KiB, and a hung filesystem must not block the page for
-            // ever. The same values as runComposeConfig.
+            // The output of a git checkout with many changes can go over
+            // the default limit of 200 KiB. A process that does not end
+            // must not block the page. The same values as
+            // runComposeConfig.
             maxBuffer: 10 * 1024 * 1024,
             timeout: 30000,
         });
@@ -418,16 +419,10 @@ export class Stack {
     /**
      * The configuration that docker makes from the compose file, the
      * override file, and the env files, with `docker compose config`. The
-     * stack must be one that this application manages, because the process
-     * runs in the stack directory.
+     * caller must give a stack that this application manages, because the
+     * process runs in the stack directory.
      */
     async getComposeConfig() : Promise<{ ok : boolean, content : string }> {
-        if (!this.isManagedByDockge) {
-            return {
-                ok: false,
-                content: "This stack is not managed by dockge-mod.",
-            };
-        }
         return Stack.runComposeConfig(this.getComposeOptions("config"), this.path);
     }
 

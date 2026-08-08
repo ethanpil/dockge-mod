@@ -110,7 +110,7 @@ export async function doubleCheckPassword(socket : DockgeSocket, currentPassword
 }
 
 /**
- * The stderr text of a failed child process, or undefined when the error
+ * The stderr text of a failed child process, or undefined if the error
  * carries none. The text from the tool itself gives the reason. The
  * message of the error object only says that the process failed.
  * @param error The rejection value of a spawn

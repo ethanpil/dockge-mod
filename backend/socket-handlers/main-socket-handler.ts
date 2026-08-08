@@ -48,6 +48,10 @@ async function checkTool(key : string, file : string, args : string[]) : Promise
     try {
         const res = await childProcessAsync.spawn(file, args, {
             encoding: "utf-8",
+            // A tool that does not answer must not keep the health report
+            // for ever. The same limits as the other tool processes.
+            maxBuffer: 10 * 1024 * 1024,
+            timeout: 30000,
         });
         const firstLine = (res.stdout?.toString() ?? "").trim().split(/\r?\n/)[0];
         return {
@@ -407,16 +411,14 @@ export class MainSocketHandler extends SocketHandler {
                 // the client that saved. A failure of this broadcast must
                 // not become an unhandled rejection.
                 server.sendInfoToAllClients().catch((err) => {
-                    log.warn("setSettings", "Cannot send info to all clients: " + (err instanceof Error ? err.message : String(err)));
+                    log.warn("setSettings", "Cannot send info to all clients: " + errorMessage(err));
                 });
 
             } catch (e) {
-                if (e instanceof Error) {
-                    callback({
-                        ok: false,
-                        msg: e.message,
-                    });
-                }
+                // The settings page waits for an answer. A value that is
+                // not an Error object must also give one, or the page
+                // waits for ever.
+                callbackError(e, callback);
             }
         });
 

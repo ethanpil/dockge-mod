@@ -6,6 +6,50 @@ The base is dockge commit [f809ae1](https://github.com/louislam/dockge/commit/f8
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). This project has no releases, so each entry is a commit. The newest entry comes first. A commit that changes only this file or the project rules has no entry.
 
+## [ab0c817](../../commit/ab0c817) - 2026-08-07
+
+### Fixed
+
+- The height of a panel comes from a CSS class with a variable. A narrow window ignores the height of the file row, because the stacked panels there need their full height.
+- The drag handles use pointer events, thus they work on a touch device.
+
+## [0c83318](../../commit/0c83318) - 2026-08-07
+
+### Fixed
+
+- The env row editor keeps the line ends of the file. A file from Windows showed each variable as a read-only line before.
+- The editor keeps the last line of the file as it is. An edit added a line end and made the stack dirty before.
+- The **Global .env** page under **Settings** has the same row editor.
+
+## [7ae3c93](../../commit/7ae3c93) - 2026-08-07
+
+### Fixed
+
+- A settings save sends the new values to each client with a login. Only the client that saved got them before.
+- The server keeps the stored poll interval in its limits. Only the browser form held the limits before.
+
+## [f7064a0](../../commit/f7064a0) - 2026-08-07
+
+### Fixed
+
+- The validation gives docker the stack directory as the project directory. A reference to a file of the stack, for example `env_file`, stays correct.
+- The **Validate** button is not usable while a validation runs. Each extra click started one more docker process before.
+
+## [ab0fc57](../../commit/ab0fc57) - 2026-08-07
+
+### Fixed
+
+- The merged configuration is an overlay of the stack page, not a dialog. A dialog that closed during a page change kept the scroll lock on the body.
+- The docker process gets a buffer of 10 MiB and a timeout of 30 seconds. An output over 200 KiB stopped the command before.
+
+## [d3868be](../../commit/d3868be) - 2026-08-07
+
+### Fixed
+
+- `git pull` cannot ask for credentials on the progress terminal. A question there gets no answer, and the pull would never end.
+- A detached HEAD shows the short commit hash, and the **Pull & Redeploy** button does not show.
+- The dot after the branch does not count untracked files.
+
 ## [920cbe0](../../commit/920cbe0) - 2026-08-07
 
 ### Fixed

@@ -21,7 +21,7 @@ import { R } from "redbean-node";
 import { genSecret, isDev, LooseObject, POLL_INTERVAL_DEFAULT } from "../common/util-common";
 import { generatePasswordHash } from "./password-hash";
 import { Bean } from "redbean-node/dist/bean";
-import { Arguments, Config, DockgeSocket } from "./util-server";
+import { Arguments, Config, DockgeSocket, errorMessage } from "./util-server";
 import { DockerSocketHandler } from "./agent-socket-handlers/docker-socket-handler";
 import expressStaticGzip from "express-static-gzip";
 import path from "path";
@@ -443,9 +443,12 @@ export class DockgeServer {
             isContainer,
             primaryHostname: await Settings.get("primaryHostname"),
             // Seconds between the status polls of the interface. A client
-            // without this feature ignores the field. Only a client with a
-            // login gets the value.
-            pollInterval: hideVersion ? undefined : (await Settings.get("pollInterval") || POLL_INTERVAL_DEFAULT),
+            // without this feature ignores the field. Each info event
+            // carries the value, also the event before the login: the
+            // client replaces its full info object, thus a value that is
+            // absent one time would put the polls back to the default
+            // after each new connection.
+            pollInterval: await Settings.get("pollInterval") ?? POLL_INTERVAL_DEFAULT,
             //serverTimezone: await this.getTimezone(),
             //serverTimezoneOffset: this.getTimezoneOffset(),
         });
@@ -459,7 +462,13 @@ export class DockgeServer {
         for (const rawSocket of this.io.sockets.sockets.values()) {
             const socket = rawSocket as DockgeSocket;
             if (socket.userID) {
-                await this.sendInfo(socket);
+                // A failure for one client must not stop the other
+                // clients from getting the new values
+                try {
+                    await this.sendInfo(socket);
+                } catch (e) {
+                    log.warn("sendInfo", "Cannot send info to " + socket.id + ": " + errorMessage(e));
+                }
             }
         }
     }

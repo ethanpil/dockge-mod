@@ -41,6 +41,9 @@ export default {
         return {
             loaded: false,
             health: [],
+            // Each request keeps its own timer here, so the unmount can
+            // stop every timer that still waits
+            healthTimers: [],
         };
     },
 
@@ -65,7 +68,7 @@ export default {
     },
 
     unmounted() {
-        clearTimeout(this.healthTimer);
+        this.healthTimers.forEach(clearTimeout);
     },
 
     methods: {
@@ -78,9 +81,10 @@ export default {
         load() {
             this.loaded = false;
 
+            // The handle stays in this function, so a late answer of an
+            // earlier request cannot stop the timer of a later one.
             let settled = false;
-            clearTimeout(this.healthTimer);
-            this.healthTimer = setTimeout(() => {
+            const timer = setTimeout(() => {
                 if (settled) {
                     return;
                 }
@@ -89,9 +93,10 @@ export default {
                 this.health = [];
                 this.$root.toastError(this.$t("requestTimeout"));
             }, 30000);
+            this.healthTimers.push(timer);
 
             this.$root.getSocket().emit("getDockgeHealth", (res) => {
-                clearTimeout(this.healthTimer);
+                clearTimeout(timer);
                 if (settled) {
                     return;
                 }
