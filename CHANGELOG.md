@@ -1,10 +1,21 @@
-﻿# Changelog
+# Changelog
 
 This file lists the changes between dockge-mod and the [dockge](https://github.com/louislam/dockge) project.
 
 The base is dockge commit [f809ae1](https://github.com/louislam/dockge/commit/f809ae192b571944ad773e9866d3e67064ae8043). dockge-mod is a drop-in replacement. The database schema, the environment variables, and the socket protocol stay the same. Each new socket event and field only adds data.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). This project has no releases, so each entry is a commit. The newest entry comes first. A commit that changes only this file or the project rules has no entry.
+
+## [3571439](../../commit/3571439) - 2026-08-07
+
+### Fixed
+
+- The answer of a pull keeps the toolbar closed until the new stack content arrives. A late answer does not load the stack over an open edit session, and not for a page that went away.
+- The pull timer and the health answer are quiet after the page goes away. A toast could show on a different page minutes later before.
+- A watcher on the expanded panel ends a merged configuration request. The unmount makes a late answer stale.
+- A key of an env variable can start with a number, the same as docker accepts.
+- The safe git directory is the physical path, with forward slashes on Windows. A symbolic link in the stacks path made the exception empty.
+- The changelog file has no byte order mark.
 
 ## [60b035b](../../commit/60b035b) - 2026-08-07
 
@@ -30,7 +41,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Thi
 - Edit mode ends a merged configuration request that still waits.
 - The status polls keep their timers in the page object. Two pages could stop the timers of each other before.
 - The unmount does the same operations as the router guard, thus the server does not keep this client in the log terminal.
-- The health checks have a timeout and a large buffer.
+- The health checks have a timeout of 30 seconds and a buffer of 10 MiB.
+- The merged configuration refuses an unmanaged stack in the handler, thus the message follows the usual translation.
 - A failure for one client does not stop the info broadcast to the other clients.
 - The poll interval goes in each info event. A value that was absent one time put the polls back to the default after each new connection.
 - A settings save answers each error, thus the settings page does not wait.
