@@ -390,8 +390,7 @@ export class MainSocketHandler extends SocketHandler {
                 // not the minimum, because Number("") is 0.
                 if ("pollInterval" in data) {
                     const raw = data.pollInterval;
-                    const empty = raw === "" || raw === null || raw === undefined ||
-                        (typeof raw === "string" && raw.trim() === "");
+                    const empty = raw == null || (typeof raw === "string" && raw.trim() === "");
                     const n = Number(raw);
                     if (empty || !Number.isFinite(n)) {
                         data.pollInterval = POLL_INTERVAL_DEFAULT;

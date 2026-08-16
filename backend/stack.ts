@@ -68,15 +68,28 @@ export class Stack {
     }
 
     /**
-     * Arguments that let git use the stack directory when a different
+     * Arguments that let git use the stack directory if a different
      * user is its owner. The server runs as root in the container, and
      * the PUID and PGID variables give the files to a different user.
      * Git refuses such a directory without this exception. The
      * application selects the directory itself, thus the exception adds
      * no new access.
+     *
+     * Git compares the exception with the physical path of the
+     * directory, with forward slashes. Thus the value resolves the
+     * symbolic links, and Windows separators change.
      */
     protected get gitSafeArgs() : string[] {
-        return [ "-c", "safe.directory=" + this.fullPath ];
+        let dir = this.fullPath;
+        try {
+            dir = fs.realpathSync(dir);
+        } catch (e) {
+            // The directory can be gone; the logical path then stays
+        }
+        if (process.platform === "win32") {
+            dir = dir.replace(/\\/g, "/");
+        }
+        return [ "-c", "safe.directory=" + dir ];
     }
 
     /**
@@ -888,7 +901,7 @@ export class Stack {
                     // For example, the docker CLI is missing, or the daemon
                     // does not answer. Without this the IP column shows only
                     // dashes and gives no reason anywhere.
-                    log.debug("getContainerIPs", "docker inspect failed: " + (e instanceof Error ? e.message : String(e)));
+                    log.debug("getContainerIPs", "docker inspect failed: " + errorMessage(e));
                 }
             }
 

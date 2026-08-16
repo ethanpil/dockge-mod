@@ -447,6 +447,14 @@ export function envsubst(string : string, variables : LooseObject) : string {
  */
 export function envsubstYAML(content : string, env : DotenvParseOutput) : string {
     const doc = yaml.parseDocument(content);
+
+    // A document with an error cannot go to toString. Without this, the
+    // caller gets a different, less clear error, or a text that hides the
+    // problem of the raw content.
+    if (doc.errors.length > 0) {
+        throw doc.errors[0];
+    }
+
     if (doc.contents) {
         // @ts-ignore
         for (const item of doc.contents.items) {

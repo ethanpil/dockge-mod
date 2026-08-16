@@ -628,8 +628,6 @@ services:
 `;
 const envDefault = "# VARIABLE=value #comment";
 
-let yamlErrorTimeout = null;
-
 export default {
     components: {
         NetworkInput,
@@ -1010,6 +1008,19 @@ export default {
         },
 
         /**
+         * The merged overlay is not on screen after each change away from
+         * it, thus the request that fills it must end. One watcher covers
+         * each writer of expandedPanel. Without this, the buttons that
+         * watch mergedConfigLoading stay disabled until the timer fires.
+         * @param {string|null} value the panel that is open now
+         */
+        expandedPanel(value) {
+            if (value !== "merged") {
+                this.cancelMergedConfig();
+            }
+        },
+
+        /**
          * A new interval applies to the timers that already run. Without
          * this, a pending timer serves one more cycle with the old time.
          */
@@ -1095,13 +1106,22 @@ export default {
         this.resolveLeave("stay");
     },
     unmounted() {
+        // The flag makes the timers and the answers of this page quiet.
+        // Without it, a late answer of a pull loads the stack for a page
+        // that no longer exists, and its request puts this client back in
+        // the log terminal on the server.
+        this.pageGone = true;
+
         window.removeEventListener("keydown", this.onComposeKeydown);
         window.removeEventListener("beforeunload", this.onBeforeUnload);
         this.wideLayoutQuery?.removeEventListener("change", this.onWideLayoutChange);
         this.endSplitDrag();
         this.endHeightDrag();
-        clearTimeout(this.mergedConfigTimer);
-        clearTimeout(yamlErrorTimeout);
+
+        // The next sequence number makes a late merged configuration
+        // answer stale, so it cannot show a toast on a different page
+        this.cancelMergedConfig();
+        clearTimeout(this.yamlErrorTimeout);
 
         // The page can be destroyed without a route change, for example
         // when a failed login hides the router view. The router guard does
@@ -1148,22 +1168,13 @@ export default {
 
         /**
          * Expand a panel into a full screen overlay, or collapse it back.
-         * The terminal must refit after the size change, and it only listens
-         * for window resize, so dispatch one.
-         * @param {string} which "logs", "yaml" or "override"
+         * The terminal watches its own box, thus it fits itself after the
+         * size change.
+         * @param {string} which "logs", "yaml", "override" or "merged"
          * @returns {void}
          */
         toggleExpand(which) {
-            // The terminal watches its own box, so it fits itself again
-            const opening = this.expandedPanel !== which;
-            this.expandedPanel = opening ? which : null;
-
-            // The merged overlay is no longer on screen, thus the request
-            // that fills it must end. Without this, the buttons that watch
-            // mergedConfigLoading stay disabled until the timer fires.
-            if (this.expandedPanel !== "merged") {
-                this.cancelMergedConfig();
-            }
+            this.expandedPanel = (this.expandedPanel === which) ? null : which;
         },
 
         /**
@@ -1841,10 +1852,11 @@ export default {
             // gives the buttons back. A pull can be slow, thus the time is
             // longer than the other timers. The handle stays in this
             // function, so a later action cannot stop the timer of an
-            // earlier one.
+            // earlier one. The pageGone flag makes the timer and the
+            // answer quiet after the page goes away.
             let settled = false;
             const timer = setTimeout(() => {
-                if (settled) {
+                if (settled || this.pageGone) {
                     return;
                 }
                 settled = true;
@@ -1855,16 +1867,27 @@ export default {
             this.$root.emitAgent(this.endpoint, "gitPullStack", this.stack.name, (res) => {
                 clearTimeout(timer);
 
-                // A pull changes the files on the disk. The page must show
-                // them, also when the answer comes after the timeout.
-                this.loadStack();
-
-                if (settled) {
+                if (this.pageGone) {
                     return;
                 }
-                settled = true;
-                this.processing = false;
-                this.$root.toastRes(res);
+
+                if (!settled) {
+                    settled = true;
+                    this.$root.toastRes(res);
+
+                    // loadStack keeps processing true until the new content
+                    // arrives, thus the toolbar stays closed while the page
+                    // shows the files from before the pull
+                    this.loadStack();
+                    return;
+                }
+
+                // A late answer, after the timeout. A pull can change the
+                // files on the disk, so the page loads them — but never
+                // over an open edit session or an action that runs.
+                if (!this.processing && !this.isEditMode) {
+                    this.loadStack();
+                }
             });
         },
 
@@ -1920,7 +1943,7 @@ export default {
                 let envYAML = envsubstYAML(this.stack.composeYAML, env);
                 this.envsubstJSONConfig = this.yamlToJSON(envYAML).config;
 
-                clearTimeout(yamlErrorTimeout);
+                clearTimeout(this.yamlErrorTimeout);
                 this.yamlError = "";
             } catch (e) {
                 this.showYamlError(e);
@@ -1936,17 +1959,13 @@ export default {
          */
         envCodeChange() {
             try {
-                // The raw text goes through the same examination as in
-                // yamlCodeChange. envsubstYAML writes the document again
-                // and can hide an error of the raw text, thus a check of
-                // the substituted text only is not sufficient.
-                this.yamlToJSON(this.stack.composeYAML);
-
+                // envsubstYAML refuses a text with a parse error, thus an
+                // error of the raw text surfaces here too
                 const env = dotenv.parse(this.stack.composeENV);
                 const envYAML = envsubstYAML(this.stack.composeYAML, env);
                 this.envsubstJSONConfig = this.yamlToJSON(envYAML).config;
 
-                clearTimeout(yamlErrorTimeout);
+                clearTimeout(this.yamlErrorTimeout);
                 this.yamlError = "";
             } catch (e) {
                 this.showYamlError(e);
@@ -1960,12 +1979,12 @@ export default {
          * @returns {void}
          */
         showYamlError(e) {
-            clearTimeout(yamlErrorTimeout);
+            clearTimeout(this.yamlErrorTimeout);
 
             if (this.yamlError) {
                 this.yamlError = e.message;
             } else {
-                yamlErrorTimeout = setTimeout(() => {
+                this.yamlErrorTimeout = setTimeout(() => {
                     this.yamlError = e.message;
                 }, 3000);
             }
@@ -1973,10 +1992,10 @@ export default {
 
         enableEditMode() {
             // The expanded overlay lives in view mode; leaving it set would
-            // strand a full-viewport backdrop over the edit form. A merged
-            // configuration request that still waits must end here too.
+            // strand a full-viewport backdrop over the edit form. The
+            // expandedPanel watcher then ends a merged configuration
+            // request that still waits.
             this.expandedPanel = null;
-            this.cancelMergedConfig();
             this.isEditMode = true;
             this.takeEditSnapshot();
         },

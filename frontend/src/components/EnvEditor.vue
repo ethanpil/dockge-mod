@@ -50,13 +50,17 @@
 </template>
 
 <script>
-// Keys that docker and dotenv accept. A different key does not go in
-// the file, and the row shows a message.
-const KEY_REGEX = /^[A-Za-z_][A-Za-z0-9_.-]*$/;
+// The characters of a key that docker and dotenv accept. A digit can
+// start a key in an env file. One constant, so the check of the key
+// field and the parser cannot come apart.
+const KEY_PATTERN = "[A-Za-z0-9_][A-Za-z0-9_.-]*";
+
+// A different key does not go in the file, and the row shows a message
+const KEY_REGEX = new RegExp("^" + KEY_PATTERN + "$");
 
 // A pair line: an optional export prefix, a key, and the value after
 // the first "=" character
-const PAIR_REGEX = /^((?:export\s+)?)([A-Za-z_][A-Za-z0-9_.-]*)=(.*)$/;
+const PAIR_REGEX = new RegExp("^((?:export\\s+)?)(" + KEY_PATTERN + ")=(.*)$");
 
 let nextEntryId = 1;
 

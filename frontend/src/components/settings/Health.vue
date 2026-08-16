@@ -41,9 +41,6 @@ export default {
         return {
             loaded: false,
             health: [],
-            // Each request keeps its own timer here, so the unmount can
-            // stop every timer that still waits
-            healthTimers: [],
         };
     },
 
@@ -68,7 +65,8 @@ export default {
     },
 
     unmounted() {
-        this.healthTimers.forEach(clearTimeout);
+        this.pageGone = true;
+        clearTimeout(this.healthTimer);
     },
 
     methods: {
@@ -82,7 +80,9 @@ export default {
             this.loaded = false;
 
             // The handle stays in this function, so a late answer of an
-            // earlier request cannot stop the timer of a later one.
+            // earlier request cannot stop the timer of a later one. The
+            // Refresh button is not usable while a request runs, thus at
+            // most one timer waits, and the unmount stops that one.
             let settled = false;
             const timer = setTimeout(() => {
                 if (settled) {
@@ -93,11 +93,13 @@ export default {
                 this.health = [];
                 this.$root.toastError(this.$t("requestTimeout"));
             }, 30000);
-            this.healthTimers.push(timer);
+            this.healthTimer = timer;
 
             this.$root.getSocket().emit("getDockgeHealth", (res) => {
                 clearTimeout(timer);
-                if (settled) {
+
+                // An answer for a page that went away must stay quiet
+                if (this.pageGone || settled) {
                     return;
                 }
                 settled = true;

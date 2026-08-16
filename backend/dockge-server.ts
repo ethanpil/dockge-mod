@@ -444,10 +444,10 @@ export class DockgeServer {
             primaryHostname: await Settings.get("primaryHostname"),
             // Seconds between the status polls of the interface. A client
             // without this feature ignores the field. Each info event
-            // carries the value, also the event before the login: the
-            // client replaces its full info object, thus a value that is
-            // absent one time would put the polls back to the default
-            // after each new connection.
+            // carries the value, also before the login. The client
+            // replaces its full info object with each event. An absent
+            // value would thus put the polls back to the default after
+            // each new connection.
             pollInterval: await Settings.get("pollInterval") ?? POLL_INTERVAL_DEFAULT,
             //serverTimezone: await this.getTimezone(),
             //serverTimezoneOffset: this.getTimezoneOffset(),
@@ -777,7 +777,7 @@ export class DockgeServer {
         } catch (e) {
             // Expected whenever the docker CLI or daemon is unavailable; the
             // frontend hides the tiles, so this must not spam the error log
-            log.debug("hostStats", "docker system df failed: " + (e instanceof Error ? e.message : String(e)));
+            log.debug("hostStats", "docker system df failed: " + errorMessage(e));
         }
 
         return stats;
