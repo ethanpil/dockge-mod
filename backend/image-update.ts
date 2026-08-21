@@ -5,6 +5,7 @@ import { DOCKER_SPAWN_OPTIONS, errorMessage } from "./util-server";
 import { DockgeServer } from "./dockge-server";
 import { Stack } from "./stack";
 import { Notifier } from "./notification";
+import { canonicalRef, parseImageRef, RegistryClient, RegistryFallbackError } from "./registry";
 
 /**
  * One row of the mod_image_update table, for the interface.
@@ -57,6 +58,7 @@ export class ImageUpdateChecker {
     static readonly CONCURRENCY = 4;
 
     private server : DockgeServer;
+    private registry = new RegistryClient();
     private running = false;
     private timer? : NodeJS.Timeout;
     private firstTimer? : NodeJS.Timeout;
@@ -132,10 +134,11 @@ export class ImageUpdateChecker {
             // not a mix of both.
             const next = new Set<string>();
             const newUpdates : string[] = [];
+            const localDigests = await ImageUpdateChecker.readLocalDigests([ ...images ]);
             const queue = [ ...images ];
             const worker = async () => {
                 for (let image = queue.shift(); image !== undefined; image = queue.shift()) {
-                    const row = await this.check(image);
+                    const row = await this.check(image, localDigests.get(ImageUpdateChecker.key(image)));
                     if (row.updateAvailable) {
                         next.add(image);
                         if (!ImageUpdateChecker.available.has(image)) {
@@ -179,6 +182,16 @@ export class ImageUpdateChecker {
                 continue;
             }
             for (const image of stack.images) {
+                try {
+                    // A name with a digest names one image for ever. There
+                    // is no tag to compare, thus there is nothing to check.
+                    if (parseImageRef(image).digest !== null) {
+                        continue;
+                    }
+                } catch (e) {
+                    // A name that docker cannot read gets no check
+                    continue;
+                }
                 images.add(image);
             }
         }
@@ -186,11 +199,98 @@ export class ImageUpdateChecker {
     }
 
     /**
+     * The key of an image in the map of readLocalDigests. Two names of
+     * one image give the same key.
+     * @param image The image name from a compose file
+     * @returns The key, or the name when docker cannot read it
+     */
+    static key(image : string) : string {
+        try {
+            return canonicalRef(parseImageRef(image));
+        } catch (e) {
+            return image;
+        }
+    }
+
+    /**
+     * The repo digests of each image that is on this host. One docker
+     * process reads all the images. An image that is not on the host is
+     * not in the map.
+     * @param images The image names
+     * @returns The repo digests, by the key of the image
+     */
+    static async readLocalDigests(images : string[]) : Promise<Map<string, string[]>> {
+        const map = new Map<string, string[]>();
+        if (images.length === 0) {
+            return map;
+        }
+
+        const parse = (out : string) => {
+            for (const line of out.split("\n")) {
+                const [ rawTags, rawDigests ] = line.split("\t");
+                if (!rawTags || !rawDigests) {
+                    continue;
+                }
+                try {
+                    const tags : string[] = JSON.parse(rawTags) ?? [];
+                    const digests : string[] = JSON.parse(rawDigests) ?? [];
+                    for (const tag of tags) {
+                        map.set(ImageUpdateChecker.key(tag), digests);
+                    }
+                } catch (e) {
+                    // A line that is not JSON is not an image
+                }
+            }
+        };
+
+        const format = "{{json .RepoTags}}\t{{json .RepoDigests}}";
+        try {
+            const res = await childProcessAsync.spawn("docker", [ "image", "inspect", "--format", format, ...images ], DOCKER_SPAWN_OPTIONS);
+            parse(res.stdout?.toString() ?? "");
+        } catch (e) {
+            // An image that is not on the host makes docker exit with an
+            // error, but the images that it found are still in the output.
+            const partial = (e as { stdout ?: string | Buffer })?.stdout;
+            if (partial) {
+                parse(partial.toString());
+            } else {
+                log.debug("imageUpdate", "docker image inspect failed: " + errorMessage(e));
+            }
+        }
+
+        return map;
+    }
+
+    /**
+     * The digest that the registry has for the tag of an image. The
+     * request goes to the registry, because a HEAD there does not count
+     * in the pull limit of Docker Hub. The docker CLI does a GET, thus
+     * it is the second method only.
+     * @param image The image name
+     * @returns The digest
+     */
+    private async remoteDigest(image : string) : Promise<string> {
+        try {
+            return await this.registry.getDigest(image);
+        } catch (e) {
+            if (!(e instanceof RegistryFallbackError)) {
+                throw e;
+            }
+            log.debug("imageUpdate", image + ": " + e.message + ", the docker CLI does this one");
+        }
+
+        const remote = await childProcessAsync.spawn("docker", [ "buildx", "imagetools", "inspect", "--format", "{{.Manifest.Digest}}", image ], DOCKER_SPAWN_OPTIONS);
+        return remote.stdout?.toString().trim() ?? "";
+    }
+
+    /**
      * Check one image and write the result.
      * @param image The image name, with or without a tag
+     * @param repoDigests The repo digests of the image on this host, or
+     * undefined when the image is not on the host
      * @returns The result
      */
-    async check(image : string) : Promise<ImageUpdate> {
+    async check(image : string, repoDigests : string[] | undefined) : Promise<ImageUpdate> {
         const result : ImageUpdate = {
             image,
             localDigest: null,
@@ -201,10 +301,10 @@ export class ImageUpdateChecker {
         };
 
         try {
-            const local = await childProcessAsync.spawn("docker", [ "image", "inspect", "--format", "{{json .RepoDigests}}", image ], DOCKER_SPAWN_OPTIONS);
-            const repoDigests : string[] = JSON.parse(local.stdout?.toString().trim() || "[]");
-
-            if (repoDigests.length === 0) {
+            if (repoDigests === undefined) {
+                // A stack that never started has no image on the host
+                result.error = "The image is not on this host";
+            } else if (repoDigests.length === 0) {
                 // A local build has no repo digest, and no registry version
                 result.error = "The image has no registry digest";
             } else {
@@ -215,11 +315,7 @@ export class ImageUpdateChecker {
                 // RepoDigests, on the classic store and on the containerd
                 // store. The per-platform manifest digest is different,
                 // thus it cannot be the comparison.
-                const remote = await childProcessAsync.spawn("docker", [ "buildx", "imagetools", "inspect", "--format", "{{.Manifest.Digest}}", image ], {
-                    ...DOCKER_SPAWN_OPTIONS,
-                    timeout: 60000,
-                });
-                const remoteDigest = remote.stdout?.toString().trim() ?? "";
+                const remoteDigest = await this.remoteDigest(image);
                 if (!/^sha256:[0-9a-f]{64}$/.test(remoteDigest)) {
                     result.error = "The registry gave no digest";
                 } else {
