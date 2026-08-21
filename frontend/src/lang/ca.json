@@ -269,5 +269,11 @@
     "filterAll": "Tots",
     "bulkProgress": "{n} / {m}",
     "selectedStackCount": "{0} seleccionades",
-    "noStackSelected": "Cap pila seleccionada"
+    "noStackSelected": "Cap pila seleccionada",
+    "backupReason_pull": "Git pull",
+    "checkInProgress": "Hi ha una comprovació en curs.",
+    "checkProgress": "Comprovades {n} de {m}",
+    "nextCheck": "Propera comprovació a les {t}",
+    "checkUpdatesForStack": "Comprova les imatges d'aquesta pila",
+    "checkedImageCount": "{n} imatges comprovades"
 }

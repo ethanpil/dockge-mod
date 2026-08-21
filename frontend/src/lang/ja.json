@@ -269,5 +269,11 @@
     "filterAll": "すべて",
     "bulkProgress": "{n} / {m}",
     "selectedStackCount": "{0} 件選択中",
-    "noStackSelected": "スタックが選択されていません"
+    "noStackSelected": "スタックが選択されていません",
+    "backupReason_pull": "Git pull",
+    "checkInProgress": "確認を実行中です。",
+    "checkProgress": "{m} 件中 {n} 件を確認",
+    "nextCheck": "次回の確認: {t}",
+    "checkUpdatesForStack": "このスタックのイメージを確認",
+    "checkedImageCount": "{n} 件のイメージを確認しました"
 }

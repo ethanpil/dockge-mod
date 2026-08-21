@@ -269,5 +269,11 @@
     "filterAll": "Alla",
     "bulkProgress": "{n} / {m}",
     "selectedStackCount": "{0} valda",
-    "noStackSelected": "Ingen stack vald"
+    "noStackSelected": "Ingen stack vald",
+    "backupReason_pull": "Git pull",
+    "checkInProgress": "En kontroll pågår.",
+    "checkProgress": "Kontrollerade {n} av {m}",
+    "nextCheck": "Nästa kontroll kl. {t}",
+    "checkUpdatesForStack": "Kontrollera avbilderna i den här stacken",
+    "checkedImageCount": "Kontrollerade {n} avbilder"
 }

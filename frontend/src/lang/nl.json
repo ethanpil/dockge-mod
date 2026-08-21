@@ -269,5 +269,11 @@
     "Updated": "Geüpdatet",
     "Started": "Gestart",
     "Stopped": "Gestopt",
-    "Restarted": "Herstart"
+    "Restarted": "Herstart",
+    "backupReason_pull": "Git pull",
+    "checkInProgress": "Er is een controle bezig.",
+    "checkProgress": "{n} van {m} gecontroleerd",
+    "nextCheck": "Volgende controle om {t}",
+    "checkUpdatesForStack": "Controleer de images van deze stack",
+    "checkedImageCount": "{n} images gecontroleerd"
 }

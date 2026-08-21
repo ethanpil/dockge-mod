@@ -269,5 +269,11 @@
     "filterAll": "Wszystkie",
     "bulkProgress": "{n} / {m}",
     "selectedStackCount": "Wybrano: {0}",
-    "noStackSelected": "Nie wybrano stosu"
+    "noStackSelected": "Nie wybrano stosu",
+    "backupReason_pull": "Git pull",
+    "checkInProgress": "Trwa sprawdzanie.",
+    "checkProgress": "Sprawdzono {n} z {m}",
+    "nextCheck": "Następne sprawdzenie o {t}",
+    "checkUpdatesForStack": "Sprawdź obrazy tego stosu",
+    "checkedImageCount": "Sprawdzono obrazów: {n}"
 }

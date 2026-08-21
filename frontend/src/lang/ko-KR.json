@@ -269,5 +269,11 @@
     "Updated": "업데이트됨",
     "Started": "시작됨",
     "Stopped": "정지됨",
-    "Restarted": "재시작됨"
+    "Restarted": "재시작됨",
+    "backupReason_pull": "Git pull",
+    "checkInProgress": "확인이 진행 중입니다.",
+    "checkProgress": "{m}개 중 {n}개 확인함",
+    "nextCheck": "다음 확인: {t}",
+    "checkUpdatesForStack": "이 스택의 이미지 확인",
+    "checkedImageCount": "이미지 {n}개 확인함"
 }

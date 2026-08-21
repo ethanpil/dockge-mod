@@ -269,5 +269,11 @@
     "filterAll": "Alle",
     "bulkProgress": "{n} / {m}",
     "selectedStackCount": "{0} ausgewählt",
-    "noStackSelected": "Kein Stack ausgewählt"
+    "noStackSelected": "Kein Stack ausgewählt",
+    "backupReason_pull": "Git pull",
+    "checkInProgress": "Eine Prüfung läuft.",
+    "checkProgress": "{n} von {m} geprüft",
+    "nextCheck": "Nächste Prüfung um {t}",
+    "checkUpdatesForStack": "Images dieses Stacks prüfen",
+    "checkedImageCount": "{n} Images geprüft"
 }

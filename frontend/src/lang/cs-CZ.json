@@ -269,5 +269,11 @@
     "filterAll": "Vše",
     "bulkProgress": "{n} / {m}",
     "selectedStackCount": "Vybráno: {0}",
-    "noStackSelected": "Není vybrán žádný stack"
+    "noStackSelected": "Není vybrán žádný stack",
+    "backupReason_pull": "Git pull",
+    "checkInProgress": "Probíhá kontrola.",
+    "checkProgress": "Zkontrolováno {n} z {m}",
+    "nextCheck": "Další kontrola v {t}",
+    "checkUpdatesForStack": "Zkontrolovat image tohoto stacku",
+    "checkedImageCount": "Zkontrolováno {n} image"
 }

@@ -269,5 +269,11 @@
     "filterAll": "سب",
     "bulkProgress": "{n} / {m}",
     "selectedStackCount": "{0} منتخب",
-    "noStackSelected": "کوئی اسٹیک منتخب نہیں"
+    "noStackSelected": "کوئی اسٹیک منتخب نہیں",
+    "backupReason_pull": "Git pull",
+    "checkInProgress": "ایک چیک جاری ہے۔",
+    "checkProgress": "{m} میں سے {n} چیک ہو گئیں",
+    "nextCheck": "اگلا چیک {t} پر",
+    "checkUpdatesForStack": "اس اسٹیک کی تصاویر چیک کریں",
+    "checkedImageCount": "{n} تصاویر چیک ہوئیں"
 }

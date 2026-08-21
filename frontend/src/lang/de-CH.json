@@ -269,5 +269,11 @@
     "filterAll": "Alli",
     "bulkProgress": "{n} / {m}",
     "selectedStackCount": "{0} usgwählt",
-    "noStackSelected": "Kei Stack usgwählt"
+    "noStackSelected": "Kei Stack usgwählt",
+    "backupReason_pull": "Git pull",
+    "checkInProgress": "Es lauft grad e Prüefig.",
+    "checkProgress": "{n} vo {m} prüeft",
+    "nextCheck": "Nächschti Prüefig am {t}",
+    "checkUpdatesForStack": "Images vo dem Stack prüefe",
+    "checkedImageCount": "{n} Images prüeft"
 }

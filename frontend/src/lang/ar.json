@@ -269,5 +269,11 @@
     "filterAll": "الكل",
     "bulkProgress": "{n} / {m}",
     "selectedStackCount": "{0} محدد",
-    "noStackSelected": "لم يتم تحديد أي حزمة"
+    "noStackSelected": "لم يتم تحديد أي حزمة",
+    "backupReason_pull": "Git pull",
+    "checkInProgress": "هناك فحص قيد التنفيذ.",
+    "checkProgress": "تم فحص {n} من {m}",
+    "nextCheck": "الفحص التالي في {t}",
+    "checkUpdatesForStack": "افحص صور هذه الحزمة",
+    "checkedImageCount": "تم فحص {n} صورة"
 }

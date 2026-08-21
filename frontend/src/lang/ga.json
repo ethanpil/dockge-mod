@@ -269,5 +269,11 @@
     "filterAll": "Uile",
     "bulkProgress": "{n} / {m}",
     "selectedStackCount": "{0} roghnaithe",
-    "noStackSelected": "Níl aon staca roghnaithe"
+    "noStackSelected": "Níl aon staca roghnaithe",
+    "backupReason_pull": "Git pull",
+    "checkInProgress": "Tá seiceáil ar siúl.",
+    "checkProgress": "Seiceáladh {n} as {m}",
+    "nextCheck": "An chéad seiceáil eile ag {t}",
+    "checkUpdatesForStack": "Seiceáil íomhánna an staca seo",
+    "checkedImageCount": "Seiceáladh {n} íomhá"
 }

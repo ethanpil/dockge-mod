@@ -269,5 +269,11 @@
     "filterAll": "Todos",
     "bulkProgress": "{n} / {m}",
     "selectedStackCount": "{0} selecionada(s)",
-    "noStackSelected": "Nenhuma pilha selecionada"
+    "noStackSelected": "Nenhuma pilha selecionada",
+    "backupReason_pull": "Git pull",
+    "checkInProgress": "Está uma verificação em curso.",
+    "checkProgress": "Verificadas {n} de {m}",
+    "nextCheck": "Próxima verificação às {t}",
+    "checkUpdatesForStack": "Verificar as imagens desta pilha",
+    "checkedImageCount": "{n} imagens verificadas"
 }

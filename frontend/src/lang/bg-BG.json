@@ -269,5 +269,11 @@
     "filterAll": "Всички",
     "bulkProgress": "{n} / {m}",
     "selectedStackCount": "{0} избрани",
-    "noStackSelected": "Няма избран стек"
+    "noStackSelected": "Няма избран стек",
+    "backupReason_pull": "Git pull",
+    "checkInProgress": "В момента се извършва проверка.",
+    "checkProgress": "Проверени {n} от {m}",
+    "nextCheck": "Следваща проверка в {t}",
+    "checkUpdatesForStack": "Провери образите на този стек",
+    "checkedImageCount": "Проверени са {n} образа"
 }

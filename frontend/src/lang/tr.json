@@ -269,5 +269,11 @@
     "filterAll": "Tümü",
     "bulkProgress": "{n} / {m}",
     "selectedStackCount": "{0} seçildi",
-    "noStackSelected": "Yığın seçilmedi"
+    "noStackSelected": "Yığın seçilmedi",
+    "backupReason_pull": "Git pull",
+    "checkInProgress": "Bir kontrol devam ediyor.",
+    "checkProgress": "{m} öğeden {n} tanesi kontrol edildi",
+    "nextCheck": "Sonraki kontrol: {t}",
+    "checkUpdatesForStack": "Bu yığının görüntülerini kontrol et",
+    "checkedImageCount": "{n} görüntü kontrol edildi"
 }

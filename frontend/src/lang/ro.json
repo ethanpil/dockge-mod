@@ -269,5 +269,11 @@
     "filterAll": "Toate",
     "bulkProgress": "{n} / {m}",
     "selectedStackCount": "{0} selectate",
-    "noStackSelected": "Nicio stivă selectată"
+    "noStackSelected": "Nicio stivă selectată",
+    "backupReason_pull": "Git pull",
+    "checkInProgress": "O verificare este în curs.",
+    "checkProgress": "Verificate {n} din {m}",
+    "nextCheck": "Următoarea verificare la {t}",
+    "checkUpdatesForStack": "Verifică imaginile acestei stive",
+    "checkedImageCount": "{n} imagini verificate"
 }

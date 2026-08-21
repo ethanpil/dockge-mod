@@ -269,5 +269,11 @@
     "filterAll": "Alle",
     "bulkProgress": "{n} / {m}",
     "selectedStackCount": "{0} valgt",
-    "noStackSelected": "Ingen stack valgt"
+    "noStackSelected": "Ingen stack valgt",
+    "backupReason_pull": "Git pull",
+    "checkInProgress": "Et tjek er i gang.",
+    "checkProgress": "Tjekket {n} af {m}",
+    "nextCheck": "Næste tjek kl. {t}",
+    "checkUpdatesForStack": "Tjek denne stacks images",
+    "checkedImageCount": "Tjekket {n} images"
 }

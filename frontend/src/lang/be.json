@@ -269,5 +269,11 @@
     "filterAll": "Усе",
     "bulkProgress": "{n} / {m}",
     "selectedStackCount": "Выбрана: {0}",
-    "noStackSelected": "Стэк не выбраны"
+    "noStackSelected": "Стэк не выбраны",
+    "backupReason_pull": "Git pull",
+    "checkInProgress": "Праверка выконваецца.",
+    "checkProgress": "Праверана {n} з {m}",
+    "nextCheck": "Наступная праверка ў {t}",
+    "checkUpdatesForStack": "Праверыць вобразы гэтага стэка",
+    "checkedImageCount": "Праверана вобразаў: {n}"
 }

@@ -269,5 +269,11 @@
     "filterAll": "Semua",
     "bulkProgress": "{n} / {m}",
     "selectedStackCount": "{0} dipilih",
-    "noStackSelected": "Tidak ada stack yang dipilih"
+    "noStackSelected": "Tidak ada stack yang dipilih",
+    "backupReason_pull": "Git pull",
+    "checkInProgress": "Pemeriksaan sedang berlangsung.",
+    "checkProgress": "Diperiksa {n} dari {m}",
+    "nextCheck": "Pemeriksaan berikutnya pukul {t}",
+    "checkUpdatesForStack": "Periksa image stack ini",
+    "checkedImageCount": "Diperiksa {n} image"
 }

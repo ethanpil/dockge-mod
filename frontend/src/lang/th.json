@@ -269,5 +269,11 @@
     "filterAll": "ทั้งหมด",
     "bulkProgress": "{n} / {m}",
     "selectedStackCount": "เลือกแล้ว {0}",
-    "noStackSelected": "ไม่ได้เลือก stack"
+    "noStackSelected": "ไม่ได้เลือก stack",
+    "backupReason_pull": "Git pull",
+    "checkInProgress": "กำลังตรวจสอบอยู่",
+    "checkProgress": "ตรวจสอบแล้ว {n} จาก {m}",
+    "nextCheck": "ตรวจสอบครั้งถัดไปเวลา {t}",
+    "checkUpdatesForStack": "ตรวจสอบ image ของ stack นี้",
+    "checkedImageCount": "ตรวจสอบแล้ว {n} image"
 }

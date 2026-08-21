@@ -269,5 +269,11 @@
     "filterAll": "全部",
     "bulkProgress": "{n} / {m}",
     "selectedStackCount": "已選擇 {0} 個",
-    "noStackSelected": "未選擇堆疊"
+    "noStackSelected": "未選擇堆疊",
+    "backupReason_pull": "Git pull",
+    "checkInProgress": "檢查正在進行中。",
+    "checkProgress": "已檢查 {n} / {m}",
+    "nextCheck": "下次檢查時間：{t}",
+    "checkUpdatesForStack": "檢查此堆疊的映像",
+    "checkedImageCount": "已檢查 {n} 個映像"
 }

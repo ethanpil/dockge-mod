@@ -269,5 +269,11 @@
     "filterAll": "Összes",
     "bulkProgress": "{n} / {m}",
     "selectedStackCount": "{0} kijelölve",
-    "noStackSelected": "Nincs kijelölt stack"
+    "noStackSelected": "Nincs kijelölt stack",
+    "backupReason_pull": "Git pull",
+    "checkInProgress": "Ellenőrzés van folyamatban.",
+    "checkProgress": "{n} / {m} ellenőrizve",
+    "nextCheck": "Következő ellenőrzés: {t}",
+    "checkUpdatesForStack": "A stack image-einek ellenőrzése",
+    "checkedImageCount": "{n} image ellenőrizve"
 }

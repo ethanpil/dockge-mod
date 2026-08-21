@@ -265,5 +265,11 @@
     "Updated": "Oppdatert",
     "Started": "Startet",
     "Stopped": "Stoppet",
-    "Restarted": "Startet på nytt"
+    "Restarted": "Startet på nytt",
+    "backupReason_pull": "Git pull",
+    "checkInProgress": "En sjekk pågår.",
+    "checkProgress": "Sjekket {n} av {m}",
+    "nextCheck": "Neste sjekk kl. {t}",
+    "checkUpdatesForStack": "Sjekk imagene til denne stacken",
+    "checkedImageCount": "Sjekket {n} images"
 }
