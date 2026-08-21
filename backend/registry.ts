@@ -2,6 +2,7 @@ import { promises as fsAsync } from "fs";
 import os from "os";
 import path from "path";
 import { log } from "./log";
+import { CachedCall } from "./utils/cached-call";
 
 /**
  * The media types that a manifest request accepts. A registry gives the
@@ -14,20 +15,44 @@ const ACCEPT_MANIFEST = [
     "application/vnd.docker.distribution.manifest.v2+json",
 ].join(",");
 
+/**
+ * The name of this program in the requests. Some registries refuse a
+ * request that has no user agent.
+ */
+const USER_AGENT = "dockge-mod";
+
 /** The API host of Docker Hub */
 export const DOCKER_HUB_HOST = "registry-1.docker.io";
 
 /** The key of Docker Hub in the configuration file. It is an old form. */
 export const DOCKER_HUB_CONFIG_KEY = "https://index.docker.io/v1/";
 
+/**
+ * The hosts of Docker Hub. Its token service has a different name than
+ * its registry, thus the credentials can go from one to the other.
+ */
+const DOCKER_HUB_HOSTS = new Set([
+    DOCKER_HUB_HOST,
+    "index.docker.io",
+    "docker.io",
+    "auth.docker.io",
+]);
+
 /** A digest is a hash algorithm and a hexadecimal value */
-const DIGEST_REGEX = /^sha256:[0-9a-f]{64}$/;
+export const DIGEST_REGEX = /^sha256:[0-9a-f]{64}$/;
 
 /** The characters that docker accepts in a repository name */
 const REPOSITORY_REGEX = /^[a-z0-9]+((\.|_|__|-+)[a-z0-9]+)*(\/[a-z0-9]+((\.|_|__|-+)[a-z0-9]+)*)*$/;
 
 /** The characters that docker accepts in a tag */
 const TAG_REGEX = /^[A-Za-z0-9_][A-Za-z0-9._-]{0,127}$/;
+
+/**
+ * A host name with an optional port, or an IPv6 address in brackets.
+ * The host goes in a URL, thus a character such as # or ? must not be
+ * in it. Such a character moves the path of the request.
+ */
+const HOST_REGEX = /^(\[[0-9a-fA-F:]+\]|[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?)*)(:[0-9]{1,5})?$/;
 
 /**
  * The parts of an image name.
@@ -60,7 +85,10 @@ export function parseImageRef(image : string) : ImageRef {
     let digest : string | null = null;
     const at = rest.lastIndexOf("@");
     if (at >= 0) {
-        digest = rest.slice(at + 1);
+        const text = rest.slice(at + 1);
+        // A text after @ that is not a digest is part of a bad name. The
+        // name then has no digest, and the checks below refuse it.
+        digest = DIGEST_REGEX.test(text) ? text : null;
         rest = rest.slice(0, at);
     }
 
@@ -82,15 +110,15 @@ export function parseImageRef(image : string) : ImageRef {
         remainder = remainder.slice(0, colon);
     }
 
+    if (remainder === "") {
+        throw new Error("The image name has no repository");
+    }
+
     if (registry === "" || registry === "docker.io" || registry === "index.docker.io") {
         registry = DOCKER_HUB_HOST;
         if (!remainder.includes("/")) {
             remainder = "library/" + remainder;
         }
-    }
-
-    if (remainder === "") {
-        throw new Error("The image name has no repository");
     }
 
     return {
@@ -138,11 +166,12 @@ export function parseAuthChallenge(header : string) : AuthChallenge | null {
     const params : Record<string, string> = {};
 
     if (space >= 0) {
+        const body = text.slice(space + 1);
         const regex = /([A-Za-z0-9_-]+)="([^"]*)"/g;
-        let match = regex.exec(text.slice(space + 1));
+        let match = regex.exec(body);
         while (match !== null) {
             params[match[1].toLowerCase()] = match[2];
-            match = regex.exec(text.slice(space + 1));
+            match = regex.exec(body);
         }
     }
 
@@ -173,6 +202,21 @@ export function credentialKeys(registry : string) : string[] {
         "https://" + registry,
         "http://" + registry,
     ];
+}
+
+/**
+ * True when the credentials of a registry can go to a token service.
+ * A registry names its own token service in the challenge, thus a
+ * registry that is not correct could name the service of an attacker.
+ * @param registry The host of the registry
+ * @param realmHost The host of the token service
+ * @returns True when the request can hold the credentials
+ */
+export function realmAcceptsCredential(registry : string, realmHost : string) : boolean {
+    if (registry === realmHost) {
+        return true;
+    }
+    return DOCKER_HUB_HOSTS.has(registry) && DOCKER_HUB_HOSTS.has(realmHost);
 }
 
 /** One entry of the auths object of the configuration file */
@@ -268,11 +312,22 @@ export function findCredential(config : DockerConfig, registry : string) : Crede
 }
 
 /**
- * The registry cannot answer this request, but a different method can.
- * The caller then runs the docker CLI, which has its own credentials
- * and its own trust for a registry with a private certificate.
+ * The registry cannot answer this request, but the docker CLI can. The
+ * CLI has its own credentials and its own trust for a registry with a
+ * private certificate.
+ *
+ * A sticky error is a property of the registry, for example a
+ * credential helper. Each later image of that registry then goes to the
+ * CLI at once. A different error is a property of one request.
  */
-export class RegistryFallbackError extends Error {}
+export class RegistryFallbackError extends Error {
+    readonly sticky : boolean;
+
+    constructor(message : string, sticky = false) {
+        super(message);
+        this.sticky = sticky;
+    }
+}
 
 /**
  * A client that reads the digest of an image from its registry.
@@ -292,10 +347,26 @@ export class RegistryClient {
     static readonly CONFIG_TTL = 5 * 60 * 1000;
 
     private tokens : Map<string, { token : string, expires : number }> = new Map();
-    private config? : { data : DockerConfig, time : number };
 
-    /** The registries that need the docker CLI. A failure marks one. */
+    private configCache = new CachedCall(() => RegistryClient.readConfig(), RegistryClient.CONFIG_TTL);
+
+    /**
+     * The registries that always need the docker CLI. Only a property
+     * of the registry itself goes in this set, thus one image with a
+     * bad name or one answer with the status 500 does not move a whole
+     * registry to the CLI.
+     */
     private fallbackRegistries : Set<string> = new Set();
+
+    /**
+     * Forget what the client learned. Each check starts again, thus a
+     * registry that had one problem gets a new try.
+     */
+    reset() {
+        this.fallbackRegistries.clear();
+        this.tokens.clear();
+        this.configCache.invalidate();
+    }
 
     /**
      * Read the digest that the registry has for the tag of an image.
@@ -309,6 +380,9 @@ export class RegistryClient {
         if (ref.digest !== null) {
             throw new Error("The image name holds a digest");
         }
+        if (!HOST_REGEX.test(ref.registry)) {
+            throw new Error("The registry name is not correct");
+        }
         if (!REPOSITORY_REGEX.test(ref.repository) || !TAG_REGEX.test(ref.tag)) {
             throw new Error("The image name is not correct");
         }
@@ -316,43 +390,68 @@ export class RegistryClient {
             throw new RegistryFallbackError("An earlier request to " + ref.registry + " needed the docker CLI");
         }
 
-        const url = "https://" + ref.registry + "/v2/" + ref.repository + "/manifests/" + ref.tag;
+        // The URL parser gives the host that the request goes to. The
+        // credentials and the token use the same text, thus they cannot
+        // go to a different host than the request.
+        const url = new URL("https://" + ref.registry + "/v2/" + ref.repository + "/manifests/" + ref.tag);
+        if (url.host !== ref.registry.toLowerCase() || url.username !== "" || url.search !== "" || url.hash !== "") {
+            throw new Error("The registry name is not correct");
+        }
 
-        let res = await this.head(ref.registry, url);
+        try {
+            return await this.readDigest(ref, url.toString());
+        } catch (e) {
+            // A problem of the registry itself sends each later image of
+            // that registry to the docker CLI at once. A problem of one
+            // request does not.
+            if (e instanceof RegistryFallbackError && e.sticky) {
+                this.fallbackRegistries.add(ref.registry);
+            }
+            throw e;
+        }
+    }
+
+    /**
+     * Ask the registry for the digest. The caller does the checks of the
+     * name and keeps the registries that need the docker CLI.
+     * @param ref The parts of the image name
+     * @param url The full URL of the manifest
+     * @returns The digest
+     */
+    private async readDigest(ref : ImageRef, url : string) : Promise<string> {
+        let res = await this.head(ref, url);
 
         if (res.status === 401) {
             const challenge = parseAuthChallenge(res.headers.get("www-authenticate") ?? "");
             const credential = await this.credential(ref.registry);
 
             if (credential.kind === "helper") {
-                throw new RegistryFallbackError("The credentials of " + ref.registry + " are in the helper " + credential.helper);
+                throw new RegistryFallbackError("The credentials of " + ref.registry + " are in the helper " + credential.helper, true);
             }
             if (challenge === null) {
-                throw new RegistryFallbackError(ref.registry + " gave no authentication challenge");
+                throw new RegistryFallbackError(ref.registry + " gave no authentication challenge", true);
             }
 
             if (challenge.scheme === "bearer") {
                 const token = await this.bearerToken(ref, challenge, credential);
-                res = await this.head(ref.registry, url, "Bearer " + token);
+                res = await this.head(ref, url, "Bearer " + token);
             } else if (challenge.scheme === "basic" && credential.kind === "basic") {
-                res = await this.head(ref.registry, url, "Basic " + basic(credential.username, credential.password));
+                res = await this.head(ref, url, "Basic " + basic(credential.username, credential.password));
             } else {
-                throw new RegistryFallbackError(ref.registry + " needs the authentication scheme " + challenge.scheme);
+                throw new RegistryFallbackError(ref.registry + " needs the authentication scheme " + challenge.scheme, true);
             }
         }
 
-        if (res.status === 404) {
-            throw new Error("The registry does not have this image");
-        }
         if (!res.ok) {
-            this.fallbackRegistries.add(ref.registry);
+            // A registry can hide a repository that the caller cannot
+            // see behind the status 403 or 404. The docker CLI has the
+            // credentials of a helper, thus it gets an answer.
             throw new RegistryFallbackError(ref.registry + " answered with the status " + res.status);
         }
 
         const digest = res.headers.get("docker-content-digest") ?? "";
         if (!DIGEST_REGEX.test(digest)) {
-            this.fallbackRegistries.add(ref.registry);
-            throw new RegistryFallbackError(ref.registry + " gave no digest header");
+            throw new RegistryFallbackError(ref.registry + " gave no digest header", true);
         }
 
         return digest;
@@ -362,14 +461,15 @@ export class RegistryClient {
      * Make a HEAD request. A failure of the network or of the
      * certificate needs the docker CLI, which can trust a private
      * certificate and can use a mirror.
-     * @param registry The host, for the fallback list
+     * @param ref The parts of the image name
      * @param url The full URL
      * @param authorization The value of the Authorization header
      * @returns The answer
      */
-    private async head(registry : string, url : string, authorization? : string) : Promise<Response> {
+    private async head(ref : ImageRef, url : string, authorization? : string) : Promise<Response> {
         const headers : Record<string, string> = {
             "Accept": ACCEPT_MANIFEST,
+            "User-Agent": USER_AGENT,
         };
         if (authorization !== undefined) {
             headers.Authorization = authorization;
@@ -379,10 +479,12 @@ export class RegistryClient {
             return await this.fetchWithTimeout(url, {
                 method: "HEAD",
                 headers,
-            });
+                redirect: "follow",
+            }, true);
         } catch (e) {
-            this.fallbackRegistries.add(registry);
-            throw new RegistryFallbackError("Cannot reach " + registry + ": " + (e as Error).message);
+            // A host that does not answer, or a certificate that this
+            // process does not trust, is a property of the registry
+            throw new RegistryFallbackError("Cannot reach " + ref.registry + ": " + (e as Error).message, true);
         }
     }
 
@@ -396,50 +498,76 @@ export class RegistryClient {
      * @returns The token
      */
     private async bearerToken(ref : ImageRef, challenge : AuthChallenge, credential : CredentialLookup) : Promise<string> {
-        const realm = challenge.params.realm;
-        if (!realm || !/^https:\/\//.test(realm)) {
-            throw new RegistryFallbackError(ref.registry + " gave no realm for the token");
+        const realm = challenge.params.realm ?? "";
+        let realmURL : URL;
+        try {
+            realmURL = new URL(realm);
+        } catch (e) {
+            throw new RegistryFallbackError(ref.registry + " gave no realm for the token", true);
+        }
+        if (realmURL.protocol !== "https:") {
+            throw new RegistryFallbackError(ref.registry + " gave a realm that is not https", true);
+        }
+
+        // The registry names its own token service. A registry that is
+        // not correct must not get the credentials of a different host.
+        let sendCredential = credential;
+        if (credential.kind === "basic" && !realmAcceptsCredential(ref.registry, realmURL.host)) {
+            log.warn("registry", ref.registry + " asks for the credentials at " + realmURL.host + ", thus this request goes without them");
+            sendCredential = { kind: "none" };
         }
 
         const scope = challenge.params.scope ?? ("repository:" + ref.repository + ":pull");
         const service = challenge.params.service ?? "";
-        const key = realm + "|" + service + "|" + scope + "|" + (credential.kind === "basic" ? credential.username : "");
+        const key = [
+            ref.registry,
+            realmURL.host,
+            service,
+            scope,
+            sendCredential.kind === "basic" ? sendCredential.username : "",
+        ].join("|");
 
         const cached = this.tokens.get(key);
         if (cached && cached.expires > Date.now()) {
             return cached.token;
         }
 
-        const url = new URL(realm);
-        url.searchParams.set("scope", scope);
+        realmURL.searchParams.set("scope", scope);
         if (service !== "") {
-            url.searchParams.set("service", service);
+            realmURL.searchParams.set("service", service);
         }
 
-        const headers : Record<string, string> = {};
-        if (credential.kind === "basic") {
-            headers.Authorization = "Basic " + basic(credential.username, credential.password);
+        const headers : Record<string, string> = {
+            "Accept": "application/json",
+            "User-Agent": USER_AGENT,
+        };
+        if (sendCredential.kind === "basic") {
+            headers.Authorization = "Basic " + basic(sendCredential.username, sendCredential.password);
         }
 
         let res : Response;
         try {
-            res = await this.fetchWithTimeout(url.toString(), {
+            // A token service must not send this request to a different
+            // address. A redirect goes to the docker CLI.
+            res = await this.fetchWithTimeout(realmURL.toString(), {
                 method: "GET",
                 headers,
-            });
+                redirect: "manual",
+            }, false);
         } catch (e) {
-            this.fallbackRegistries.add(ref.registry);
-            throw new RegistryFallbackError("Cannot reach the token service of " + ref.registry + ": " + (e as Error).message);
+            throw new RegistryFallbackError("Cannot reach the token service of " + ref.registry + ": " + (e as Error).message, true);
         }
 
         if (!res.ok) {
+            // Read the body, thus the connection goes back to the pool
+            await res.arrayBuffer().catch(() => undefined);
             throw new RegistryFallbackError("The token service of " + ref.registry + " answered with the status " + res.status);
         }
 
         const body = await res.json().catch(() => null) as { token? : string, access_token? : string, expires_in? : number } | null;
         const token = body?.token ?? body?.access_token;
         if (!token) {
-            throw new RegistryFallbackError("The token service of " + ref.registry + " gave no token");
+            throw new RegistryFallbackError("The token service of " + ref.registry + " gave no token", true);
         }
 
         // A short life keeps the token good for the rest of the check
@@ -462,20 +590,20 @@ export class RegistryClient {
      * the connection and then gives no answer.
      * @param url The full URL
      * @param init The request options
+     * @param drain True to read the body of the answer here
      * @returns The answer
      */
-    private async fetchWithTimeout(url : string, init : RequestInit) : Promise<Response> {
+    private async fetchWithTimeout(url : string, init : RequestInit, drain : boolean) : Promise<Response> {
         const controller = new AbortController();
         const timer = setTimeout(() => controller.abort(), RegistryClient.TIMEOUT);
         try {
             const res = await fetch(url, {
                 ...init,
                 signal: controller.signal,
-                redirect: "follow",
             });
-            // A HEAD has no body, but a token answer does. An unread body
-            // keeps the connection out of the pool.
-            if (init.method !== "GET") {
+            // An answer that nobody reads keeps its connection out of the
+            // pool until the memory of the process goes away
+            if (drain) {
                 await res.arrayBuffer().catch(() => undefined);
             }
             return res;
@@ -490,7 +618,7 @@ export class RegistryClient {
      * @returns The credentials, or the name of the helper, or none
      */
     private async credential(registry : string) : Promise<CredentialLookup> {
-        return findCredential(await this.loadConfig(), registry);
+        return findCredential(await this.configCache.get(), registry);
     }
 
     /**
@@ -498,29 +626,20 @@ export class RegistryClient {
      * empty configuration, thus a public image needs no file.
      * @returns The configuration
      */
-    private async loadConfig() : Promise<DockerConfig> {
-        const now = Date.now();
-        if (this.config && now - this.config.time < RegistryClient.CONFIG_TTL) {
-            return this.config.data;
-        }
-
+    private static async readConfig() : Promise<DockerConfig> {
         const dir = process.env.DOCKER_CONFIG || path.join(os.homedir(), ".docker");
-        let data : DockerConfig = {};
 
         try {
-            data = JSON.parse(await fsAsync.readFile(path.join(dir, "config.json"), "utf-8"));
+            return JSON.parse(await fsAsync.readFile(path.join(dir, "config.json"), "utf-8"));
         } catch (e) {
-            if ((e as NodeJS.ErrnoException)?.code !== "ENOENT") {
-                log.debug("registry", "Cannot read the docker configuration: " + (e as Error).message);
+            // The message of a JSON error holds a part of the file, and
+            // that part can be a credential. Only the name goes in the log.
+            const code = (e as NodeJS.ErrnoException)?.code;
+            if (code !== "ENOENT") {
+                log.debug("registry", "Cannot read the docker configuration: " + (code ?? (e as Error).name));
             }
-            data = {};
+            return {};
         }
-
-        this.config = {
-            data,
-            time: now,
-        };
-        return data;
     }
 }
 

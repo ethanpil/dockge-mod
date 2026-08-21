@@ -10,7 +10,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Thi
 
 ### Changed
 
-- The image update check asks the registry with a HEAD request, not the docker CLI. Docker Hub gives 100 pulls each hour to an address, it counts the GET of the CLI as a pull, and it does not count a HEAD. A check of 40 images used 40 pulls of the user each time before. The check is also faster: 0.3 seconds for an image, not 2.5 seconds.
+- The image update check asks the registry with a HEAD request, not the docker CLI. Docker Hub gives 100 pulls each hour to an address. It counts the GET of the CLI as a pull. It does not count a HEAD. A check of 40 images used 40 pulls of the user each time before. The check is also faster: 0.3 seconds for an image, not 2.5 seconds.
 - The docker CLI is the second method. It reads a registry with a private certificate, a registry with a mirror, or a registry that gives no digest header.
 - One docker process reads the repo digests of all images, not one process for each image.
 - The buildx process has the usual time limit of 30 seconds, not 60.

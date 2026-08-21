@@ -180,13 +180,13 @@ describe("findCredential", () => {
         [ "credsStore", {
             auths: { "ghcr.io": {} },
             credsStore: "pass",
-        } ],
+        }],
         [ "credHelpers", {
             credHelpers: { "ghcr.io": "ecr-login" },
-        } ],
+        }],
         [ "identitytoken", {
             auths: { "ghcr.io": { identitytoken: "abc" } },
-        } ],
+        }],
     ])("says that a %s holds the secret", (name, config) => {
         expect(findCredential(config, "ghcr.io").kind).toBe("helper");
     });

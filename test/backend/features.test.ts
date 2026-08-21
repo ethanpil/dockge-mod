@@ -71,21 +71,21 @@ describe("checkNotification", () => {
     });
 
     it.each([
-        [ { type: "ntfy",
+        [{ type: "ntfy",
             url: "https://x",
-            events: [] } ],
-        [ { name: "a",
+            events: [] }],
+        [{ name: "a",
             type: "mail",
             url: "https://x",
-            events: [] } ],
-        [ { name: "a",
+            events: [] }],
+        [{ name: "a",
             type: "ntfy",
             url: "ftp://x",
-            events: [] } ],
-        [ { name: "a",
+            events: [] }],
+        [{ name: "a",
             type: "ntfy",
             url: "https://x",
-            events: [ "nope" ] } ],
+            events: [ "nope" ] }],
     ])("refuses %j", (data) => {
         expect(() => checkNotification(data)).toThrow(ValidationError);
     });

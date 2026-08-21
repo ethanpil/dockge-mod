@@ -1,11 +1,11 @@
 import { R } from "redbean-node";
 import childProcessAsync from "promisify-child-process";
 import { log } from "./log";
-import { DOCKER_SPAWN_OPTIONS, errorMessage } from "./util-server";
+import { DOCKER_SPAWN_OPTIONS, errorMessage, stderrOf } from "./util-server";
 import { DockgeServer } from "./dockge-server";
 import { Stack } from "./stack";
 import { Notifier } from "./notification";
-import { canonicalRef, parseImageRef, RegistryClient, RegistryFallbackError } from "./registry";
+import { canonicalRef, DIGEST_REGEX, parseImageRef, RegistryClient, RegistryFallbackError } from "./registry";
 
 /**
  * One row of the mod_image_update table, for the interface.
@@ -126,6 +126,9 @@ export class ImageUpdateChecker {
         }
         this.running = true;
         try {
+            // A registry that had a problem in the last run gets a new try
+            this.registry.reset();
+
             const images = await this.collectImages();
             log.info("imageUpdate", "Check " + images.size + " images");
 
@@ -135,6 +138,15 @@ export class ImageUpdateChecker {
             const next = new Set<string>();
             const newUpdates : string[] = [];
             const localDigests = await ImageUpdateChecker.readLocalDigests([ ...images ]);
+
+            // No answer for any image means that docker did not answer,
+            // not that the host has no image. The last results stay, thus
+            // the badges do not go away and no message goes out.
+            if (images.size > 0 && localDigests.size === 0) {
+                log.warn("imageUpdate", "docker gave no image data, thus the check stops and the last results stay");
+                return false;
+            }
+
             const queue = [ ...images ];
             const worker = async () => {
                 for (let image = queue.shift(); image !== undefined; image = queue.shift()) {
@@ -243,9 +255,12 @@ export class ImageUpdateChecker {
             }
         };
 
+        // The two dashes end the flags of docker. An image name from a
+        // compose file can start with a dash, and docker would read such
+        // a name as a flag.
         const format = "{{json .RepoTags}}\t{{json .RepoDigests}}";
         try {
-            const res = await childProcessAsync.spawn("docker", [ "image", "inspect", "--format", format, ...images ], DOCKER_SPAWN_OPTIONS);
+            const res = await childProcessAsync.spawn("docker", [ "image", "inspect", "--format", format, "--", ...images ], DOCKER_SPAWN_OPTIONS);
             parse(res.stdout?.toString() ?? "");
         } catch (e) {
             // An image that is not on the host makes docker exit with an
@@ -279,7 +294,13 @@ export class ImageUpdateChecker {
             log.debug("imageUpdate", image + ": " + e.message + ", the docker CLI does this one");
         }
 
-        const remote = await childProcessAsync.spawn("docker", [ "buildx", "imagetools", "inspect", "--format", "{{.Manifest.Digest}}", image ], DOCKER_SPAWN_OPTIONS);
+        // This method reads a slow registry, for example one with a
+        // private certificate, thus it gets more time than a usual
+        // docker command.
+        const remote = await childProcessAsync.spawn("docker", [ "buildx", "imagetools", "inspect", "--format", "{{.Manifest.Digest}}", "--", image ], {
+            ...DOCKER_SPAWN_OPTIONS,
+            timeout: 60000,
+        });
         return remote.stdout?.toString().trim() ?? "";
     }
 
@@ -302,6 +323,14 @@ export class ImageUpdateChecker {
 
         try {
             if (repoDigests === undefined) {
+                // The batch gives the images by their tags. An image
+                // without the tag of the compose file is not in that map,
+                // thus one process reads this image again.
+                const single = await ImageUpdateChecker.readLocalDigests([ image ]);
+                repoDigests = single.get(ImageUpdateChecker.key(image));
+            }
+
+            if (repoDigests === undefined) {
                 // A stack that never started has no image on the host
                 result.error = "The image is not on this host";
             } else if (repoDigests.length === 0) {
@@ -316,11 +345,22 @@ export class ImageUpdateChecker {
                 // store. The per-platform manifest digest is different,
                 // thus it cannot be the comparison.
                 const remoteDigest = await this.remoteDigest(image);
-                if (!/^sha256:[0-9a-f]{64}$/.test(remoteDigest)) {
+                if (!DIGEST_REGEX.test(remoteDigest)) {
                     result.error = "The registry gave no digest";
                 } else {
                     result.remoteDigest = remoteDigest;
                     result.updateAvailable = !digestsMatch(repoDigests, remoteDigest);
+
+                    if (result.updateAvailable) {
+                        // A check of many images takes time. A pull during
+                        // that time makes the digest of the batch old, and
+                        // the image would show an update that it has.
+                        const fresh = (await ImageUpdateChecker.readLocalDigests([ image ])).get(ImageUpdateChecker.key(image));
+                        if (fresh !== undefined && fresh.length > 0) {
+                            result.localDigest = digestOf(fresh[0]);
+                            result.updateAvailable = !digestsMatch(fresh, remoteDigest);
+                        }
+                    }
                 }
             }
         } catch (e) {
@@ -328,7 +368,7 @@ export class ImageUpdateChecker {
             // network. The error text goes to the interface. The last
             // result stays, thus a short outage of the registry does not
             // remove the badges and does not send the message again.
-            result.error = (errorMessage(e) || "Check failed").split("\n")[0].slice(0, 500);
+            result.error = (stderrOf(e) || errorMessage(e) || "Check failed").split("\n")[0].slice(0, 500);
             result.updateAvailable = ImageUpdateChecker.available.has(image);
             log.debug("imageUpdate", image + ": " + result.error);
         }
