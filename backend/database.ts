@@ -36,25 +36,24 @@ export class Database {
 
     /**
      * The migrations of dockge-mod. They have their own ledger table,
-     * `mod_knex_migrations`, thus the upstream `knex_migrations` table
-     * stays as Dockge knows it. Dockge can then run its own migrations
-     * after a user goes back to it.
+     * thus the upstream `knex_migrations` table does not change. See
+     * the README.
      */
     static knexModMigrationsPath = "./backend/migrations-mod";
     static knexModMigrationsTable = "mod_knex_migrations";
 
-    static server : DockgeServer;
+    private static server : DockgeServer;
 
     /**
      * Use for decode the auth object
      */
     jwtSecret? : string;
 
-    static async init(server : DockgeServer) {
+    static async init(server : DockgeServer, autoloadModels = true) {
         this.server = server;
 
         log.debug("server", "Connecting to the database");
-        await Database.connect();
+        await Database.connect(autoloadModels);
         log.info("server", "Connected to the database");
 
         // Patch the database
@@ -212,15 +211,25 @@ export class Database {
 
     /**
      * Run the migrations of dockge-mod. Each table has the `mod_` prefix.
-     * An error stops the server, because a missing table makes the
-     * features of dockge-mod fail later in a less clear way.
+     * A ledger row without a file is a warning, the same as in patch().
+     * This lets an older image of dockge-mod start.
      * @returns {Promise<void>}
      */
     static async patchMod() {
-        await R.knex.migrate.latest({
-            directory: Database.knexModMigrationsPath,
-            tableName: Database.knexModMigrationsTable,
-        });
+        try {
+            await R.knex.migrate.latest({
+                directory: Database.knexModMigrationsPath,
+                tableName: Database.knexModMigrationsTable,
+            });
+        } catch (e) {
+            if (e instanceof Error && e.message.includes("the following files are missing:")) {
+                log.warn("db", e.message);
+                log.warn("db", "Mod database migration failed, you may be downgrading dockge-mod.");
+            } else {
+                log.error("db", "Mod database migration failed");
+                throw e;
+            }
+        }
     }
 
     /**

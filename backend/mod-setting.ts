@@ -2,12 +2,13 @@ import { R } from "redbean-node";
 import { promises as fsAsync } from "fs";
 import path from "path";
 import { log } from "./log";
-import { fileExists } from "./util-server";
+import { defaultComposeOverrideTemplate } from "../common/util-common";
 
 /**
  * The key and value store of dockge-mod, in the `mod_setting` table.
- * The upstream `setting` table stays as it is. A value is a text. A
- * key without a row gives null.
+ * The upstream `setting` table does not change. A value is a text. A
+ * key without a row gives null, and an empty value removes the row.
+ * There is no cache. Read a value one time, not in a loop.
  */
 export class ModSetting {
 
@@ -31,44 +32,53 @@ export class ModSetting {
     }
 
     /**
-     * Write a value. A null value removes the row.
+     * Write a value. A null value or an empty value removes the row.
      * @param key The key
      * @param value The value, or null
      */
     static async set(key : string, value : string | null) : Promise<void> {
-        if (value === null) {
+        if (value === null || value.trim() === "") {
             await R.knex("mod_setting").where({ key }).del();
             return;
         }
 
-        const changed = await R.knex("mod_setting").where({ key }).update({ value });
-        if (changed === 0) {
-            await R.knex("mod_setting").insert({
-                key,
-                value,
-            });
-        }
+        await R.knex("mod_setting").insert({
+            key,
+            value,
+        }).onConflict("key").merge();
     }
 
     /**
      * Move the values that an earlier version kept in files of the data
-     * directory to the table. The file goes away after the move. A file
-     * that is not there is the usual condition.
+     * directory to the table. The server removes the file after the
+     * move. Usually the file does not exist. A problem with the file
+     * gives a warning, because it must not stop the server.
      * @param dataDir The data directory
      */
     static async importLegacyFiles(dataDir : string) : Promise<void> {
         const templatePath = path.join(dataDir, ModSetting.legacyOverrideTemplateFileName);
-        if (!await fileExists(templatePath)) {
+
+        let content : string;
+        try {
+            content = await fsAsync.readFile(templatePath, "utf-8");
+        } catch (e) {
+            if ((e as NodeJS.ErrnoException)?.code !== "ENOENT") {
+                log.warn("db", "Cannot read " + templatePath + ": " + (e as Error).message);
+            }
             return;
         }
 
-        const content = await fsAsync.readFile(templatePath, "utf-8");
-        if (content.trim() !== "") {
-            await ModSetting.set(ModSetting.COMPOSE_OVERRIDE_TEMPLATE, content);
+        try {
+            // The default text needs no row, the same as a save
+            if (content !== defaultComposeOverrideTemplate) {
+                await ModSetting.set(ModSetting.COMPOSE_OVERRIDE_TEMPLATE, content);
+            }
+            await fsAsync.rm(templatePath, {
+                force: true,
+            });
+            log.info("db", "Moved the override template from " + templatePath + " to the database");
+        } catch (e) {
+            log.warn("db", "Cannot move " + templatePath + " to the database: " + (e as Error).message);
         }
-        await fsAsync.rm(templatePath, {
-            force: true,
-        });
-        log.info("db", "Moved the override template from " + templatePath + " to the database");
     }
 }

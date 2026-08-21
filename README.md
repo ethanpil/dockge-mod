@@ -23,9 +23,9 @@ You can point dockge-mod at the data directory of an existing Dockge installatio
 
 ### The Database
 
-dockge-mod keeps its own data in tables with the `mod_` prefix, in the same SQLite file. It does not add a column to a table of Dockge, and it does not change the migration ledger of Dockge. The `mod_` tables have their own ledger, `mod_knex_migrations`. Thus Dockge can run its own migrations after you go back to it, and dockge-mod can run its migrations after you return.
+dockge-mod keeps its own data in tables with the `mod_` prefix, in the same SQLite file. It does not add a column to a table of Dockge, and it does not change the migration ledger of Dockge. The `mod_` tables have their own ledger, `mod_knex_migrations`, with its lock table `mod_knex_migrations_lock`. Dockge can then run its own migrations after you go back to it. dockge-mod can run its migrations after you return.
 
-Dockge ignores the `mod_` tables. They stay in the file when you go back to Dockge, and their data is there again when you return to dockge-mod.
+Dockge ignores the `mod_` tables. They stay in the file when you go back to Dockge. Their data is there again when you return to dockge-mod.
 
 ### Go Back to Dockge
 

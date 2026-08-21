@@ -367,9 +367,9 @@ export class MainSocketHandler extends SocketHandler {
                 delete data.globalENV;
 
                 // Handle the template of the override file. The default needs
-                // no row, thus the row goes away when the text is the same.
+                // no row. An empty text also removes the row.
                 if (typeof data.composeOverrideTemplate === "string") {
-                    if (data.composeOverrideTemplate.trim() !== "" && data.composeOverrideTemplate !== defaultComposeOverrideTemplate) {
+                    if (data.composeOverrideTemplate !== defaultComposeOverrideTemplate) {
                         await ModSetting.set(ModSetting.COMPOSE_OVERRIDE_TEMPLATE, data.composeOverrideTemplate);
                     } else {
                         await ModSetting.set(ModSetting.COMPOSE_OVERRIDE_TEMPLATE, null);
