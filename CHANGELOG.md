@@ -6,6 +6,27 @@ The base is dockge commit [f809ae1](https://github.com/louislam/dockge/commit/f8
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). This project has no releases, so each entry is a commit. The newest entry comes first. A commit that changes only this file or the project rules has no entry.
 
+## [b05d452](../../commit/b05d452) - 2026-08-21
+
+### Security
+
+- The token cache of the registry client holds the registry in its key. A registry that gave the challenge of a different registry got the token of that registry before.
+- The credentials of a registry go only to a token service of the same host, or to the token service of Docker Hub. A registry names its own token service, thus a registry that is not correct could ask for the credentials at a different host.
+- A token service cannot send the request to a different address.
+- The registry name goes through the URL parser. A name with a character such as `#` moved the path of the request before.
+- A message of the JSON parser does not go in the log. Such a message can hold a part of a credential of the configuration file.
+
+### Fixed
+
+- Only a property of the registry sends the later images to the docker CLI. A status of the server, or one bad image name, moved a whole registry to the CLI for ever before. Each check starts with an empty list.
+- A registry that hides a private image behind the status 403 or 404 goes to the docker CLI, which has the credentials of a helper.
+- The batch of the local read ends the flags with two dashes. An image name that starts with a dash stopped the read of all images before.
+- No answer for any image stops the check. The results of the last check stay, thus the badges do not go away and no message goes out.
+- An image that the batch does not name gets one process. An image with a tag that is not in the compose file was not in the map before.
+- An image with an update gets a new local digest. A pull during a long check made the digest of the batch old.
+- The second method keeps its time limit of 60 seconds. It reads the slow registries.
+- The error text of the docker CLI goes to the interface, not the generic text of the process library.
+
 ## [4ec0748](../../commit/4ec0748) - 2026-08-21
 
 ### Changed
