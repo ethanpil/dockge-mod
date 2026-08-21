@@ -17,6 +17,10 @@ export interface ImageUpdate {
     updateAvailable : boolean;
     checkedAt : string | null;
     error : string | null;
+    /** How many checks of this image failed, one after the other */
+    failures : number;
+    /** The time of the next check, for an image that fails */
+    nextCheck : string | null;
 }
 
 /**
@@ -53,6 +57,23 @@ export class ImageUpdateChecker {
 
     /** The images with a new version, from the last check */
     static available : Set<string> = new Set();
+
+    /** The longest time between two checks of one image, in milliseconds */
+    static readonly MAX_BACKOFF = 72 * 60 * 60 * 1000;
+
+    /**
+     * How long an image that fails waits for its next check. The time
+     * doubles with each failure, one after the other.
+     * @param failures The count of the failures
+     * @returns The time, in milliseconds
+     */
+    static backoff(failures : number) : number {
+        if (failures < 1) {
+            return 0;
+        }
+        const time = ImageUpdateChecker.INTERVAL * Math.pow(2, failures - 1);
+        return Math.min(time, ImageUpdateChecker.MAX_BACKOFF);
+    }
 
     /** How many images the check reads from the registry at one time */
     static readonly CONCURRENCY = 4;
@@ -113,6 +134,8 @@ export class ImageUpdateChecker {
             updateAvailable: Boolean(row.update_available),
             checkedAt: (row.checked_at as string) ?? null,
             error: (row.error as string) ?? null,
+            failures: Number(row.failures ?? 0),
+            nextCheck: (row.next_check as string) ?? null,
         }));
     }
 
@@ -120,7 +143,7 @@ export class ImageUpdateChecker {
      * Check each image of the managed stacks. One check runs at a time.
      * @returns True when the check ran, false when one was in progress
      */
-    async checkAll() : Promise<boolean> {
+    async checkAll(force = false) : Promise<boolean> {
         if (this.running) {
             return false;
         }
@@ -130,27 +153,48 @@ export class ImageUpdateChecker {
             this.registry.reset();
 
             const images = await this.collectImages();
-            log.info("imageUpdate", "Check " + images.size + " images");
+
+            // An image that fails each time waits longer for its next
+            // check. A check that the user starts examines each image.
+            const previous = new Map((await ImageUpdateChecker.getAll()).map((row) => [ row.image, row ]));
+            const now = Date.now();
+            const due = new Set([ ...images ].filter((image) => {
+                if (force) {
+                    return true;
+                }
+                const nextCheck = previous.get(image)?.nextCheck;
+                return !nextCheck || new Date(nextCheck).getTime() <= now;
+            }));
+
+            log.info("imageUpdate", "Check " + due.size + " of " + images.size + " images");
 
             // The new set replaces the old set at the end, thus a stack
             // list that goes out during the check shows the old result,
             // not a mix of both.
             const next = new Set<string>();
             const newUpdates : string[] = [];
-            const localDigests = await ImageUpdateChecker.readLocalDigests([ ...images ]);
+
+            // An image that this check leaves out keeps its last result
+            for (const image of images) {
+                if (!due.has(image) && ImageUpdateChecker.available.has(image)) {
+                    next.add(image);
+                }
+            }
+
+            const localDigests = await ImageUpdateChecker.readLocalDigests([ ...due ]);
 
             // No answer for any image means that docker did not answer,
             // not that the host has no image. The last results stay, thus
             // the badges do not go away and no message goes out.
-            if (images.size > 0 && localDigests.size === 0) {
+            if (due.size > 0 && localDigests.size === 0) {
                 log.warn("imageUpdate", "docker gave no image data, thus the check stops and the last results stay");
                 return false;
             }
 
-            const queue = [ ...images ];
+            const queue = [ ...due ];
             const worker = async () => {
                 for (let image = queue.shift(); image !== undefined; image = queue.shift()) {
-                    const row = await this.check(image, localDigests.get(ImageUpdateChecker.key(image)));
+                    const row = await this.check(image, localDigests.get(ImageUpdateChecker.key(image)), previous.get(image));
                     if (row.updateAvailable) {
                         next.add(image);
                         if (!ImageUpdateChecker.available.has(image)) {
@@ -311,7 +355,7 @@ export class ImageUpdateChecker {
      * undefined when the image is not on the host
      * @returns The result
      */
-    async check(image : string, repoDigests : string[] | undefined) : Promise<ImageUpdate> {
+    async check(image : string, repoDigests : string[] | undefined, previous? : ImageUpdate) : Promise<ImageUpdate> {
         const result : ImageUpdate = {
             image,
             localDigest: null,
@@ -319,6 +363,8 @@ export class ImageUpdateChecker {
             updateAvailable: false,
             checkedAt: new Date().toISOString(),
             error: null,
+            failures: 0,
+            nextCheck: null,
         };
 
         try {
@@ -373,6 +419,13 @@ export class ImageUpdateChecker {
             log.debug("imageUpdate", image + ": " + result.error);
         }
 
+        // An image with an error waits longer for its next check. An
+        // image without an error goes back to the usual time.
+        if (result.error !== null) {
+            result.failures = (previous?.failures ?? 0) + 1;
+            result.nextCheck = new Date(Date.now() + ImageUpdateChecker.backoff(result.failures)).toISOString();
+        }
+
         await R.knex("mod_image_update").insert({
             image: result.image,
             local_digest: result.localDigest,
@@ -380,6 +433,8 @@ export class ImageUpdateChecker {
             update_available: result.updateAvailable,
             checked_at: result.checkedAt,
             error: result.error,
+            failures: result.failures,
+            next_check: result.nextCheck,
         }).onConflict("image").merge();
 
         return result;

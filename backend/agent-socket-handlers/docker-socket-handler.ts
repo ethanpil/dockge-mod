@@ -447,7 +447,9 @@ export class DockerSocketHandler extends AgentSocketHandler {
             try {
                 checkLogin(socket);
                 const started = !server.imageUpdateChecker.isRunning();
-                server.imageUpdateChecker.checkAll().catch((e) => {
+                // A check that the user starts examines each image, also
+                // an image that waits after a failure
+                server.imageUpdateChecker.checkAll(true).catch((e) => {
                     log.warn("imageUpdate", "Check failed: " + errorMessage(e));
                 });
                 callbackResult({
