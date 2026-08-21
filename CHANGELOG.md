@@ -6,6 +6,17 @@ The base is dockge commit [f809ae1](https://github.com/louislam/dockge/commit/f8
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). This project has no releases, so each entry is a commit. The newest entry comes first. A commit that changes only this file or the project rules has no entry.
 
+## [5c25756](../../commit/5c25756) - 2026-08-21
+
+### Fixed
+
+- An image that is not on this host does not stop the check of the other images. One stack that a user saves and does not deploy stopped each check before.
+- The time of the next check has a window of half an interval. Each image waited one more interval before, thus the longest time was 78 hours and not 72 hours.
+- A check that the user starts does not make the time longer. Each click made the automatic check come later before.
+- An image that is not on this host keeps its time and its badge. Such an image has no problem with its registry.
+- A time of the next check that is not a time, or that is too far away because the clock of the host was wrong, does not stop the checks of an image for ever.
+- A list without images keeps the rows of the table. A stacks directory that is not ready removed the counts of the failures before.
+
 ## [4f4fad7](../../commit/4f4fad7) - 2026-08-21
 
 ### Changed
