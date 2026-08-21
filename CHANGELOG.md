@@ -6,6 +6,15 @@ The base is dockge commit [f809ae1](https://github.com/louislam/dockge/commit/f8
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). This project has no releases, so each entry is a commit. The newest entry comes first. A commit that changes only this file or the project rules has no entry.
 
+## [3306542](../../commit/3306542) - 2026-08-21
+
+### Added
+
+- A badge in the stack list and on the toolbar for a stack with a new image version.
+- A log icon of a service opens a panel with the log of that service only.
+- A **Backups** button on the stack page. The panel lists the copies of the files, shows one, and puts one back.
+- A status filter in the stack list, and a select mode with start, stop, restart, and update for the selected stacks.
+
 ## [a67e34a](../../commit/a67e34a) - 2026-08-21
 
 ### Added

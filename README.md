@@ -342,6 +342,10 @@ This is a personal fork, and I am unlikely to accept pull requests.
 
 If you find a problem in a feature that comes from the upstream project, report it to [Dockge](https://github.com/louislam/dockge/issues). If the problem is only in the interface of this fork, open an issue in this repository.
 
+## Translations
+
+The interface has the languages of the upstream project. The texts of the new features are machine translations, made with Claude. If a text is wrong in your language, open an issue with the key and the correct text.
+
 ## AI Assistance
 
 I made the changes in this fork with help from Claude Fable.
