@@ -8,9 +8,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Thi
 
 ## [4f4fad7](../../commit/4f4fad7) - 2026-08-21
 
-### Added
+### Changed
 
-- A longer time between the checks of an image that fails. An image such as a local build, or an image of a registry without credentials, failed at each check before. The time doubles with each failure, up to 72 hours. A check that the user starts with **Check now** examines each image. The `mod_image_update` table holds the count of the failures and the time of the next check.
+- An image that fails gets a longer time between its checks. Each image failed at each check before. An example is a local build, or an image of a registry without credentials.
+- The time doubles with each failure, up to 72 hours.
+- A check that the user starts with **Check now** examines each image. Such a check does not make the time longer.
+- An image that is not on this host keeps its time. Such an image has no problem with its registry.
+- The `mod_image_update` table holds the count of the failures and the time of the next check.
 
 ## [b05d452](../../commit/b05d452) - 2026-08-21
 

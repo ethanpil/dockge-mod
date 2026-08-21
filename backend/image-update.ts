@@ -62,6 +62,35 @@ export class ImageUpdateChecker {
     static readonly MAX_BACKOFF = 72 * 60 * 60 * 1000;
 
     /**
+     * True when a check must examine this image now.
+     *
+     * The time of the next check comes from the end of the last check,
+     * and the checks run at each interval. The end of a check is always
+     * after the start of the interval, thus a comparison without a
+     * window would make each image wait one more interval.
+     * @param previous The last result of this image, or undefined
+     * @param now The time now
+     * @param force True for a check that the user starts
+     * @returns True when the check examines this image
+     */
+    static isDue(previous : ImageUpdate | undefined, now : number, force : boolean) : boolean {
+        if (force || !previous?.nextCheck) {
+            return true;
+        }
+
+        const time = new Date(previous.nextCheck).getTime();
+
+        // A value that is not a time, or a time that is too far away
+        // because the clock of the host was wrong, must not stop the
+        // checks of this image for ever.
+        if (!Number.isFinite(time) || time - now > ImageUpdateChecker.MAX_BACKOFF) {
+            return true;
+        }
+
+        return time - now <= ImageUpdateChecker.INTERVAL / 2;
+    }
+
+    /**
      * How long an image that fails waits for its next check. The time
      * doubles with each failure, one after the other.
      * @param failures The count of the failures
@@ -140,6 +169,30 @@ export class ImageUpdateChecker {
     }
 
     /**
+     * The fields of the last check that the next check needs. The read
+     * does not use getAll, thus the answer of the socket API and the
+     * rule of the schedule stay apart.
+     * @returns The last result of each image, by the image name
+     */
+    protected static async readPrevious() : Promise<Map<string, ImageUpdate>> {
+        const rows = await R.knex("mod_image_update").select("image", "update_available", "failures", "next_check");
+        const map = new Map<string, ImageUpdate>();
+        for (const row of rows) {
+            map.set(row.image, {
+                image: row.image,
+                localDigest: null,
+                remoteDigest: null,
+                updateAvailable: Boolean(row.update_available),
+                checkedAt: null,
+                error: null,
+                failures: Number(row.failures ?? 0),
+                nextCheck: (row.next_check as string) ?? null,
+            });
+        }
+        return map;
+    }
+
+    /**
      * Check each image of the managed stacks. One check runs at a time.
      * @returns True when the check ran, false when one was in progress
      */
@@ -156,15 +209,9 @@ export class ImageUpdateChecker {
 
             // An image that fails each time waits longer for its next
             // check. A check that the user starts examines each image.
-            const previous = new Map((await ImageUpdateChecker.getAll()).map((row) => [ row.image, row ]));
+            const previous = await ImageUpdateChecker.readPrevious();
             const now = Date.now();
-            const due = new Set([ ...images ].filter((image) => {
-                if (force) {
-                    return true;
-                }
-                const nextCheck = previous.get(image)?.nextCheck;
-                return !nextCheck || new Date(nextCheck).getTime() <= now;
-            }));
+            const due = new Set([ ...images ].filter((image) => ImageUpdateChecker.isDue(previous.get(image), now, force)));
 
             log.info("imageUpdate", "Check " + due.size + " of " + images.size + " images");
 
@@ -176,25 +223,17 @@ export class ImageUpdateChecker {
 
             // An image that this check leaves out keeps its last result
             for (const image of images) {
-                if (!due.has(image) && ImageUpdateChecker.available.has(image)) {
+                if (!due.has(image) && previous.get(image)?.updateAvailable) {
                     next.add(image);
                 }
             }
 
             const localDigests = await ImageUpdateChecker.readLocalDigests([ ...due ]);
 
-            // No answer for any image means that docker did not answer,
-            // not that the host has no image. The last results stay, thus
-            // the badges do not go away and no message goes out.
-            if (due.size > 0 && localDigests.size === 0) {
-                log.warn("imageUpdate", "docker gave no image data, thus the check stops and the last results stay");
-                return false;
-            }
-
             const queue = [ ...due ];
             const worker = async () => {
                 for (let image = queue.shift(); image !== undefined; image = queue.shift()) {
-                    const row = await this.check(image, localDigests.get(ImageUpdateChecker.key(image)), previous.get(image));
+                    const row = await this.check(image, localDigests.get(ImageUpdateChecker.key(image)), previous.get(image), force);
                     if (row.updateAvailable) {
                         next.add(image);
                         if (!ImageUpdateChecker.available.has(image)) {
@@ -205,11 +244,11 @@ export class ImageUpdateChecker {
             };
             await Promise.all(Array.from({ length: ImageUpdateChecker.CONCURRENCY }, worker));
 
-            // Remove the rows of images that no stack uses now
+            // Remove the rows of images that no stack uses now. A list
+            // without images comes from a stacks directory that is not
+            // ready, thus the rows and their counts stay.
             if (images.size > 0) {
                 await R.knex("mod_image_update").whereNotIn("image", [ ...images ]).del();
-            } else {
-                await R.knex("mod_image_update").del();
             }
             ImageUpdateChecker.available = next;
 
@@ -355,7 +394,7 @@ export class ImageUpdateChecker {
      * undefined when the image is not on the host
      * @returns The result
      */
-    async check(image : string, repoDigests : string[] | undefined, previous? : ImageUpdate) : Promise<ImageUpdate> {
+    async check(image : string, repoDigests : string[] | undefined, previous? : ImageUpdate, force = false) : Promise<ImageUpdate> {
         const result : ImageUpdate = {
             image,
             localDigest: null,
@@ -367,6 +406,10 @@ export class ImageUpdateChecker {
             nextCheck: null,
         };
 
+        // True when the image is not on this host. Such an image has no
+        // problem with its registry, thus the wait does not grow.
+        let localMiss = false;
+
         try {
             if (repoDigests === undefined) {
                 // The batch gives the images by their tags. An image
@@ -377,8 +420,12 @@ export class ImageUpdateChecker {
             }
 
             if (repoDigests === undefined) {
-                // A stack that never started has no image on the host
+                // A stack that never started has no image on the host.
+                // The last result stays, thus the badge does not go away
+                // and no message goes out at the next start.
                 result.error = "The image is not on this host";
+                result.updateAvailable = previous?.updateAvailable ?? false;
+                localMiss = true;
             } else if (repoDigests.length === 0) {
                 // A local build has no repo digest, and no registry version
                 result.error = "The image has no registry digest";
@@ -415,14 +462,23 @@ export class ImageUpdateChecker {
             // result stays, thus a short outage of the registry does not
             // remove the badges and does not send the message again.
             result.error = (stderrOf(e) || errorMessage(e) || "Check failed").split("\n")[0].slice(0, 500);
-            result.updateAvailable = ImageUpdateChecker.available.has(image);
+            result.updateAvailable = previous?.updateAvailable ?? false;
             log.debug("imageUpdate", image + ": " + result.error);
         }
 
-        // An image with an error waits longer for its next check. An
-        // image without an error goes back to the usual time.
-        if (result.error !== null) {
-            result.failures = (previous?.failures ?? 0) + 1;
+        if (result.error === null) {
+            // The image has an answer, thus the usual time comes back
+            result.failures = 0;
+            result.nextCheck = null;
+        } else if (localMiss) {
+            // The image is not on this host. The count stays as it was.
+            result.failures = previous?.failures ?? 0;
+            result.nextCheck = previous?.nextCheck ?? null;
+        } else {
+            // A check that the user starts must not make the wait longer
+            result.failures = force
+                ? Math.max(previous?.failures ?? 0, 1)
+                : (previous?.failures ?? 0) + 1;
             result.nextCheck = new Date(Date.now() + ImageUpdateChecker.backoff(result.failures)).toISOString();
         }
 
