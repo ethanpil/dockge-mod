@@ -140,10 +140,11 @@
                     <button class="btn btn-normal btn-sm" type="button" :disabled="busy.updates" @click="loadUpdates">
                         <font-awesome-icon :icon="busy.updates ? 'spinner' : 'rotate'" :spin="busy.updates" />
                     </button>
-                    <button class="btn btn-primary btn-sm" type="button" :disabled="busy.updates || checking" @click="checkNow">
-                        <font-awesome-icon v-if="checking" icon="spinner" spin class="me-1" />
+                    <button class="btn btn-primary btn-sm" type="button" :disabled="busy.updates || checkBusy" @click="checkNow">
+                        <font-awesome-icon v-if="checkBusy" icon="spinner" spin class="me-1" />
                         {{ $t("checkNow") }}
                     </button>
+                    <span v-if="checkRunning" class="note">{{ $t("checkProgress", { n: progress.checked, m: progress.total }) }}</span>
                 </div>
                 <div class="table-responsive">
                     <table class="table table-sm mb-0">
@@ -166,7 +167,12 @@
                                         {{ row.updateAvailable ? $t("updateAvailable") : $t("upToDate") }}
                                     </span>
                                 </td>
-                                <td>{{ formatTime(row.checkedAt) }}</td>
+                                <td>
+                                    {{ formatTime(row.checkedAt) }}
+                                    <!-- An image that failed waits longer for
+                                         its next check -->
+                                    <div v-if="hasNextCheck(row)" class="note">{{ $t("nextCheck", { t: formatTime(row.nextCheck) }) }}</div>
+                                </td>
                                 <td class="text-danger">{{ row.error }}</td>
                             </tr>
                         </tbody>
@@ -220,11 +226,36 @@ export default {
         endpoint() {
             return this.$route.params.endpoint || "";
         },
+
+        /** The state of the check that the server sends */
+        progress() {
+            return this.$root.imageUpdateProgressOf(this.endpoint);
+        },
+
+        /** True while a check runs on the server */
+        checkRunning() {
+            return this.progress.running;
+        },
+
+        /** True while this page waits for a check, or a check runs */
+        checkBusy() {
+            return this.checking || this.checkRunning;
+        },
     },
 
     watch: {
         endpoint() {
             this.loadAll();
+        },
+
+        // The check ended. The rows load one time, and the button
+        // becomes usable again.
+        checkRunning(running) {
+            if (running) {
+                return;
+            }
+            this.checking = false;
+            this.loadUpdates();
         },
     },
 
@@ -235,12 +266,9 @@ export default {
     unmounted() {
         // The requests that wait must stay quiet after the page is gone
         this.cancels.forEach((cancel) => cancel());
-        this.timers.forEach((t) => clearTimeout(t));
     },
 
     created() {
-        // Timers of the check that reload the page later
-        this.timers = [];
         // The cancel functions of the requests that wait for an answer
         this.cancels = [];
     },
@@ -322,8 +350,9 @@ export default {
         },
 
         /**
-         * Start a check on the agent. The check runs in the background, so
-         * the rows load again after a short time and after a longer time.
+         * Start a check on the agent. The check runs in the background.
+         * The progress events show the count, and the watch loads the rows
+         * again at the end of the check.
          * @returns {void}
          */
         checkNow() {
@@ -334,9 +363,9 @@ export default {
                     this.$root.toastRes(res);
                     return;
                 }
-                // A check that already runs gives started false. The page
-                // then only loads the rows again, and the button stays
-                // usable.
+                // A check that already runs gives started false. The rows
+                // load now, thus the page shows the last result of the
+                // check that runs.
                 if (res.started === false) {
                     this.checking = false;
                     this.$root.toastRes({
@@ -344,15 +373,8 @@ export default {
                         msg: "checkInProgress",
                         msgi18n: true,
                     });
-                    this.timers.push(setTimeout(() => this.loadUpdates(), 3000));
-                    this.timers.push(setTimeout(() => this.loadUpdates(), 30000));
-                    return;
-                }
-                this.timers.push(setTimeout(() => this.loadUpdates(), 3000));
-                this.timers.push(setTimeout(() => {
-                    this.checking = false;
                     this.loadUpdates();
-                }, 30000));
+                }
             });
         },
 
@@ -418,6 +440,18 @@ export default {
          */
         isDefaultNetwork(name) {
             return DEFAULT_NETWORKS.includes(name);
+        },
+
+        /**
+         * True when the agent keeps the row for a check at a later time.
+         * @param {object} row an image update row
+         * @returns {boolean}
+         */
+        hasNextCheck(row) {
+            if (!row.nextCheck) {
+                return false;
+            }
+            return new Date(row.nextCheck).getTime() > Date.now();
         },
 
         /**

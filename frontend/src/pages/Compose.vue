@@ -38,6 +38,8 @@
                     @start="startStack"
                     @restart="restartStack"
                     @update="updateStack"
+                    :check-running="checkRunning"
+                    @check-updates="checkStackUpdates"
                     @git-pull="gitPullStack"
                     @stop="stopStack"
                     @backups="openBackups"
@@ -744,6 +746,11 @@ export default {
          */
         modFeatures() {
             return this.stack.imageUpdates !== undefined;
+        },
+
+        /** True while a check of the images of this host runs */
+        checkRunning() {
+            return this.$root.imageUpdateProgressOf(this.endpoint).running;
         },
 
         /**
@@ -1515,6 +1522,19 @@ export default {
 
         updateStack() {
             this.runStackAction("updateStack");
+        },
+
+        /**
+         * Check the images of this stack now. The page does not set
+         * processing, thus the other buttons stay usable. The toolbar
+         * button uses the progress of the check for its disabled state.
+         * The badge changes when the check ends.
+         * @returns {void}
+         */
+        checkStackUpdates() {
+            this.$root.emitAgentWithTimeout(this.endpoint, "checkStackImageUpdates", [ this.stack.name ], 300000, (res) => {
+                this.$root.toastRes(res);
+            });
         },
 
         /**

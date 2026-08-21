@@ -493,6 +493,23 @@ export class DockgeServer {
      * Send the info event to each client with a login. A settings save
      * must reach the open pages of the other clients too.
      */
+    /**
+     * Send the progress of the image update check to each client with a
+     * login. This event only adds data, thus a client without the
+     * feature ignores it.
+     */
+    sendImageUpdateProgress() {
+        for (const rawSocket of this.io.sockets.sockets.values()) {
+            const socket = rawSocket as DockgeSocket;
+            if (socket.userID) {
+                // The event goes the same way as the stack list, thus a
+                // primary that reads an agent gets the progress of that
+                // agent, with its endpoint.
+                socket.emitAgent("imageUpdateProgress", { ...ImageUpdateChecker.progress });
+            }
+        }
+    }
+
     async sendInfoToAllClients() {
         for (const rawSocket of this.io.sockets.sockets.values()) {
             const socket = rawSocket as DockgeSocket;

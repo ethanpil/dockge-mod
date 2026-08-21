@@ -48,6 +48,10 @@ export default defineComponent({
             agentList: {
 
             },
+
+            // The state of the image update check of each host, by the
+            // endpoint. The local host has the empty endpoint.
+            imageUpdateProgressList: {} as Record<string, { running : boolean, checked : number, total : number }>,
         };
     },
     computed: {
@@ -292,6 +296,14 @@ export default defineComponent({
                 }
             });
 
+            agentSocket.on("imageUpdateProgress", (res) => {
+                this.imageUpdateProgressList[res.endpoint ?? ""] = {
+                    running: Boolean(res.running),
+                    checked: Number(res.checked ?? 0),
+                    total: Number(res.total ?? 0),
+                };
+            });
+
             socket.on("refresh", () => {
                 location.reload();
             });
@@ -307,6 +319,20 @@ export default defineComponent({
 
         getSocket() : Socket {
             return socket;
+        },
+
+        /**
+         * The state of the image update check of one host. A host that
+         * sent no event yet has no check that runs.
+         * @param {string} endpoint the host, or an empty text for this one
+         * @returns {object} the state of the check
+         */
+        imageUpdateProgressOf(endpoint : string) {
+            return this.imageUpdateProgressList[endpoint ?? ""] ?? {
+                running: false,
+                checked: 0,
+                total: 0,
+            };
         },
 
         emitAgent(endpoint : string, eventName : string, ...args : unknown[]) {

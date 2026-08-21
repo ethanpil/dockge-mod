@@ -58,6 +58,16 @@ export class ImageUpdateChecker {
     /** The images with a new version, from the last check */
     static available : Set<string> = new Set();
 
+    /** How far the check that runs now is */
+    static progress : { running : boolean, checked : number, total : number } = {
+        running: false,
+        checked: 0,
+        total: 0,
+    };
+
+    /** The time between two progress events, in milliseconds */
+    static readonly PROGRESS_INTERVAL = 500;
+
     /** The longest time between two checks of one image, in milliseconds */
     static readonly MAX_BACKOFF = 72 * 60 * 60 * 1000;
 
@@ -193,6 +203,109 @@ export class ImageUpdateChecker {
     }
 
     /**
+     * Check a set of images. The progress goes to the clients while the
+     * check runs.
+     * @param images The images to check
+     * @param previous The last result of each image
+     * @param force True for a check that the user starts
+     * @returns The images with a new version, and the images that did
+     * not have one before
+     */
+    private async runChecks(images : Set<string>, previous : Map<string, ImageUpdate>, force : boolean) : Promise<{ updated : Set<string>, newUpdates : string[] }> {
+        const updated = new Set<string>();
+        const newUpdates : string[] = [];
+
+        ImageUpdateChecker.progress = {
+            running: true,
+            checked: 0,
+            total: images.size,
+        };
+        this.server.sendImageUpdateProgress();
+
+        try {
+            const localDigests = await ImageUpdateChecker.readLocalDigests([ ...images ]);
+            const queue = [ ...images ];
+            let lastEvent = Date.now();
+
+            const worker = async () => {
+                for (let image = queue.shift(); image !== undefined; image = queue.shift()) {
+                    const row = await this.check(image, localDigests.get(ImageUpdateChecker.key(image)), previous.get(image), force);
+                    if (row.updateAvailable) {
+                        updated.add(image);
+                        if (!ImageUpdateChecker.available.has(image)) {
+                            newUpdates.push(image);
+                        }
+                    }
+
+                    ImageUpdateChecker.progress.checked++;
+                    const now = Date.now();
+                    if (now - lastEvent >= ImageUpdateChecker.PROGRESS_INTERVAL) {
+                        lastEvent = now;
+                        this.server.sendImageUpdateProgress();
+                    }
+                }
+            };
+            await Promise.all(Array.from({ length: ImageUpdateChecker.CONCURRENCY }, worker));
+        } finally {
+            ImageUpdateChecker.progress.running = false;
+            this.server.sendImageUpdateProgress();
+        }
+
+        return {
+            updated,
+            newUpdates,
+        };
+    }
+
+    /**
+     * Check the images of one stack. The user starts this check on the
+     * page of the stack, thus it examines each image of that stack.
+     * @param stackName The name of the stack
+     * @returns The count of the images that the check examined
+     */
+    async checkStack(stackName : string) : Promise<number> {
+        if (this.running) {
+            throw new Error("A check is in progress.");
+        }
+        this.running = true;
+        try {
+            const stack = await Stack.getStack(this.server, stackName);
+            const images = new Set(stack.images.filter((image) => {
+                try {
+                    return parseImageRef(image).digest === null;
+                } catch (e) {
+                    return false;
+                }
+            }));
+
+            log.info("imageUpdate", "Check " + images.size + " images of the stack " + stackName);
+
+            const previous = await ImageUpdateChecker.readPrevious();
+            const result = await this.runChecks(images, previous, true);
+
+            // Only the images of this stack change. The images of the
+            // other stacks keep the result of their last check.
+            const next = new Set(ImageUpdateChecker.available);
+            for (const image of images) {
+                next.delete(image);
+            }
+            for (const image of result.updated) {
+                next.add(image);
+            }
+            ImageUpdateChecker.available = next;
+
+            if (result.newUpdates.length > 0) {
+                await Notifier.send("image_update", "New image versions", "A new version is available for: " + result.newUpdates.join(", "));
+            }
+
+            this.server.sendStackList(true).catch(() => undefined);
+            return images.size;
+        } finally {
+            this.running = false;
+        }
+    }
+
+    /**
      * Check each image of the managed stacks. One check runs at a time.
      * @returns True when the check ran, false when one was in progress
      */
@@ -228,21 +341,11 @@ export class ImageUpdateChecker {
                 }
             }
 
-            const localDigests = await ImageUpdateChecker.readLocalDigests([ ...due ]);
-
-            const queue = [ ...due ];
-            const worker = async () => {
-                for (let image = queue.shift(); image !== undefined; image = queue.shift()) {
-                    const row = await this.check(image, localDigests.get(ImageUpdateChecker.key(image)), previous.get(image), force);
-                    if (row.updateAvailable) {
-                        next.add(image);
-                        if (!ImageUpdateChecker.available.has(image)) {
-                            newUpdates.push(image);
-                        }
-                    }
-                }
-            };
-            await Promise.all(Array.from({ length: ImageUpdateChecker.CONCURRENCY }, worker));
+            const result = await this.runChecks(due, previous, force);
+            for (const image of result.updated) {
+                next.add(image);
+            }
+            newUpdates.push(...result.newUpdates);
 
             // Remove the rows of images that no stack uses now. A list
             // without images comes from a stacks directory that is not

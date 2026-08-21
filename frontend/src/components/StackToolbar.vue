@@ -54,6 +54,19 @@
                 {{ $t("updateAvailable") }}
             </span>
 
+            <!-- Only an agent of dockge-mod checks the images of one
+                 stack. The button stays quiet while a check runs. -->
+            <button
+                v-if="!isEditMode && !isAdd && showBackups"
+                class="btn btn-normal"
+                :disabled="checkRunning"
+                :title="$t('checkUpdatesForStack')"
+                :aria-label="$t('checkUpdatesForStack')"
+                @click="$emit('check-updates')"
+            >
+                <font-awesome-icon :icon="checkRunning ? 'spinner' : 'arrows-rotate'" :spin="checkRunning" />
+            </button>
+
             <!-- A detached HEAD cannot pull, thus no button for it -->
             <button v-if="!isEditMode && gitInfo && !gitInfo.isDetached" class="btn btn-normal" :disabled="processing" @click="$emit('git-pull')">
                 <font-awesome-icon icon="code-branch" class="me-1" />
@@ -149,6 +162,11 @@ export default {
             default: 0,
         },
         /** True when the agent has the backup events */
+        /** True while a check of the images of this host runs */
+        checkRunning: {
+            type: Boolean,
+            default: false,
+        },
         showBackups: {
             type: Boolean,
             default: false,
@@ -162,6 +180,7 @@ export default {
         "start",
         "restart",
         "update",
+        "check-updates",
         "git-pull",
         "stop",
         "backups",

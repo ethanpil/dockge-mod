@@ -461,6 +461,23 @@ export class DockerSocketHandler extends AgentSocketHandler {
             }
         });
 
+        // Check the images of one stack now
+        agentSocket.on("checkStackImageUpdates", async (stackName : unknown, callback) => {
+            try {
+                checkLogin(socket);
+                if (typeof(stackName) !== "string") {
+                    throw new ValidationError("Stack name must be a string");
+                }
+                const count = await server.imageUpdateChecker.checkStack(stackName);
+                callbackResult({
+                    ok: true,
+                    count,
+                }, callback);
+            } catch (e) {
+                callbackError(e, callback);
+            }
+        });
+
         // The backups of a stack
         agentSocket.on("getStackBackups", async (stackName : unknown, callback) => {
             try {

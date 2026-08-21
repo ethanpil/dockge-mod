@@ -269,5 +269,8 @@
     "filterAll": "All",
     "bulkProgress": "{n} / {m}",
     "selectedStackCount": "{0} selected",
-    "noStackSelected": "No stack selected"
+    "noStackSelected": "No stack selected",
+    "checkProgress": "Checked {n} of {m}",
+    "nextCheck": "Next check at {t}",
+    "checkUpdatesForStack": "Check the images of this stack"
 }
