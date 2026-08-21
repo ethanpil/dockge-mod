@@ -64,16 +64,20 @@
                         <td class="c-act">
                             <!-- Actions are service-scoped (docker compose has no per-replica
                              stop), so they render once per service, on its first row. -->
-                            <ContainerActions
-                                v-if="row.first"
-                                :status="row.status"
-                                :service-count="serviceCount"
-                                :processing="processing"
-                                :bash-to="bashLink(row.service)"
-                                @start="$emit('start-service', row.service)"
-                                @restart="$emit('restart-service', row.service)"
-                                @stop="$emit('stop-service', row.service)"
-                            />
+                            <div v-if="row.first" class="act-row">
+                                <button type="button" class="mini-btn" :title="$t('serviceLogs')" :disabled="processing" @click="$emit('service-logs', row.service)">
+                                    <font-awesome-icon icon="file-lines" />
+                                </button>
+                                <ContainerActions
+                                    :status="row.status"
+                                    :service-count="serviceCount"
+                                    :processing="processing"
+                                    :bash-to="bashLink(row.service)"
+                                    @start="$emit('start-service', row.service)"
+                                    @restart="$emit('restart-service', row.service)"
+                                    @stop="$emit('stop-service', row.service)"
+                                />
+                            </div>
                             <span v-else class="cell-muted">—</span>
                         </td>
                     </tr>
@@ -88,9 +92,11 @@
                     <span class="status-dot" :class="'dot-' + row.color"></span>
                     <strong class="text-truncate">{{ row.service }}</strong>
                     <span class="badge state-badge" :class="stateBadgeClass(row.status)">{{ row.status }}</span>
+                    <button v-if="row.first" type="button" class="mini-btn ms-auto" :title="$t('serviceLogs')" :disabled="processing" @click="$emit('service-logs', row.service)">
+                        <font-awesome-icon icon="file-lines" />
+                    </button>
                     <ContainerActions
                         v-if="row.first"
-                        class="ms-auto"
                         :status="row.status"
                         :service-count="serviceCount"
                         :processing="processing"
@@ -126,6 +132,7 @@
 import { parseDockerPort } from "../../../common/util-common";
 import { formatPorts, formatUptime } from "../util-frontend";
 import ContainerActions from "./ContainerActions.vue";
+import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
 
 /**
  * The containers of a stack in view mode: a dense table, or stacked
@@ -135,6 +142,7 @@ import ContainerActions from "./ContainerActions.vue";
 export default {
     components: {
         ContainerActions,
+        FontAwesomeIcon,
     },
     props: {
         /** The services of the compose file */
@@ -174,6 +182,7 @@ export default {
         "start-service",
         "stop-service",
         "restart-service",
+        "service-logs",
     ],
     data() {
         return {
@@ -456,6 +465,14 @@ export default {
     .c-addr div {
         line-height: 1.25;
     }
+}
+
+// The logs button and the actions menu on one line
+.act-row {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.3rem;
 }
 
 // Marks the in line and the out line of a two line I/O cell

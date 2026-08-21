@@ -29,6 +29,7 @@
                     :override-supported="overrideSupported"
                     :merged-config-loading="mergedConfigLoading"
                     :git-info="gitInfo"
+                    :image-updates="stack.imageUpdates ?? 0"
                     @deploy="deployStack"
                     @validate="validateCompose"
                     @save="saveStackAndExit"
@@ -38,6 +39,7 @@
                     @update="updateStack"
                     @git-pull="gitPullStack"
                     @stop="stopStack"
+                    @backups="openBackups"
                     @down="downStack"
                     @discard="discardStack"
                     @delete="$refs.confirmDeleteStack.show()"
@@ -130,6 +132,7 @@
                         @start-service="startService"
                         @stop-service="stopService"
                         @restart-service="restartService"
+                        @service-logs="openServiceLogs"
                     />
 
                     <button v-if="false && isEditMode && jsonConfig.services && Object.keys(jsonConfig.services).length > 0" class="btn btn-normal mb-3" @click="addContainer">{{ $t("addContainer") }}</button>
@@ -273,6 +276,69 @@
                         </div>
                     </div>
 
+                    <!-- Logs of one service. The server runs a log process
+                         for it. The expandedPanel watcher tells the server
+                         when the overlay closes. -->
+                    <div v-if="expandedPanel === 'serviceLogs'" class="panel pop">
+                        <div class="panel-head">
+                            <span class="panel-title">{{ $t("serviceLogs") }}</span>
+                            <span class="panel-note">{{ serviceLogName }} &middot; {{ $t("serviceLogsNote") }}</span>
+                            <button class="mini-btn expand-btn" :title="$t('cancel')" @click="toggleExpand('serviceLogs')">
+                                <font-awesome-icon icon="compress" />
+                            </button>
+                        </div>
+                        <div class="panel-fill">
+                            <Terminal
+                                class="terminal"
+                                mode="displayOnly"
+                                :name="serviceLogTerminalName"
+                                :endpoint="endpoint"
+                                :rows="combinedTerminalRows"
+                                :cols="combinedTerminalCols"
+                            ></Terminal>
+                        </div>
+                    </div>
+
+                    <!-- The backups of the stack files. A restore writes
+                         the files to the disk, then the page loads the
+                         stack again. -->
+                    <div v-if="expandedPanel === 'backups'" class="panel pop">
+                        <div class="panel-head">
+                            <span class="panel-title">{{ $t("backups") }}</span>
+                            <span class="panel-note">{{ stack.name }}</span>
+                            <button v-if="backupShown" class="mini-btn expand-btn" @click="backupShown = null">
+                                <font-awesome-icon icon="arrow-left" class="me-1" />{{ $t("backups") }}
+                            </button>
+                            <button class="mini-btn" :class="{ 'expand-btn': !backupShown }" :title="$t('cancel')" @click="toggleExpand('backups')">
+                                <font-awesome-icon icon="compress" />
+                            </button>
+                        </div>
+                        <div class="panel-fill merged-body">
+                            <div v-if="backupsLoading" class="p-3">
+                                <font-awesome-icon icon="spinner" spin />
+                            </div>
+                            <div v-else-if="backupShown" class="backup-files">
+                                <template v-for="file in backupFiles" :key="file.name">
+                                    <div class="backup-file-name">{{ file.name }}</div>
+                                    <pre class="backup-file">{{ file.content }}</pre>
+                                </template>
+                            </div>
+                            <div v-else-if="backups.length === 0" class="p-3 text-body-secondary">{{ $t("noBackups") }}</div>
+                            <table v-else class="backup-table">
+                                <tbody>
+                                    <tr v-for="backup in backups" :key="backup.id">
+                                        <td class="mono">{{ formatBackupTime(backup.createdAt) }}</td>
+                                        <td>{{ backupReasonText(backup.reason) }}</td>
+                                        <td class="backup-actions">
+                                            <button class="mini-btn me-1" :disabled="processing" @click="showBackup(backup.id)">{{ $t("show") }}</button>
+                                            <button class="mini-btn" :disabled="processing" @click="askRestoreBackup(backup.id)">{{ $t("restore") }}</button>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
                     <div v-if="expandedPanel" class="panel-backdrop" @click="toggleExpand(expandedPanel)"></div>
                 </div>
                 <div v-if="isEditMode" class="col-12">
@@ -387,6 +453,11 @@
                 {{ $t("deleteStackMsg") }}
             </Confirm>
 
+            <!-- Restore Backup Dialog -->
+            <Confirm ref="confirmRestoreBackup" btn-style="btn-danger" :yes-text="$t('restore')" :no-text="$t('cancel')" @yes="restoreBackup">
+                {{ $t("restoreBackupMsg") }}
+            </Confirm>
+
             <!-- Delete Override Dialog -->
             <Confirm ref="confirmDeleteOverride" btn-style="btn-danger" :yes-text="$t('deleteOverride')" :no-text="$t('cancel')" @yes="deleteOverride">
                 {{ $t("deleteOverrideMsg") }}
@@ -452,6 +523,7 @@ import StackToolbar from "../components/StackToolbar.vue";
 import resizablePanels from "../mixins/resizable-panels";
 import mergedConfig from "../mixins/merged-config";
 import dotenv from "dotenv";
+import dayjs from "dayjs";
 import { ref } from "vue";
 
 const template = `
@@ -583,6 +655,17 @@ export default {
             leaveResolve: null,
             // True shows the .env text editor, false shows the rows
             envEditorText: false,
+            // The service whose logs the overlay shows, and the name of
+            // its terminal on the server
+            serviceLogName: "",
+            serviceLogTerminalName: "",
+            // The backups of the stack, newest first
+            backups: [],
+            backupsLoading: false,
+            // The content of the backup that the overlay shows, or null
+            backupShown: null,
+            // The id of the backup that the restore dialog asks about
+            backupToRestore: null,
         };
     },
     computed: {
@@ -656,6 +739,32 @@ export default {
          */
         gitInfo() {
             return this.stack.gitInfo ?? null;
+        },
+
+        /**
+         * The files of the backup on screen. A file that the backup does
+         * not have is not in the list.
+         * @return {object[]} name and content of each file
+         */
+        backupFiles() {
+            if (!this.backupShown) {
+                return [];
+            }
+            const files = [
+                {
+                    name: this.stack.composeFileName,
+                    content: this.backupShown.composeYAML,
+                },
+                {
+                    name: this.overrideFileName,
+                    content: this.backupShown.composeOverrideYAML,
+                },
+                {
+                    name: ".env",
+                    content: this.backupShown.composeENV,
+                },
+            ];
+            return files.filter((file) => typeof file.content === "string");
         },
 
         /**
@@ -780,9 +889,12 @@ export default {
          * watch mergedConfigLoading stay disabled until the timer fires.
          * @param {string|null} value the panel that is open now
          */
-        expandedPanel(value) {
+        expandedPanel(value, oldValue) {
             if (value !== "merged") {
                 this.cancelMergedConfig();
+            }
+            if (oldValue === "serviceLogs") {
+                this.leaveServiceLogs();
             }
         },
 
@@ -1055,6 +1167,150 @@ export default {
             // Leave Combined Terminal
             console.debug("leaveCombinedTerminal", this.endpoint, this.stack.name);
             this.$root.emitAgent(this.endpoint, "leaveCombinedTerminal", this.stack.name, () => {});
+
+            this.leaveServiceLogs();
+        },
+
+        /**
+         * Open the logs of one service. The server starts the log process,
+         * or joins this client to a process that runs. Only one service
+         * log overlay is open at a time, thus an open overlay closes first.
+         * @param {string} serviceName the service
+         * @returns {void}
+         */
+        openServiceLogs(serviceName) {
+            this.leaveServiceLogs();
+
+            this.$root.emitAgentWithTimeout(this.endpoint, "serviceLogs", [ this.stack.name, serviceName ], 30000, (res) => {
+                if (this.pageGone) {
+                    return;
+                }
+                if (!res.ok) {
+                    this.$root.toastRes(res);
+                    return;
+                }
+                this.serviceLogName = serviceName;
+                this.serviceLogTerminalName = res.terminalName;
+                this.expandedPanel = "serviceLogs";
+            });
+        },
+
+        /**
+         * Tell the server that this client does not read the service logs
+         * now. The server stops the log process when no client reads it.
+         * A second call does no damage.
+         * @returns {void}
+         */
+        leaveServiceLogs() {
+            if (!this.serviceLogName) {
+                return;
+            }
+            const serviceName = this.serviceLogName;
+            this.serviceLogName = "";
+            this.serviceLogTerminalName = "";
+            this.$root.emitAgent(this.endpoint, "leaveServiceLogs", this.stack.name, serviceName, () => {});
+        },
+
+        /**
+         * Open the backups overlay and get the list from the server.
+         * @returns {void}
+         */
+        openBackups() {
+            this.backupShown = null;
+            this.backups = [];
+            this.backupsLoading = true;
+            this.expandedPanel = "backups";
+
+            this.$root.emitAgentWithTimeout(this.endpoint, "getStackBackups", [ this.stack.name ], 30000, (res) => {
+                if (this.pageGone) {
+                    return;
+                }
+                this.backupsLoading = false;
+                if (res.ok) {
+                    this.backups = res.backups;
+                } else {
+                    this.$root.toastRes(res);
+                }
+            });
+        },
+
+        /**
+         * Get the files of one backup and show them.
+         * @param {number} id the backup
+         * @returns {void}
+         */
+        showBackup(id) {
+            this.backupsLoading = true;
+
+            this.$root.emitAgentWithTimeout(this.endpoint, "getStackBackup", [ this.stack.name, id ], 30000, (res) => {
+                if (this.pageGone) {
+                    return;
+                }
+                this.backupsLoading = false;
+                if (res.ok) {
+                    this.backupShown = res.backup;
+                } else {
+                    this.$root.toastRes(res);
+                }
+            });
+        },
+
+        /**
+         * Ask before a restore, because it overwrites the files on the disk.
+         * @param {number} id the backup
+         * @returns {void}
+         */
+        askRestoreBackup(id) {
+            this.backupToRestore = id;
+            this.$refs.confirmRestoreBackup.show();
+        },
+
+        /**
+         * Write the files of the backup to the disk, then load the stack
+         * again, the same as after a git pull. The containers do not
+         * change until a deploy.
+         * @returns {void}
+         */
+        restoreBackup() {
+            const id = this.backupToRestore;
+            this.backupToRestore = null;
+            if (id === null) {
+                return;
+            }
+            this.processing = true;
+
+            this.$root.emitAgentWithTimeout(this.endpoint, "restoreStackBackup", [ this.stack.name, id ], 30000, (res) => {
+                if (this.pageGone) {
+                    return;
+                }
+                if (!res.ok) {
+                    this.processing = false;
+                    this.$root.toastRes(res);
+                    return;
+                }
+                this.$root.toastSuccess(this.$t("backupRestored"));
+                this.expandedPanel = null;
+                this.loadStack();
+            });
+        },
+
+        /**
+         * The time of a backup in the local format of the page.
+         * @param {string} createdAt the time from the server
+         * @returns {string}
+         */
+        formatBackupTime(createdAt) {
+            return dayjs(createdAt).format("YYYY-MM-DD HH:mm:ss");
+        },
+
+        /**
+         * The text for a backup reason. An unknown reason shows as it is.
+         * @param {string} reason for example "save"
+         * @returns {string}
+         */
+        backupReasonText(reason) {
+            const key = "backupReason_" + reason;
+            return this.$te(key) ? this.$t(key) : reason;
         },
 
         bindTerminal() {
@@ -1887,6 +2143,45 @@ export default {
     margin: 0;
     padding: 1rem;
     color: var(--bs-danger);
+    white-space: pre-wrap;
+}
+
+/* ---------- backups overlay ---------- */
+.backup-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12.5px;
+
+    td {
+        padding: 0.3rem 0.75rem;
+        border-bottom: 1px solid var(--bs-border-color);
+        vertical-align: middle;
+    }
+
+    .backup-actions {
+        text-align: right;
+        white-space: nowrap;
+    }
+}
+
+.backup-files {
+    padding: 0.75rem;
+}
+
+.backup-file-name {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--bs-secondary-color);
+    margin-bottom: 0.25rem;
+}
+
+.backup-file {
+    padding: 0.5rem 0.75rem;
+    margin-bottom: 1rem;
+    font-size: 12px;
+    background-color: var(--bs-tertiary-bg);
+    border: 1px solid var(--bs-border-color);
+    border-radius: 4px;
     white-space: pre-wrap;
 }
 

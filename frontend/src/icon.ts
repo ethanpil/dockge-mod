@@ -70,6 +70,9 @@ import {
     faCodeBranch,
     faLayerGroup,
     faGripLines,
+    faArrowUp,
+    faFileLines,
+    faBoxArchive,
 } from "@fortawesome/free-solid-svg-icons";
 
 library.add(
@@ -141,6 +144,9 @@ library.add(
     faCodeBranch,
     faLayerGroup,
     faGripLines,
+    faArrowUp,
+    faFileLines,
+    faBoxArchive,
 );
 
 export { FontAwesomeIcon };

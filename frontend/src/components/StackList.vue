@@ -2,12 +2,11 @@
     <div class="shadow-box mb-3" :style="boxStyle">
         <div class="list-header">
             <div class="header-top">
-                <!-- TODO -->
                 <button
-                    v-if="false" class="btn btn-sm btn-outline-secondary ms-2" :class="{ 'active': selectMode }" type="button"
+                    class="btn btn-sm btn-outline-secondary me-2" :class="{ 'active': selectMode }" type="button" :disabled="bulkRunning"
                     @click="selectMode = !selectMode"
                 >
-                    {{ $t("Select") }}
+                    {{ $t("select") }}
                 </button>
 
                 <div class="search-wrapper">
@@ -23,18 +22,42 @@
                 </div>
             </div>
 
-            <!-- TODO -->
-            <div v-if="false" class="header-filter">
-                <!--<StackListFilter :filterState="filterState" @update-filter="updateFilter" />-->
+            <!-- The status filter and the search text apply together -->
+            <div class="header-filter">
+                <label class="filter-label" for="stackStatusFilter">{{ $t("filterStatus") }}</label>
+                <select id="stackStatusFilter" v-model="filterState.status" class="form-select form-select-sm filter-select">
+                    <option :value="null">{{ $t("filterAll") }}</option>
+                    <option value="active">{{ $t("active") }}</option>
+                    <option value="exited">{{ $t("exited") }}</option>
+                    <option value="inactive">{{ $t("inactive") }}</option>
+                </select>
             </div>
 
-            <!-- TODO: Selection Controls -->
-            <div v-if="selectMode && false" class="selection-controls px-2 pt-2">
-                <input v-model="selectAll" class="form-check-input select-input" type="checkbox" />
-
-                <span v-if="selectedStackCount > 0">
-                    {{ $t("selectedStackCount", [selectedStackCount]) }}
-                </span>
+            <!-- Bulk actions. The backend has one event for one stack, thus
+                 the actions run one stack after the other. -->
+            <div v-if="selectMode" class="selection-controls">
+                <div class="selection-row">
+                    <button class="btn btn-sm btn-outline-secondary" type="button" :disabled="bulkRunning" @click="selectVisible">{{ $t("selectAll") }}</button>
+                    <button class="btn btn-sm btn-outline-secondary" type="button" :disabled="bulkRunning || selectedStackCount === 0" @click="selectedStacks = {}">{{ $t("clear") }}</button>
+                    <span v-if="bulkRunning" class="selection-note">
+                        <font-awesome-icon icon="spinner" spin class="me-1" />{{ $t("bulkProgress", { n: bulkDone, m: bulkTotal }) }}
+                    </span>
+                    <span v-else class="selection-note">{{ $t("selectedStackCount", [ selectedStackCount ]) }}</span>
+                </div>
+                <div class="selection-row">
+                    <button class="btn btn-sm btn-primary" type="button" :disabled="bulkDisabled" @click="runBulk('startStack')">
+                        <font-awesome-icon icon="play" class="me-1" />{{ $t("startStack") }}
+                    </button>
+                    <button class="btn btn-sm btn-normal" type="button" :disabled="bulkDisabled" @click="runBulk('stopStack')">
+                        <font-awesome-icon icon="stop" class="me-1" />{{ $t("stopStack") }}
+                    </button>
+                    <button class="btn btn-sm btn-normal" type="button" :disabled="bulkDisabled" @click="runBulk('restartStack')">
+                        <font-awesome-icon icon="rotate" class="me-1" />{{ $t("restartStack") }}
+                    </button>
+                    <button class="btn btn-sm btn-normal" type="button" :disabled="bulkDisabled" @click="runBulk('updateStack')">
+                        <font-awesome-icon icon="cloud-arrow-down" class="me-1" />{{ $t("updateStack") }}
+                    </button>
+                </div>
             </div>
         </div>
         <div ref="stackList" class="stack-list" :class="{ scrollbar: scrollbar }" :style="stackListStyle">
@@ -65,11 +88,13 @@
 
 <script>
 import StackListItem from "../components/StackListItem.vue";
-import { CREATED_FILE, CREATED_STACK, EXITED, RUNNING, UNKNOWN } from "../../../common/util-common";
+import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
+import { CREATED_FILE, CREATED_STACK, EXITED, RUNNING, UNKNOWN, statusNameShort } from "../../../common/util-common";
 
 export default {
     components: {
         StackListItem,
+        FontAwesomeIcon,
     },
     props: {
         /** Should the scrollbar be shown */
@@ -81,9 +106,12 @@ export default {
         return {
             searchText: "",
             selectMode: false,
-            selectAll: false,
-            disableSelectAllWatcher: false,
+            // The selected stacks, by the key of completeStackList
             selectedStacks: {},
+            // True while a bulk action runs. The count shows the progress.
+            bulkRunning: false,
+            bulkDone: 0,
+            bulkTotal: 0,
             windowTop: 0,
             filterState: {
                 status: null,
@@ -132,6 +160,13 @@ export default {
                             || tag.value?.toLowerCase().includes(loweredSearchText));
                 }
 
+                // filter by status. The names are the same as the status
+                // dot uses, thus "inactive" covers both created states.
+                let statusMatch = true;
+                if (this.filterState.status != null) {
+                    statusMatch = statusNameShort(stack.status) === this.filterState.status;
+                }
+
                 // filter by active
                 let activeMatch = true;
                 if (this.filterState.active != null && this.filterState.active.length > 0) {
@@ -146,7 +181,7 @@ export default {
                         .length > 0;
                 }
 
-                return searchTextMatch && activeMatch && tagsMatch;
+                return searchTextMatch && statusMatch && activeMatch && tagsMatch;
             });
 
             result.sort((m1, m2) => {
@@ -215,8 +250,11 @@ export default {
             //let listHeaderHeight = 107;
             let listHeaderHeight = 48;
 
+            // The filter row
+            listHeaderHeight += 36;
+
             if (this.selectMode) {
-                listHeaderHeight += 42;
+                listHeaderHeight += 74;
             }
 
             return {
@@ -228,6 +266,10 @@ export default {
             return Object.keys(this.selectedStacks).length;
         },
 
+        bulkDisabled() {
+            return this.bulkRunning || this.selectedStackCount === 0;
+        },
+
         /**
          * Determines if any filters are active.
          * @returns {boolean} True if any filter is active, false otherwise.
@@ -237,33 +279,8 @@ export default {
         }
     },
     watch: {
-        searchText() {
-            for (let stack of this.agentStackList) {
-                if (!this.selectedStacks[stack.id]) {
-                    if (this.selectAll) {
-                        this.disableSelectAllWatcher = true;
-                        this.selectAll = false;
-                    }
-                    break;
-                }
-            }
-        },
-        selectAll() {
-            if (!this.disableSelectAllWatcher) {
-                this.selectedStacks = {};
-
-                if (this.selectAll) {
-                    this.agentStackList.forEach((item) => {
-                        this.selectedStacks[item.id] = true;
-                    });
-                }
-            } else {
-                this.disableSelectAllWatcher = false;
-            }
-        },
         selectMode() {
             if (!this.selectMode) {
-                this.selectAll = false;
                 this.selectedStacks = {};
             }
         },
@@ -295,16 +312,8 @@ export default {
             this.searchText = "";
         },
         /**
-         * Update the StackList Filter
-         * @param {object} newFilter Object with new filter
-         * @returns {void}
-         */
-        updateFilter(newFilter) {
-            this.filterState = newFilter;
-        },
-        /**
          * Deselect a stack
-         * @param {number} id ID of stack
+         * @param {string} id key of the stack in completeStackList
          * @returns {void}
          */
         deselect(id) {
@@ -312,7 +321,7 @@ export default {
         },
         /**
          * Select a stack
-         * @param {number} id ID of stack
+         * @param {string} id key of the stack in completeStackList
          * @returns {void}
          */
         select(id) {
@@ -320,19 +329,58 @@ export default {
         },
         /**
          * Determine if stack is selected
-         * @param {number} id ID of stack
+         * @param {string} id key of the stack in completeStackList
          * @returns {bool} Is the stack selected?
          */
         isSelected(id) {
             return id in this.selectedStacks;
         },
         /**
-         * Disable select mode and reset selection
+         * Select the stacks that the filter shows. A stack that is not
+         * managed by dockge has no actions, thus it is not selected.
          * @returns {void}
          */
-        cancelSelectMode() {
-            this.selectMode = false;
-            this.selectedStacks = {};
+        selectVisible() {
+            for (const agent of this.agentStackList) {
+                for (const stack of agent.stacks) {
+                    if (stack.isManagedByDockge) {
+                        this.select(stack.name + "_" + (stack.endpoint || ""));
+                    }
+                }
+            }
+        },
+        /**
+         * Run one stack event for each selected stack, one after the
+         * other. A failure shows a toast and the run continues with the
+         * next stack.
+         * @param {string} event startStack, stopStack, restartStack or updateStack
+         * @returns {Promise<void>}
+         */
+        async runBulk(event) {
+            const keys = Object.keys(this.selectedStacks);
+            if (this.bulkRunning || keys.length === 0) {
+                return;
+            }
+
+            this.bulkRunning = true;
+            this.bulkDone = 0;
+            this.bulkTotal = keys.length;
+
+            for (const key of keys) {
+                const stack = this.$root.completeStackList[key];
+                if (stack) {
+                    const res = await new Promise((resolve) => {
+                        this.$root.emitAgentWithTimeout(stack.endpoint || "", event, [ stack.name ], 300000, resolve);
+                    });
+                    if (!res.ok) {
+                        const msg = res.msgi18n ? this.$t(res.msg) : res.msg;
+                        this.$root.toastError(stack.name + ": " + msg);
+                    }
+                }
+                this.bulkDone++;
+            }
+
+            this.bulkRunning = false;
         },
     },
 };
@@ -371,6 +419,20 @@ export default {
 .header-filter {
     display: flex;
     align-items: center;
+    gap: 0.4rem;
+    margin-top: 0.4rem;
+}
+
+.filter-label {
+    font-size: 11px;
+    color: var(--bs-secondary-color);
+    white-space: nowrap;
+}
+
+.filter-select {
+    font-size: 12px;
+    padding-top: 0.15rem;
+    padding-bottom: 0.15rem;
 }
 
 .search-wrapper {
@@ -422,10 +484,29 @@ export default {
 }
 
 .selection-controls {
-    margin-top: 5px;
+    margin-top: 0.4rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+
+    .btn {
+        padding: 0.1rem 0.45rem;
+        font-size: 11.5px;
+    }
+}
+
+.selection-row {
     display: flex;
     align-items: center;
-    gap: 10px;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+}
+
+.selection-note {
+    font-size: 11.5px;
+    color: var(--bs-secondary-color);
+    margin-left: auto;
+    white-space: nowrap;
 }
 
 .agent-select {

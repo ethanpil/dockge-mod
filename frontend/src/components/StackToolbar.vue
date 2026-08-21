@@ -47,6 +47,13 @@
                 {{ $t("updateStack") }}
             </button>
 
+            <!-- Not a button. The update check found an image with a new
+                 version. -->
+            <span v-if="!isEditMode && imageUpdates > 0" class="btn btn-normal update-pill" :title="$t('updateAvailableCount', { n: imageUpdates })">
+                <font-awesome-icon icon="arrow-up" class="me-1" />
+                {{ $t("updateAvailable") }}
+            </span>
+
             <!-- A detached HEAD cannot pull, thus no button for it -->
             <button v-if="!isEditMode && gitInfo && !gitInfo.isDetached" class="btn btn-normal" :disabled="processing" @click="$emit('git-pull')">
                 <font-awesome-icon icon="code-branch" class="me-1" />
@@ -56,6 +63,11 @@
             <button v-if="!isEditMode && active" class="btn btn-normal" :disabled="processing" @click="$emit('stop')">
                 <font-awesome-icon icon="stop" class="me-1" />
                 {{ $t("stopStack") }}
+            </button>
+
+            <button v-if="!isEditMode && !isAdd" class="btn btn-normal" :disabled="processing" @click="$emit('backups')">
+                <font-awesome-icon icon="box-archive" class="me-1" />
+                {{ $t("backups") }}
             </button>
 
             <!-- The down menu is a view mode action, the same as the
@@ -130,6 +142,11 @@ export default {
             type: Object,
             default: null,
         },
+        /** The count of images with a new version */
+        imageUpdates: {
+            type: Number,
+            default: 0,
+        },
     },
     emits: [
         "deploy",
@@ -141,6 +158,7 @@ export default {
         "update",
         "git-pull",
         "stop",
+        "backups",
         "down",
         "discard",
         "delete",
@@ -158,6 +176,13 @@ export default {
     .btn {
         padding: 0.15rem 0.5rem;
         font-size: 12px;
+    }
+
+    // A pill in the button group. It is not a button.
+    .update-pill {
+        cursor: default;
+        color: var(--bs-info);
+        pointer-events: auto;
     }
 }
 </style>
