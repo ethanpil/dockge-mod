@@ -12,6 +12,7 @@ import {
     callbackResult,
     checkLogin,
     DockgeSocket,
+    DOCKER_SPAWN_OPTIONS,
     doubleCheckPassword,
     errorMessage,
     JWTDecoded,
@@ -48,13 +49,9 @@ interface HealthItem {
  */
 async function checkTool(key : string, file : string, args : string[]) : Promise<HealthItem> {
     try {
-        const res = await childProcessAsync.spawn(file, args, {
-            encoding: "utf-8",
-            // A tool that does not answer must not keep the health report
-            // for ever. The same limits as the other tool processes.
-            maxBuffer: 10 * 1024 * 1024,
-            timeout: 30000,
-        });
+        // A tool that does not answer must not keep the health report
+        // for ever. The same limits as the other tool processes.
+        const res = await childProcessAsync.spawn(file, args, DOCKER_SPAWN_OPTIONS);
         const firstLine = (res.stdout?.toString() ?? "").trim().split(/\r?\n/)[0];
         return {
             key,

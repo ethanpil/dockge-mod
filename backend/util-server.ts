@@ -63,6 +63,16 @@ export class ValidationError extends Error {
 }
 
 /**
+ * True when the value is one of the list. The list gives the type.
+ * @param list The accepted values
+ * @param value The value from the client
+ * @returns True when the value is in the list
+ */
+export function isOneOf<T extends string>(list : readonly T[], value : unknown) : value is T {
+    return typeof value === "string" && (list as readonly string[]).includes(value);
+}
+
+/**
  * Refuse a service name that cannot go to docker compose as an
  * argument. A name such as --project-directory=/ is an option, and
  * docker would accept it.

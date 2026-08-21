@@ -1,12 +1,12 @@
 import { AgentSocketHandler } from "../agent-socket-handler";
 import { DockgeServer } from "../dockge-server";
-import { callbackError, callbackResult, checkLogin, DockgeSocket, errorMessage, ValidationError } from "../util-server";
+import { callbackError, callbackResult, checkLogin, DockgeSocket, errorMessage, isOneOf, ValidationError } from "../util-server";
 import { Stack } from "../stack";
 import { AgentSocket } from "../../common/agent-socket";
 import { log } from "../log";
 import { ImageUpdateChecker } from "../image-update";
 import { StackBackup } from "../stack-backup";
-import { DockerResources, PRUNE_KINDS, PruneKind, RESOURCE_KINDS, ResourceKind } from "../docker-resources";
+import { DockerResources, PRUNE_KINDS, RESOURCE_KINDS } from "../docker-resources";
 
 /**
  * Put the arguments of a save event in sequence. A client without override
@@ -325,7 +325,7 @@ export class DockerSocketHandler extends AgentSocketHandler {
                     throw new ValidationError("Stack name must be a string");
                 }
 
-                const stack = await Stack.getStack(server, stackName, true);
+                const stack = await Stack.getStack(server, stackName);
                 const serviceStatusList = Object.fromEntries(await stack.getServiceStatusList());
                 callbackResult({
                     ok: true,
@@ -508,7 +508,9 @@ export class DockerSocketHandler extends AgentSocketHandler {
                 const files = await StackBackup.get(existing.name, id);
                 const stack = new Stack(server, existing.name, files.composeYAML, files.composeENV, files.composeOverrideYAML, false);
                 await stack.save(false, "restore");
-                server.sendStackList();
+                server.sendStackList().catch((e) => {
+                    log.warn("server", "Cannot send the stack list: " + errorMessage(e));
+                });
                 callbackResult({
                     ok: true,
                     msg: "Restored",
@@ -522,12 +524,12 @@ export class DockerSocketHandler extends AgentSocketHandler {
         agentSocket.on("getDockerResources", async (kind : unknown, callback) => {
             try {
                 checkLogin(socket);
-                if (typeof(kind) !== "string" || !(RESOURCE_KINDS as readonly string[]).includes(kind)) {
+                if (!isOneOf(RESOURCE_KINDS, kind)) {
                     throw new ValidationError("Unknown resource kind");
                 }
                 callbackResult({
                     ok: true,
-                    resources: await DockerResources.list(kind as ResourceKind),
+                    resources: await DockerResources.list(kind),
                 }, callback);
             } catch (e) {
                 callbackError(e, callback);
@@ -537,13 +539,13 @@ export class DockerSocketHandler extends AgentSocketHandler {
         agentSocket.on("removeDockerResource", async (kind : unknown, name : unknown, callback) => {
             try {
                 checkLogin(socket);
-                if (typeof(kind) !== "string" || !(RESOURCE_KINDS as readonly string[]).includes(kind)) {
+                if (!isOneOf(RESOURCE_KINDS, kind)) {
                     throw new ValidationError("Unknown resource kind");
                 }
                 if (typeof(name) !== "string") {
                     throw new ValidationError("Name must be a string");
                 }
-                const output = await DockerResources.remove(kind as ResourceKind, name);
+                const output = await DockerResources.remove(kind, name);
                 callbackResult({
                     ok: true,
                     output,
@@ -556,10 +558,10 @@ export class DockerSocketHandler extends AgentSocketHandler {
         agentSocket.on("pruneDockerResources", async (kind : unknown, callback) => {
             try {
                 checkLogin(socket);
-                if (typeof(kind) !== "string" || !(PRUNE_KINDS as readonly string[]).includes(kind)) {
+                if (!isOneOf(PRUNE_KINDS, kind)) {
                     throw new ValidationError("Unknown prune kind");
                 }
-                const output = await DockerResources.prune(kind as PruneKind);
+                const output = await DockerResources.prune(kind);
                 callbackResult({
                     ok: true,
                     output,

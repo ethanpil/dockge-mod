@@ -31,6 +31,8 @@ export interface ContainerChange {
     name : string;
     /** The exit code of a die action, or null */
     exitCode : number | null;
+    /** The signal of a kill action, for example "15" or "SIGTERM", or null */
+    signal : string | null;
 }
 
 /**
@@ -59,6 +61,7 @@ export function parseContainerChange(line : string) : ContainerChange | null {
         action: event.Action,
         name: attributes.name ?? "",
         exitCode: Number.isFinite(exitCode) ? exitCode : null,
+        signal: event.Action === "kill" ? (attributes.signal ?? null) : null,
     };
 }
 
@@ -116,6 +119,7 @@ export class DockerEvents {
 
     private spawn() {
         let rest = "";
+        const started = Date.now();
         const process = spawn("docker", [ "events", "--format", "{{json .}}", "--filter", "type=container" ], {
             stdio: [ "ignore", "pipe", "pipe" ],
         });
@@ -123,8 +127,6 @@ export class DockerEvents {
 
         process.stdout?.setEncoding("utf-8");
         process.stdout?.on("data", (chunk : string) => {
-            // The stream is healthy, thus the next pause is short again
-            this.pause = 1000;
             rest += chunk;
             const lines = rest.split("\n");
             rest = lines.pop() ?? "";
@@ -149,13 +151,22 @@ export class DockerEvents {
             log.warn("dockerEvents", "Cannot start docker events: " + e.message);
         });
 
-        process.on("exit", (code) => {
+        // A process that cannot start gives an error event and a close
+        // event, but no exit event. The close event comes in each case.
+        process.on("close", (code) => {
             if (this.process !== process) {
                 return;
             }
             this.process = null;
             if (this.stopped) {
                 return;
+            }
+            // A stream that lived for a while was healthy, thus the next
+            // pause is short again. A stream that ended at once keeps the
+            // pause, thus a daemon that fails does not get one start each
+            // second.
+            if (Date.now() - started > 30 * 1000) {
+                this.pause = 1000;
             }
             log.warn("dockerEvents", "docker events ended with code " + code + ", start again in " + this.pause + " ms");
             this.restartTimer = setTimeout(() => {

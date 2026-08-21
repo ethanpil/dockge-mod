@@ -36,10 +36,19 @@ export class StackBackup {
      */
     static async create(stack : string, reason : string, files : StackFiles) : Promise<void> {
         try {
-            const last = await R.knex("mod_stack_backup").where({ stack }).orderBy("id", "desc").first();
-            if (last && last.compose_yaml === files.composeYAML && last.compose_env === files.composeENV
-                && (last.compose_override_yaml ?? null) === files.composeOverrideYAML) {
-                return;
+            // The database compares the content with the last copy, thus
+            // the text of the last copy does not come to the server
+            const last = await R.knex("mod_stack_backup").where({ stack }).orderBy("id", "desc").first("id");
+            if (last) {
+                const same = await R.knex("mod_stack_backup").where({
+                    id: last.id,
+                    compose_yaml: files.composeYAML,
+                    compose_env: files.composeENV,
+                    compose_override_yaml: files.composeOverrideYAML,
+                }).first("id");
+                if (same) {
+                    return;
+                }
             }
 
             await R.knex("mod_stack_backup").insert({

@@ -40,6 +40,7 @@ import { Terminal } from "./terminal";
 import { ContainerChange, DockerEvents } from "./docker-events";
 import { ImageUpdateChecker } from "./image-update";
 import { Notifier } from "./notification";
+import { parseJSONLines } from "./docker-resources";
 import { CachedCall } from "./utils/cached-call";
 
 export class DockgeServer {
@@ -709,7 +710,10 @@ export class DockgeServer {
         }
 
         for (const change of changes) {
-            if (change.action === "kill" || change.action === "stop") {
+            // A kill with a different signal, for example HUP, is a reload.
+            // The container continues, thus a later crash must send a message.
+            const stopSignal = change.signal === null || [ "15", "9", "SIGTERM", "SIGKILL" ].includes(change.signal);
+            if (change.action === "stop" || (change.action === "kill" && stopSignal)) {
                 this.stoppedContainers.set(change.name, now);
             } else if (change.action === "die" && change.exitCode !== null && change.exitCode !== 0 && !this.stoppedContainers.has(change.name)) {
                 Notifier.send("container_exited", "Container exited", "The container " + change.name + " exited with code " + change.exitCode + ".", "exit:" + change.name).catch(() => undefined);
@@ -752,14 +756,8 @@ export class DockgeServer {
                 return stats;
             }
 
-            let lines = res.stdout?.toString().split("\n");
-
-            for (let line of lines) {
-                try {
-                    let obj = JSON.parse(line);
-                    stats.set(obj.Name, obj);
-                } catch (e) {
-                }
+            for (const obj of parseJSONLines(res.stdout.toString())) {
+                stats.set(obj.Name as string, obj);
             }
 
             return stats;

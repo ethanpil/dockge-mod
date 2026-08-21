@@ -50,7 +50,7 @@ Three conditions apply after you go back:
 - See the resource usage of the containers in a stack.
 - See which images have a new version. The server checks the registry every six hours.
 - Get a notification on a webhook, ntfy, or Apprise for a new image version, a container that exits with an error, or an unhealthy container.
-- Go back to an earlier version of the files of a stack. A save and an update keep a copy.
+- Go back to an earlier version of the files of a stack. A save and a git pull keep a copy.
 - List and prune the images, the volumes, and the networks of the host.
 - See the log of one service.
 - Use a git checkout as a stack, with an override file for the local changes.
@@ -61,7 +61,7 @@ dockge-mod is for a user who runs Dockge now. It keeps the files on the disk, an
 
 | | dockge-mod | Dockge | Arcane | Komodo |
 | --- | --- | --- | --- | --- |
-| Files on the disk, no lock-in | Yes | Yes | Yes | Yes |
+| Keeps the files on the disk | Yes | Yes | Yes | Yes |
 | Uses the Dockge data, goes back to Dockge | Yes | - | No | No |
 | Override file and git checkout | Yes | No | Git only | Git only |
 | Image update check | Yes | No | Yes | Yes |
@@ -272,7 +272,7 @@ Click **Test** to send a test message. One container sends one message in five m
 
 ### Go Back to an Earlier Version of a Stack
 
-A save and an update make a copy of the compose file, the `.env` file, and the override file before they change them. The last 20 copies of a stack stay in the database. Open the stack and click **Backups** to see the copies. Click **Restore** to write a copy back to the disk. The containers do not change until you click **Deploy**.
+A save and a git pull make a copy of the compose file, the `.env` file, and the override file before they change them. The last 20 copies of a stack stay in the database, also the `.env` file with its secrets. The copies of a stack go away with the stack when you delete it in the interface. Open the stack and click **Backups** to see the copies. Click **Restore** to write a copy back to the disk. The containers do not change until you click **Deploy**.
 
 ### Manage the Images, the Volumes, and the Networks
 

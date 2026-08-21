@@ -1,6 +1,6 @@
 import { R } from "redbean-node";
 import { log } from "./log";
-import { errorMessage, ValidationError } from "./util-server";
+import { errorMessage, isOneOf, ValidationError } from "./util-server";
 
 /** The services that can get a notification */
 export const NOTIFICATION_TYPES = [ "webhook", "ntfy", "apprise" ] as const;
@@ -89,20 +89,20 @@ export function checkNotification(data : unknown) : Notification {
     if (typeof obj.name !== "string" || obj.name.trim() === "" || obj.name.length > 200) {
         throw new ValidationError("The name must be a text of 1 to 200 characters");
     }
-    if (typeof obj.type !== "string" || !(NOTIFICATION_TYPES as readonly string[]).includes(obj.type)) {
+    if (!isOneOf(NOTIFICATION_TYPES, obj.type)) {
         throw new ValidationError("Unknown notification type");
     }
     if (typeof obj.url !== "string" || !/^https?:\/\//.test(obj.url) || obj.url.length > 2000) {
         throw new ValidationError("The URL must start with http:// or https://");
     }
-    if (!Array.isArray(obj.events) || obj.events.some((e) => !(NOTIFICATION_EVENTS as readonly string[]).includes(e as string))) {
+    if (!Array.isArray(obj.events) || obj.events.some((e) => !isOneOf(NOTIFICATION_EVENTS, e))) {
         throw new ValidationError("Unknown event");
     }
 
     return {
         id: typeof obj.id === "number" ? obj.id : undefined,
         name: obj.name.trim(),
-        type: obj.type as NotificationType,
+        type: obj.type,
         url: obj.url,
         events: [ ...new Set(obj.events as NotificationEvent[]) ],
         active: obj.active !== false,
@@ -183,7 +183,11 @@ export class Notifier {
             const res = await fetch(url, {
                 ...init,
                 signal: controller.signal,
+                // A target must not send the request to a different host
+                redirect: "error",
             });
+            // Read the body, thus the connection goes back to the pool
+            await res.arrayBuffer().catch(() => undefined);
             if (!res.ok) {
                 throw new Error("HTTP " + res.status);
             }

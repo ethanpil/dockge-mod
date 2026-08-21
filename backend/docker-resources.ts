@@ -6,7 +6,7 @@ export const RESOURCE_KINDS = [ "images", "volumes", "networks" ] as const;
 export type ResourceKind = typeof RESOURCE_KINDS[number];
 
 /** The prune operations */
-export const PRUNE_KINDS = [ "images", "images-all", "volumes", "networks", "build-cache" ] as const;
+export const PRUNE_KINDS = [ "images", "images-all", "volumes", "networks" ] as const;
 export type PruneKind = typeof PRUNE_KINDS[number];
 
 /**
@@ -28,6 +28,9 @@ export function isDockerResourceName(name : string) : boolean {
  */
 export function parseJSONLines(output : string) : Record<string, unknown>[] {
     const list : Record<string, unknown>[] = [];
+    if (!output) {
+        return list;
+    }
     for (const line of output.split("\n")) {
         const text = line.trim();
         if (!text) {
@@ -92,7 +95,6 @@ export class DockerResources {
             "images-all": [ "image", "prune", "-a", "-f" ],
             "volumes": [ "volume", "prune", "-f" ],
             "networks": [ "network", "prune", "-f" ],
-            "build-cache": [ "builder", "prune", "-f" ],
         };
         const res = await childProcessAsync.spawn("docker", args[kind], {
             ...DOCKER_SPAWN_OPTIONS,

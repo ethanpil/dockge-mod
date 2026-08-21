@@ -53,9 +53,13 @@ export class ImageUpdateChecker {
     /** The images with a new version, from the last check */
     static available : Set<string> = new Set();
 
+    /** How many images the check reads from the registry at one time */
+    static readonly CONCURRENCY = 4;
+
     private server : DockgeServer;
     private running = false;
     private timer? : NodeJS.Timeout;
+    private firstTimer? : NodeJS.Timeout;
 
     constructor(server : DockgeServer) {
         this.server = server;
@@ -73,7 +77,7 @@ export class ImageUpdateChecker {
                 log.warn("imageUpdate", "Check failed: " + errorMessage(e));
             });
         }, ImageUpdateChecker.INTERVAL);
-        setTimeout(() => {
+        this.firstTimer = setTimeout(() => {
             this.checkAll().catch((e) => {
                 log.warn("imageUpdate", "Check failed: " + errorMessage(e));
             });
@@ -82,6 +86,7 @@ export class ImageUpdateChecker {
 
     stop() {
         clearInterval(this.timer);
+        clearTimeout(this.firstTimer);
     }
 
     isRunning() : boolean {
@@ -122,19 +127,24 @@ export class ImageUpdateChecker {
             const images = await this.collectImages();
             log.info("imageUpdate", "Check " + images.size + " images");
 
+            // The new set replaces the old set at the end, thus a stack
+            // list that goes out during the check shows the old result,
+            // not a mix of both.
+            const next = new Set<string>();
             const newUpdates : string[] = [];
-            for (const image of images) {
-                const wasAvailable = ImageUpdateChecker.available.has(image);
-                const row = await this.check(image);
-                if (row.updateAvailable) {
-                    ImageUpdateChecker.available.add(image);
-                    if (!wasAvailable) {
-                        newUpdates.push(image);
+            const queue = [ ...images ];
+            const worker = async () => {
+                for (let image = queue.shift(); image !== undefined; image = queue.shift()) {
+                    const row = await this.check(image);
+                    if (row.updateAvailable) {
+                        next.add(image);
+                        if (!ImageUpdateChecker.available.has(image)) {
+                            newUpdates.push(image);
+                        }
                     }
-                } else {
-                    ImageUpdateChecker.available.delete(image);
                 }
-            }
+            };
+            await Promise.all(Array.from({ length: ImageUpdateChecker.CONCURRENCY }, worker));
 
             // Remove the rows of images that no stack uses now
             if (images.size > 0) {
@@ -142,11 +152,7 @@ export class ImageUpdateChecker {
             } else {
                 await R.knex("mod_image_update").del();
             }
-            for (const image of [ ...ImageUpdateChecker.available ]) {
-                if (!images.has(image)) {
-                    ImageUpdateChecker.available.delete(image);
-                }
-            }
+            ImageUpdateChecker.available = next;
 
             if (newUpdates.length > 0) {
                 await Notifier.send("image_update", "New image versions", "A new version is available for: " + newUpdates.join(", "));
@@ -223,8 +229,11 @@ export class ImageUpdateChecker {
             }
         } catch (e) {
             // For example, a private registry without credentials, or no
-            // network. The error text goes to the interface.
+            // network. The error text goes to the interface. The last
+            // result stays, thus a short outage of the registry does not
+            // remove the badges and does not send the message again.
             result.error = (errorMessage(e) || "Check failed").split("\n")[0].slice(0, 500);
+            result.updateAvailable = ImageUpdateChecker.available.has(image);
             log.debug("imageUpdate", image + ": " + result.error);
         }
 

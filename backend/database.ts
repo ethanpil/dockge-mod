@@ -224,7 +224,7 @@ export class Database {
         } catch (e) {
             if (e instanceof Error && e.message.includes("the following files are missing:")) {
                 log.warn("db", e.message);
-                log.warn("db", "Mod database migration failed, you may be downgrading dockge-mod.");
+                log.warn("db", "Mod database migration failed. This occurs when an older version of dockge-mod starts with a newer database.");
             } else {
                 log.error("db", "Mod database migration failed");
                 throw e;

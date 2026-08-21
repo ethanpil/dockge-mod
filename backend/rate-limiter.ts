@@ -76,11 +76,11 @@ export class KeyedRateLimiter {
     }
 
     /**
-     * Should the request be passed through
+     * Tell if the request can pass.
      * @param key The client key, for example the address
      * @param callback Callback function to call with decision
      * @param {number} num Number of tokens to remove
-     * @returns {Promise<boolean>} Should the request be allowed?
+     * @returns {Promise<boolean>} True when the request can pass
      */
     async pass(key : string, callback : KumaRateLimiterCallback, num = 1) {
         const now = Date.now();
@@ -113,13 +113,15 @@ export class KeyedRateLimiter {
                 this.limiters.delete(k);
             }
         }
-        // A Map keeps the insert sequence, thus the first keys are the
-        // oldest
-        for (const k of this.limiters.keys()) {
-            if (this.limiters.size < KeyedRateLimiter.MAX_KEYS) {
-                break;
+        // Remove the keys with the oldest use first
+        if (this.limiters.size >= KeyedRateLimiter.MAX_KEYS) {
+            const entries = [ ...this.limiters.entries() ].sort((a, b) => a[1].lastUse - b[1].lastUse);
+            for (const [ k ] of entries) {
+                if (this.limiters.size < KeyedRateLimiter.MAX_KEYS) {
+                    break;
+                }
+                this.limiters.delete(k);
             }
-            this.limiters.delete(k);
         }
     }
 

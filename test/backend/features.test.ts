@@ -133,6 +133,25 @@ describe("parseContainerChange with details", () => {
             action: "die",
             name: "web-1",
             exitCode: 137,
+            signal: null,
+        });
+    });
+
+    it("reads the signal of a kill", () => {
+        const line = JSON.stringify({
+            Type: "container",
+            Action: "kill",
+            Actor: {
+                Attributes: {
+                    "name": "web-1",
+                    "signal": "1",
+                },
+            },
+        });
+        expect(parseContainerChange(line)).toMatchObject({
+            action: "kill",
+            signal: "1",
+            exitCode: null,
         });
     });
 });

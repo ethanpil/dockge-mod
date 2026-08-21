@@ -46,7 +46,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Thi
 ### Added
 
 - A **Notifications** page under **Settings** for the notification targets, with a test button.
-- A **Resources** page that lists the images, the volumes, and the networks of a host, with remove and prune functions, and the results of the image update check with a **Check now** button.
+- A **Resources** page. It lists the images, the volumes, and the networks of a host. You can remove or prune them. The page also shows the results of the image update check, with a **Check now** button.
 
 ## [f70c0a2](../../commit/f70c0a2) - 2026-08-21
 
@@ -70,7 +70,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Thi
 
 - An image update check. Every six hours the server compares the digest of each image of the managed stacks with the registry. The stack list gets the count of images with a new version. A **Check now** function starts a check at once.
 - Notification targets: a webhook, ntfy, or Apprise. A target gets a message for a new image version, a container that exits with an error, or an unhealthy container. A container that got a stop signal does not send a message.
-- Stack backups. A save and an update make a copy of the compose file, the `.env` file, and the override file in the `mod_stack_backup` table, when the files are different from the last copy. The last 20 copies stay. A restore writes a copy back to the disk.
+- Stack backups. A save makes a copy of the compose file, the `.env` file, and the override file in the `mod_stack_backup` table. A copy with the same content as the last copy is not made. The last 20 copies stay. A restore writes a copy back to the disk.
 - Events that list the images, the volumes, and the networks of the host, remove one of them, and prune the unused ones.
 - A terminal with the log of one service.
 
@@ -146,6 +146,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Thi
 ### Removed
 
 - The mysql2 package. No code used it.
+
+## [edff5fb](../../commit/edff5fb) - 2026-08-21
+
+### Fixed
+
+- The tests use vitest 3, which shares the vite of the project. vitest 4 needs a second vite, and the lock file from Windows did not hold its packages, thus `npm ci` failed in the image build.
 
 ## [9acb9fd](../../commit/9acb9fd) - 2026-08-21
 

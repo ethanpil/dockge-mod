@@ -281,7 +281,9 @@ export function getCombinedTerminalName(endpoint : string, stack : string) {
  * @returns The terminal name
  */
 export function getServiceLogsTerminalName(endpoint : string, stack : string, service : string) {
-    return "service-logs-" + endpoint + "-" + stack + "-" + service;
+    // A stack name and a service name can hold a dash. A different
+    // separator keeps the names apart.
+    return "service-logs:" + endpoint + ":" + stack + ":" + service;
 }
 
 export function getContainerTerminalName(endpoint : string, container : string) {

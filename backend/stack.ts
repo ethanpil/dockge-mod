@@ -25,8 +25,9 @@ import childProcessAsync from "promisify-child-process";
 import { Settings } from "./settings";
 import { CachedCall } from "./utils/cached-call";
 import dotenv from "dotenv";
-import { StackBackup } from "./stack-backup";
+import { StackBackup, StackFiles } from "./stack-backup";
 import { ImageUpdateChecker } from "./image-update";
+import { parseJSONLines } from "./docker-resources";
 
 export class Stack {
 
@@ -165,6 +166,12 @@ export class Stack {
         if (!process.env.GIT_SSH_COMMAND) {
             env.GIT_SSH_COMMAND = "ssh -o BatchMode=yes";
         }
+        // A pull changes the files, thus a copy comes first
+        const current = await this.currentFiles();
+        if (current) {
+            await StackBackup.create(this.name, "pull", current);
+        }
+
         const exitCode = await Terminal.exec(this.server, socket, terminalName, "git", [ ...this.gitSafeArgs, "pull" ], this.path, env);
         if (exitCode !== 0) {
             throw new Error("Failed to pull, please check the terminal output for more information.");
@@ -214,7 +221,9 @@ export class Stack {
             endpoint,
             // The count of images with a new version. This field only
             // adds data. A client without the feature ignores it.
-            imageUpdates: this.images.filter((image) => ImageUpdateChecker.available.has(image)).length,
+            imageUpdates: (this.isManagedByDockge && ImageUpdateChecker.available.size > 0)
+                ? this.images.filter((image) => ImageUpdateChecker.available.has(image)).length
+                : 0,
         };
     }
 
@@ -229,7 +238,17 @@ export class Stack {
         if (this._images === undefined) {
             this._images = [];
             try {
-                const env = dotenv.parse(this.composeENV);
+                // The same files as docker: global.env first, then the .env
+                // of the stack
+                let env : Record<string, string> = {};
+                const globalEnvPath = path.join(this.server.stacksDir, "global.env");
+                if (fs.existsSync(globalEnvPath)) {
+                    env = dotenv.parse(fs.readFileSync(globalEnvPath, "utf-8"));
+                }
+                env = {
+                    ...env,
+                    ...dotenv.parse(this.composeENV),
+                };
                 const doc = yaml.parse(envsubstYAML(this.composeYAML, env));
                 const services = doc?.services;
                 if (services && typeof services === "object") {
@@ -250,16 +269,38 @@ export class Stack {
      * The content of the files on the disk, for a backup.
      * @returns The files, or null when the stack has no directory
      */
-    protected async currentFiles() : Promise<{ composeYAML : string, composeENV : string, composeOverrideYAML : string | null } | null> {
+    protected async currentFiles() : Promise<StackFiles | null> {
         if (!await fileExists(this.path)) {
             return null;
         }
         const current = new Stack(this.server, this.name);
-        return {
-            composeYAML: current.composeYAML,
-            composeENV: current.composeENV,
-            composeOverrideYAML: current.composeOverrideYAML,
+
+        // A file that the server cannot read must not give a copy with
+        // empty content. A restore of that copy would remove the file.
+        const read = async (file : string, optional : boolean) : Promise<string | null> => {
+            try {
+                return await fsAsync.readFile(path.join(this.path, file), "utf-8");
+            } catch (e) {
+                if (optional && (e as NodeJS.ErrnoException)?.code === "ENOENT") {
+                    return null;
+                }
+                throw e;
+            }
         };
+
+        try {
+            const composeYAML = await read(current._composeFileName, false);
+            const composeENV = await read(".env", true);
+            const composeOverrideYAML = await read(current.composeOverrideFileName, true);
+            return {
+                composeYAML: composeYAML as string,
+                composeENV: composeENV ?? "",
+                composeOverrideYAML,
+            };
+        } catch (e) {
+            log.warn("backup", "Cannot read the files of " + this.name + ": " + errorMessage(e));
+            return null;
+        }
     }
 
     /**
@@ -679,9 +720,6 @@ export class Stack {
 
             // Cache by copying
             this.managedStackList = new Map(stackList);
-
-            // A full scan comes after an action. The status must be new too.
-            Stack.composeListCache.invalidate();
         }
 
         // Get status from docker compose ls
@@ -886,12 +924,6 @@ export class Stack {
     }
 
     async update(socket: DockgeSocket) {
-        // A copy of the files from before the update
-        const current = await this.currentFiles();
-        if (current) {
-            await StackBackup.create(this.name, "update", current);
-        }
-
         const terminalName = getComposeTerminalName(socket.endpoint, this.name);
         let exitCode = await Terminal.exec(this.server, socket, terminalName, "docker", this.getComposeOptions("pull"), this.path);
         Stack.invalidateCaches([ this.name ]);
@@ -1087,6 +1119,14 @@ export class Stack {
     async getServiceStatusList() : Promise<Map<string, Array<object>>> {
         let cache = Stack.serviceStatusCaches.get(this.name);
         if (!cache) {
+            // A client can ask for any name. A name without a directory
+            // and without a compose project gets no cache entry.
+            if (!await fileExists(this.path) && !(await Stack.getStatusList()).has(this.name)) {
+                throw new ValidationError("Stack not found");
+            }
+            if (Stack.serviceStatusCaches.size >= 500) {
+                Stack.serviceStatusCaches.clear();
+            }
             cache = new CachedCall(() => this.readServiceStatusList(), 5 * 1000);
             Stack.serviceStatusCaches.set(this.name, cache);
         }
@@ -1105,8 +1145,6 @@ export class Stack {
             if (!res.stdout) {
                 return statusList;
             }
-
-            let lines = res.stdout?.toString().split("\n");
 
             const containers : { name : string, id : string }[] = [];
 
@@ -1131,15 +1169,11 @@ export class Stack {
                 }
             };
 
-            for (let line of lines) {
-                try {
-                    let obj = JSON.parse(line);
-                    if (obj instanceof Array) {
-                        obj.forEach(addLine);
-                    } else {
-                        addLine(obj);
-                    }
-                } catch (e) {
+            for (const obj of parseJSONLines(res.stdout.toString())) {
+                if (Array.isArray(obj)) {
+                    obj.forEach(addLine);
+                } else {
+                    addLine(obj as Parameters<typeof addLine>[0]);
                 }
             }
 
@@ -1155,8 +1189,9 @@ export class Stack {
 
             return statusList;
         } catch (e) {
+            // A failure must not go in the cache as an empty list
             log.error("getServiceStatusList", e);
-            return statusList;
+            throw e;
         }
     }
 

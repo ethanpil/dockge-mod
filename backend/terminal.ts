@@ -185,7 +185,17 @@ export class Terminal {
      * Exit event handler
      * @param res
      */
+    protected exited = false;
+
     protected exit = (res : {exitCode: number, signal?: number | undefined}) => {
+        // A forced exit and a late exit event of the pty must not run this
+        // two times. The second run would remove a newer terminal with
+        // the same name from the map.
+        if (this.exited) {
+            return;
+        }
+        this.exited = true;
+
         for (const socketID in this.socketList) {
             const socket = this.socketList[socketID];
             socket.emitAgent("terminalExit", this.name, res.exitCode);
@@ -194,7 +204,9 @@ export class Terminal {
         // Remove all clients
         this.socketList = {};
 
-        Terminal.terminalMap.delete(this.name);
+        if (Terminal.terminalMap.get(this.name) === this) {
+            Terminal.terminalMap.delete(this.name);
+        }
         log.debug("Terminal", "Terminal " + this.name + " exited with code " + res.exitCode);
 
         clearInterval(this.keepAliveInterval);
@@ -358,6 +370,12 @@ export class Terminal {
                 if (Terminal.terminalMap.get(terminalName) === terminal) {
                     log.warn("Terminal", "The operation " + terminalName + " did not end in time, stop it");
                     terminal.ptyProcess?.kill();
+                    // A process that ignores the first signal gets SIGKILL
+                    setTimeout(() => {
+                        if (Terminal.terminalMap.get(terminalName) === terminal) {
+                            terminal.ptyProcess?.kill("SIGKILL");
+                        }
+                    }, 10000);
                 }
             }, Terminal.EXEC_LIMIT);
 
@@ -405,6 +423,9 @@ export class InteractiveTerminal extends Terminal {
      */
     public static readonly CLOSE_DELAY = 10 * 1000;
 
+    /** The close delay of this terminal, in milliseconds */
+    protected closeDelay = InteractiveTerminal.CLOSE_DELAY;
+
     protected closeTimer? : NodeJS.Timeout;
 
     /**
@@ -442,7 +463,7 @@ export class InteractiveTerminal extends Terminal {
                 if (Object.keys(this.socketList).length === 0) {
                     this.close();
                 }
-            }, InteractiveTerminal.CLOSE_DELAY);
+            }, this.closeDelay);
         }
     }
 
@@ -509,6 +530,9 @@ export class MainTerminal extends InteractiveTerminal {
         }
         super(server, name, shell, [], server.stacksDir);
         this.userID = userID;
+        // A reload of the page or a short loss of the network must not
+        // end a command that runs in the host shell
+        this.closeDelay = 60 * 1000;
     }
 
     public write(input : string) {
