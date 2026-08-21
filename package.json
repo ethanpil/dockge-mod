@@ -19,7 +19,7 @@
         "fmt": "eslint \"**/*.{ts,vue}\" --fix",
         "lint": "eslint \"**/*.{ts,vue}\"",
         "check-ts": "tsc --noEmit",
-        "test": "vitest run",
+        "test": "cross-env NODE_OPTIONS=--import=tsx vitest run",
         "start": "tsx ./backend/index.ts",
         "dev": "concurrently -k -r \"wait-on tcp:5000 && npm run dev:backend \" \"npm run dev:frontend\"",
         "dev:backend": "cross-env NODE_ENV=development tsx watch --inspect ./backend/index.ts",

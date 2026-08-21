@@ -133,12 +133,6 @@ export const acceptedComposeOverrideFileNames = [
 ];
 
 /**
- * The file in the data directory that holds the template of a new override
- * file. The settings page writes it.
- */
-export const composeOverrideTemplateFileName = "compose.override.template.yaml";
-
-/**
  * The content of a new override file, when the settings hold no other text.
  * Docker accepts a file that holds only comments, thus the template needs no
  * empty map.

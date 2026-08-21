@@ -14,18 +14,26 @@ For a detailed list of changes from dockge, please see the [dockge-mod changelog
 dockge and dockge-mod work in the same way:
 
 - The environment variables have the same names.
-- The `data` directory and the database have the same format.
+- The `data` directory and the database have the same format. dockge-mod adds its own tables to the database, but it does not change the tables of Dockge.
 - The stacks directory has the same format.
 - The default port is 5001.
 - An agent connection works between dockge-mod and Dockge in both directions.
 
 You can point dockge-mod at the data directory of an existing Dockge installation. You can also go back to Dockge later. There is no migration step. This is a primary goal of the project.
 
+### The Database
+
+dockge-mod keeps its own data in tables with the `mod_` prefix, in the same SQLite file. It does not add a column to a table of Dockge, and it does not change the migration ledger of Dockge. The `mod_` tables have their own ledger, `mod_knex_migrations`. Thus Dockge can run its own migrations after you go back to it, and dockge-mod can run its migrations after you return.
+
+Dockge ignores the `mod_` tables. They stay in the file when you go back to Dockge, and their data is there again when you return to dockge-mod.
+
 ### Go Back to Dockge
 
-Change the image in your compose file to the Dockge image, then start the container again. Your data stays. dockge-mod adds no table and no column to the database, and it writes no new file to the `data` directory. You lose the new features, but you lose no data.
+Change the image in your compose file to the Dockge image, then start the container again. Your data stays. You lose the new features, but you lose no data.
 
-Two conditions apply after you go back:
+Three conditions apply after you go back:
+
+- The `mod_` tables stay in the database. Dockge does not read them, and they do not change the tables of Dockge.
 
 - The Dockge interface does not show the override file, but `docker compose` continues to merge it. Your stacks keep their behavior, but the interface shows only the base file.
 - Dockge does not write the `.env` file when you save a stack. Your `.env` files stay on the disk, but a change that you make in the Dockge editor does not go to the disk.

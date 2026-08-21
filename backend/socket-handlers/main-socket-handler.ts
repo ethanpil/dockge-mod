@@ -24,7 +24,8 @@ import { Settings } from "../settings";
 import fs, { promises as fsAsync } from "fs";
 import path from "path";
 import childProcessAsync from "promisify-child-process";
-import { composeOverrideTemplateFileName, defaultComposeOverrideTemplate, POLL_INTERVAL_DEFAULT, POLL_INTERVAL_MAX, POLL_INTERVAL_MIN } from "../../common/util-common";
+import { defaultComposeOverrideTemplate, POLL_INTERVAL_DEFAULT, POLL_INTERVAL_MAX, POLL_INTERVAL_MIN } from "../../common/util-common";
+import { ModSetting } from "../mod-setting";
 
 /**
  * One item of the health report. `ok` says if the check passed. `info`
@@ -324,12 +325,7 @@ export class MainSocketHandler extends SocketHandler {
                     data.globalENV = "# VARIABLE=value #comment";
                 }
 
-                const overrideTemplatePath = path.join(server.config.dataDir, composeOverrideTemplateFileName);
-                if (fs.existsSync(overrideTemplatePath)) {
-                    data.composeOverrideTemplate = fs.readFileSync(overrideTemplatePath, "utf-8");
-                } else {
-                    data.composeOverrideTemplate = defaultComposeOverrideTemplate;
-                }
+                data.composeOverrideTemplate = await ModSetting.get(ModSetting.COMPOSE_OVERRIDE_TEMPLATE) ?? defaultComposeOverrideTemplate;
 
                 callback({
                     ok: true,
@@ -371,15 +367,12 @@ export class MainSocketHandler extends SocketHandler {
                 delete data.globalENV;
 
                 // Handle the template of the override file. The default needs
-                // no file, thus the file goes away when the text is the same.
-                const overrideTemplatePath = path.join(server.config.dataDir, composeOverrideTemplateFileName);
+                // no row, thus the row goes away when the text is the same.
                 if (typeof data.composeOverrideTemplate === "string") {
                     if (data.composeOverrideTemplate.trim() !== "" && data.composeOverrideTemplate !== defaultComposeOverrideTemplate) {
-                        await fsAsync.writeFile(overrideTemplatePath, data.composeOverrideTemplate);
+                        await ModSetting.set(ModSetting.COMPOSE_OVERRIDE_TEMPLATE, data.composeOverrideTemplate);
                     } else {
-                        await fsAsync.rm(overrideTemplatePath, {
-                            force: true
-                        });
+                        await ModSetting.set(ModSetting.COMPOSE_OVERRIDE_TEMPLATE, null);
                     }
                 }
                 delete data.composeOverrideTemplate;

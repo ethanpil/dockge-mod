@@ -10,6 +10,7 @@ import Dialect from "knex/lib/dialects/sqlite3/index.js";
 
 import sqlite from "@louislam/sqlite3";
 import { sleep } from "../common/util-common";
+import { ModSetting } from "./mod-setting";
 
 interface DBConfig {
     type?: "sqlite" | "mysql";
@@ -33,7 +34,16 @@ export class Database {
 
     static knexMigrationsPath = "./backend/migrations";
 
-    private static server : DockgeServer;
+    /**
+     * The migrations of dockge-mod. They have their own ledger table,
+     * `mod_knex_migrations`, thus the upstream `knex_migrations` table
+     * stays as Dockge knows it. Dockge can then run its own migrations
+     * after a user goes back to it.
+     */
+    static knexModMigrationsPath = "./backend/migrations-mod";
+    static knexModMigrationsTable = "mod_knex_migrations";
+
+    static server : DockgeServer;
 
     /**
      * Use for decode the auth object
@@ -49,6 +59,8 @@ export class Database {
 
         // Patch the database
         await Database.patch();
+        await Database.patchMod();
+        await ModSetting.importLegacyFiles(server.config.dataDir);
     }
 
     /**
@@ -196,6 +208,19 @@ export class Database {
                 }
             }
         }
+    }
+
+    /**
+     * Run the migrations of dockge-mod. Each table has the `mod_` prefix.
+     * An error stops the server, because a missing table makes the
+     * features of dockge-mod fail later in a less clear way.
+     * @returns {Promise<void>}
+     */
+    static async patchMod() {
+        await R.knex.migrate.latest({
+            directory: Database.knexModMigrationsPath,
+            tableName: Database.knexModMigrationsTable,
+        });
     }
 
     /**

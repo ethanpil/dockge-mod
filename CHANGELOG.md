@@ -2,7 +2,7 @@
 
 This file lists the changes between dockge-mod and the [dockge](https://github.com/louislam/dockge) project.
 
-The base is dockge commit [f809ae1](https://github.com/louislam/dockge/commit/f809ae192b571944ad773e9866d3e67064ae8043). dockge-mod is a drop-in replacement. The database schema, the environment variables, and the socket protocol stay the same. Each new socket event and field only adds data.
+The base is dockge commit [f809ae1](https://github.com/louislam/dockge/commit/f809ae192b571944ad773e9866d3e67064ae8043). dockge-mod is a drop-in replacement. The tables of Dockge, the environment variables, and the socket protocol stay the same. dockge-mod adds only tables with the `mod_` prefix, with their own migration ledger. Each new socket event and field only adds data.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). This project has no releases, so each entry is a commit. The newest entry comes first. A commit that changes only this file or the project rules has no entry.
 
