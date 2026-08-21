@@ -314,6 +314,54 @@ export default defineComponent({
         },
 
         /**
+         * Send an event to an agent and wait for the answer, with a time
+         * limit. An agent that is offline never answers, and the page would
+         * stay disabled for ever. The callback runs one time only: with
+         * the answer, or after the time limit with `{ ok: false, msg,
+         * msgi18n: true, timeout: true }`. An answer after the time limit
+         * goes to lateCallback.
+         * @param endpoint the agent
+         * @param eventName name of the event
+         * @param args arguments of the event, without the callback
+         * @param timeoutMs the time limit in milliseconds
+         * @param callback gets the answer or the timeout result
+         * @param lateCallback gets an answer after the time limit
+         * @returns a function that stops the wait. The callback then does
+         * not run.
+         */
+        emitAgentWithTimeout(endpoint : string, eventName : string, args : unknown[], timeoutMs : number, callback : (res) => void, lateCallback? : (res) => void) : () => void {
+            let settled = false;
+
+            const timer = setTimeout(() => {
+                if (settled) {
+                    return;
+                }
+                settled = true;
+                callback({
+                    ok: false,
+                    msg: "requestTimeout",
+                    msgi18n: true,
+                    timeout: true,
+                });
+            }, timeoutMs);
+
+            this.emitAgent(endpoint, eventName, ...args, (res) => {
+                clearTimeout(timer);
+                if (settled) {
+                    lateCallback?.(res);
+                    return;
+                }
+                settled = true;
+                callback(res);
+            });
+
+            return () => {
+                settled = true;
+                clearTimeout(timer);
+            };
+        },
+
+        /**
          * Get payload of JWT cookie
          * @returns {(object | undefined)} JWT payload
          */

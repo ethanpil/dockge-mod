@@ -32,15 +32,6 @@
             <div v-if="selectMode && false" class="selection-controls px-2 pt-2">
                 <input v-model="selectAll" class="form-check-input select-input" type="checkbox" />
 
-                <button class="btn btn-sm btn-outline-secondary" @click="pauseDialog">
-                    <font-awesome-icon icon="pause" size="sm" /> {{
-                        $t("Pause") }}
-                </button>
-                <button class="btn btn-sm btn-outline-secondary" @click="resumeSelected">
-                    <font-awesome-icon icon="play" size="sm" />
-                    {{ $t("Resume") }}
-                </button>
-
                 <span v-if="selectedStackCount > 0">
                     {{ $t("selectedStackCount", [selectedStackCount]) }}
                 </span>
@@ -70,20 +61,14 @@
             </div>
         </div>
     </div>
-
-    <Confirm ref="confirmPause" :yes-text="$t('Yes')" :no-text="$t('No')" @yes="pauseSelected">
-        {{ $t("pauseStackMsg") }}
-    </Confirm>
 </template>
 
 <script>
-import Confirm from "../components/Confirm.vue";
 import StackListItem from "../components/StackListItem.vue";
 import { CREATED_FILE, CREATED_STACK, EXITED, RUNNING, UNKNOWN } from "../../../common/util-common";
 
 export default {
     components: {
-        Confirm,
         StackListItem,
     },
     props: {
@@ -348,35 +333,6 @@ export default {
         cancelSelectMode() {
             this.selectMode = false;
             this.selectedStacks = {};
-        },
-        /**
-         * Show dialog to confirm pause
-         * @returns {void}
-         */
-        pauseDialog() {
-            this.$refs.confirmPause.show();
-        },
-        /**
-         * Pause each selected stack
-         * @returns {void}
-         */
-        pauseSelected() {
-            Object.keys(this.selectedStacks)
-                .filter(id => this.$root.stackList[id].active)
-                .forEach(id => this.$root.getSocket().emit("pauseStack", id, () => { }));
-
-            this.cancelSelectMode();
-        },
-        /**
-         * Resume each selected stack
-         * @returns {void}
-         */
-        resumeSelected() {
-            Object.keys(this.selectedStacks)
-                .filter(id => !this.$root.stackList[id].active)
-                .forEach(id => this.$root.getSocket().emit("resumeStack", id, () => { }));
-
-            this.cancelSelectMode();
         },
     },
 };

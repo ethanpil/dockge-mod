@@ -79,8 +79,8 @@
 
                             <!-- Endpoint -->
                             <div class="mt-3">
-                                <label for="name" class="form-label">{{ $t("dockgeAgent") }}</label>
-                                <select v-model="stack.endpoint" class="form-select">
+                                <label for="endpoint" class="form-label">{{ $t("dockgeAgent") }}</label>
+                                <select id="endpoint" v-model="stack.endpoint" class="form-select">
                                     <option v-for="(agent, agentEndpoint) in $root.agentList" :key="agentEndpoint" :value="agentEndpoint" :disabled="$root.agentStatusList[agentEndpoint] != 'online'">
                                         ({{ $root.agentStatusList[agentEndpoint] }}) {{ (agent.name !== '') ? agent.name : agent.url || $t("Current") }}
                                     </option>
@@ -179,16 +179,16 @@
 
                         <!-- Drag to change the width. The buttons hide one
                              side or put the divider back in the middle. -->
-                        <div v-if="hasOverride" class="split-bar" @mousedown="startSplitDrag">
+                        <div v-if="hasOverride" class="split-bar" role="separator" aria-orientation="vertical" tabindex="0" @pointerdown="startSplitDrag" @keydown="onSplitKeydown">
                             <span class="split-grip"><font-awesome-icon icon="grip-lines-vertical" /></span>
                             <div class="split-actions">
-                                <button type="button" class="split-btn" :title="$t('hideLeftPanel')" @mousedown.stop @click="setSplit(0)">
+                                <button type="button" class="split-btn" :title="$t('hideLeftPanel')" @pointerdown.stop @click="setSplit(0)">
                                     <font-awesome-icon icon="chevron-left" />
                                 </button>
-                                <button type="button" class="split-btn" :title="$t('equalPanels')" @mousedown.stop @click="setSplit(50)">
+                                <button type="button" class="split-btn" :title="$t('equalPanels')" @pointerdown.stop @click="setSplit(50)">
                                     <font-awesome-icon icon="table-columns" />
                                 </button>
-                                <button type="button" class="split-btn" :title="$t('hideRightPanel')" @mousedown.stop @click="setSplit(100)">
+                                <button type="button" class="split-btn" :title="$t('hideRightPanel')" @pointerdown.stop @click="setSplit(100)">
                                     <font-awesome-icon icon="chevron-right" />
                                 </button>
                             </div>
@@ -216,7 +216,7 @@
                     <!-- Drag to change the height of the file row. The
                          handle is not on a narrow window, because the
                          panels there go one above the other. -->
-                    <div v-show="!isEditMode" class="vresize vresize-files" :title="$t('dragResizeNote')" @pointerdown="startHeightDrag($event, 'files')" @dblclick="resetHeight('files')">
+                    <div v-show="!isEditMode" class="vresize vresize-files" role="separator" aria-orientation="horizontal" tabindex="0" :title="$t('dragResizeNote')" @pointerdown="startHeightDrag($event, 'files')" @dblclick="resetHeight('files')" @keydown="onHeightKeydown($event, 'files')">
                         <font-awesome-icon icon="grip-lines" />
                     </div>
 
@@ -241,7 +241,7 @@
                         </div>
                     </div>
                     <!-- Drag to change the height of the logs -->
-                    <div v-show="!isEditMode" class="vresize" :title="$t('dragResizeNote')" @pointerdown="startHeightDrag($event, 'logs')" @dblclick="resetHeight('logs')">
+                    <div v-show="!isEditMode" class="vresize" role="separator" aria-orientation="horizontal" tabindex="0" :title="$t('dragResizeNote')" @pointerdown="startHeightDrag($event, 'logs')" @dblclick="resetHeight('logs')" @keydown="onHeightKeydown($event, 'logs')">
                         <font-awesome-icon icon="grip-lines" />
                     </div>
 
@@ -291,7 +291,7 @@
                                 @change="yamlCodeChange"
                             />
                         </div>
-                        <div class="vresize" :title="$t('dragResizeNote')" @pointerdown="startHeightDrag($event, 'editYaml')" @dblclick="resetHeight('editYaml')">
+                        <div class="vresize" role="separator" aria-orientation="horizontal" tabindex="0" :title="$t('dragResizeNote')" @pointerdown="startHeightDrag($event, 'editYaml')" @dblclick="resetHeight('editYaml')" @keydown="onHeightKeydown($event, 'editYaml')">
                             <font-awesome-icon icon="grip-lines" />
                         </div>
                     </div>
@@ -314,7 +314,7 @@
                                 :extensions="extensions"
                             />
                         </div>
-                        <div class="vresize" :title="$t('dragResizeNote')" @pointerdown="startHeightDrag($event, 'editOverride')" @dblclick="resetHeight('editOverride')">
+                        <div class="vresize" role="separator" aria-orientation="horizontal" tabindex="0" :title="$t('dragResizeNote')" @pointerdown="startHeightDrag($event, 'editOverride')" @dblclick="resetHeight('editOverride')" @keydown="onHeightKeydown($event, 'editOverride')">
                             <font-awesome-icon icon="grip-lines" />
                         </div>
                     </div>
@@ -449,6 +449,8 @@ import Terminal from "../components/Terminal.vue";
 import Uptime from "../components/Uptime.vue";
 import ArrayInput from "../components/ArrayInput.vue";
 import StackToolbar from "../components/StackToolbar.vue";
+import resizablePanels from "../mixins/resizable-panels";
+import mergedConfig from "../mixins/merged-config";
 import dotenv from "dotenv";
 import { ref } from "vue";
 
@@ -476,6 +478,10 @@ export default {
         ArrayInput,
         StackToolbar,
     },
+    mixins: [
+        resizablePanels,
+        mergedConfig,
+    ],
     beforeRouteUpdate(to, from, next) {
         this.exitConfirm(next);
     },
@@ -566,9 +572,6 @@ export default {
             stopServiceStatusTimeout: false,
             stopDockerStatsTimeout: false,
             expandedPanel: null,
-            // Width of the compose panel, as a percent of the split. 0 hides
-            // the compose panel and 100 hides the override panel.
-            splitLeft: 50,
             editSnapshot: null,
             // Content of an override file that the user deleted. The save
             // removes the file, so a new create gives this content back.
@@ -578,26 +581,8 @@ export default {
             leaving: false,
             // Resolves the open dialog with the user's choice
             leaveResolve: null,
-            // State of the merged configuration overlay. The sequence
-            // number makes the answer and the timer of an earlier request
-            // stale, so they cannot write over a later request.
-            mergedConfigLoading: false,
-            mergedConfigError: "",
-            mergedConfigYAML: "",
-            mergedConfigSeq: 0,
-            // The i18n key of the note in the overlay head. It names the
-            // source of the content.
-            mergedConfigNoteKey: "mergedConfigDiskNote",
             // True shows the .env text editor, false shows the rows
             envEditorText: false,
-            // Heights that the user sets with the drag handles, in pixels.
-            // A null gives the default layout. The values are not saved.
-            panelHeights: {
-                files: null,
-                logs: null,
-                editYaml: null,
-                editOverride: null,
-            },
         };
     },
     computed: {
@@ -819,10 +804,6 @@ export default {
             },
             deep: true,
         },
-
-        $route(to, from) {
-
-        }
     },
     mounted() {
         if (this.isAdd) {
@@ -880,8 +861,8 @@ export default {
         this.endSplitDrag();
         this.endHeightDrag();
 
-        // The next sequence number makes a late merged configuration
-        // answer stale, so it cannot show a toast on a different page
+        // A late merged configuration answer must not show a toast on a
+        // different page
         this.cancelMergedConfig();
         clearTimeout(this.yamlErrorTimeout);
 
@@ -894,11 +875,23 @@ export default {
     },
     methods: {
         /**
-         * Close an expanded logs/yaml overlay with Escape.
+         * Close an expanded logs/yaml overlay with Escape. Save the editor
+         * content with Ctrl+S or Cmd+S in edit mode.
          * @param {KeyboardEvent} e keydown event
          * @returns {void}
          */
         onComposeKeydown(e) {
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
+                if (!this.isEditMode) {
+                    return;
+                }
+                e.preventDefault();
+                if (!this.processing) {
+                    this.saveStack();
+                }
+                return;
+            }
+
             if (e.key !== "Escape" || !this.expandedPanel) {
                 return;
             }
@@ -939,177 +932,6 @@ export default {
             this.expandedPanel = (this.expandedPanel === which) ? null : which;
         },
 
-        /**
-         * End the wait for a merged configuration request. The next
-         * sequence number makes a late answer and the timer stale.
-         * @returns {void}
-         */
-        cancelMergedConfig() {
-            this.mergedConfigSeq++;
-            clearTimeout(this.mergedConfigTimer);
-            this.mergedConfigLoading = false;
-        },
-
-        /**
-         * Start to drag the divider between the two panels.
-         * @param {MouseEvent} e the mousedown on the divider
-         * @returns {void}
-         */
-        startSplitDrag(e) {
-            e.preventDefault();
-            document.addEventListener("mousemove", this.onSplitDrag);
-            document.addEventListener("mouseup", this.endSplitDrag);
-            document.body.classList.add("split-dragging");
-        },
-
-        /**
-         * Move the divider with the pointer. The limits keep a part of each
-         * panel on screen, because the buttons are the way to hide one.
-         * @param {MouseEvent} e the mousemove
-         * @returns {void}
-         */
-        onSplitDrag(e) {
-            const box = this.$refs.split?.getBoundingClientRect();
-            if (!box || box.width <= 0) {
-                return;
-            }
-            const percent = ((e.clientX - box.left) / box.width) * 100;
-            this.splitLeft = Math.min(90, Math.max(10, Math.round(percent)));
-        },
-
-        /**
-         * Stop the drag.
-         * @returns {void}
-         */
-        endSplitDrag() {
-            document.removeEventListener("mousemove", this.onSplitDrag);
-            document.removeEventListener("mouseup", this.endSplitDrag);
-            document.body.classList.remove("split-dragging");
-        },
-
-        /**
-         * Put the divider at a set position. 0 hides the compose panel, 100
-         * hides the override panel, and 50 gives both the same width.
-         * @param {number} percent width of the compose panel
-         * @returns {void}
-         */
-        setSplit(percent) {
-            this.splitLeft = percent;
-        },
-
-        /**
-         * The style variable for a panel with a height from a drag handle.
-         * The h-fixed class reads it. Without a height the panel keeps its
-         * default layout.
-         * @param {string} key name of the height
-         * @returns {object} the style
-         */
-        panelVar(key) {
-            const height = this.panelHeights[key];
-            if (!height) {
-                return {};
-            }
-            return {
-                "--panel-h": height + "px",
-            };
-        },
-
-        /**
-         * Start to drag a height handle. The element above the handle is
-         * the element that changes. Pointer events cover the mouse and
-         * touch. A start height over the window height goes down to the
-         * window height, so one movement can make a very tall editor
-         * short.
-         * @param {PointerEvent} event the pointerdown on the handle
-         * @param {string} key name of the height
-         * @returns {void}
-         */
-        startHeightDrag(event, key) {
-            event.preventDefault();
-            const target = event.currentTarget.previousElementSibling;
-            if (!target) {
-                return;
-            }
-            this.heightDrag = {
-                key,
-                startY: event.clientY,
-                startHeight: Math.min(target.getBoundingClientRect().height, window.innerHeight),
-                lastY: event.clientY,
-                raf: null,
-            };
-            document.addEventListener("pointermove", this.onHeightDrag);
-            document.addEventListener("pointerup", this.endHeightDrag);
-            document.addEventListener("pointercancel", this.endHeightDrag);
-            document.body.classList.add("vresize-dragging");
-        },
-
-        /**
-         * Move a height handle with the pointer. The write waits for the
-         * next animation frame, because each write makes the page lay out
-         * again.
-         * @param {PointerEvent} event the pointermove
-         * @returns {void}
-         */
-        onHeightDrag(event) {
-            if (!this.heightDrag) {
-                return;
-            }
-            this.heightDrag.lastY = event.clientY;
-
-            if (this.heightDrag.raf) {
-                return;
-            }
-            this.heightDrag.raf = requestAnimationFrame(() => {
-                if (!this.heightDrag) {
-                    return;
-                }
-                this.heightDrag.raf = null;
-                this.applyDragHeight();
-            });
-        },
-
-        /**
-         * Write the height that the last pointer position gives.
-         * @returns {void}
-         */
-        applyDragHeight() {
-            const drag = this.heightDrag;
-            if (!drag) {
-                return;
-            }
-            const height = drag.startHeight + drag.lastY - drag.startY;
-            this.panelHeights[drag.key] = Math.min(window.innerHeight * 2, Math.max(150, Math.round(height)));
-        },
-
-        /**
-         * Stop the height drag.
-         * @returns {void}
-         */
-        endHeightDrag() {
-            if (this.heightDrag) {
-                // Take the last position of the pointer. A frame that
-                // waits holds it, and a cancel alone would lose it.
-                if (this.heightDrag.raf) {
-                    cancelAnimationFrame(this.heightDrag.raf);
-                    this.applyDragHeight();
-                }
-            }
-            this.heightDrag = null;
-            document.removeEventListener("pointermove", this.onHeightDrag);
-            document.removeEventListener("pointerup", this.endHeightDrag);
-            document.removeEventListener("pointercancel", this.endHeightDrag);
-            document.body.classList.remove("vresize-dragging");
-        },
-
-        /**
-         * Give a panel its default height back.
-         * @param {string} key name of the height
-         * @returns {void}
-         */
-        resetHeight(key) {
-            this.panelHeights[key] = null;
-        },
-
         startServiceStatusTimeout() {
             clearTimeout(this.serviceStatusTimeout);
             this.serviceStatusTimeout = setTimeout(async () => {
@@ -1141,6 +963,11 @@ export default {
         },
 
         requestDockerStats() {
+            // Do not request if it is add mode
+            if (this.isAdd) {
+                return;
+            }
+
             this.$root.emitAgent(this.endpoint, "dockerStats", (res) => {
                 if (res.ok) {
                     this.dockerStats = res.dockerStats;
@@ -1315,39 +1142,30 @@ export default {
             // of the buffer would then mark unsent text as saved.
             const sent = this.currentEditState();
 
-            return new Promise((resolve) => {
-                let settled = false;
+            // A reply that comes after the timeout must still clear the
+            // dirty mark, or the editor asks to save a file that the server
+            // already has.
+            const onAnswer = (res) => {
+                this.processing = false;
+                this.$root.toastRes(res);
+                if (res.ok) {
+                    this.applySavedState(sent);
+                }
+            };
 
+            return new Promise((resolve) => {
                 // An agent that is offline never answers, and the dialog and
                 // the buttons would stay disabled for ever.
-                const timer = setTimeout(() => {
-                    if (settled) {
+                this.$root.emitAgentWithTimeout(this.stack.endpoint, "saveStack", this.stackSaveArgs(sent), 30000, (res) => {
+                    if (res.timeout) {
+                        this.processing = false;
+                        this.$root.toastError(this.$t("saveTimeout"));
+                        resolve(false);
                         return;
                     }
-                    settled = true;
-                    this.processing = false;
-                    this.$root.toastError(this.$t("saveTimeout"));
-                    resolve(false);
-                }, 30000);
-
-                this.$root.emitAgent(this.stack.endpoint, "saveStack", ...this.stackSaveArgs(sent), (res) => {
-                    clearTimeout(timer);
-                    this.processing = false;
-                    this.$root.toastRes(res);
-
-                    if (res.ok) {
-                        // A reply that comes after the timeout must still
-                        // clear the dirty mark, or the editor asks to save a
-                        // file that the server already has.
-                        this.applySavedState(sent);
-                    }
-
-                    if (settled) {
-                        return;
-                    }
-                    settled = true;
+                    onAnswer(res);
                     resolve(res.ok);
-                });
+                }, onAnswer);
             });
         },
 
@@ -1362,104 +1180,42 @@ export default {
             }
         },
 
-        startStack() {
+        /**
+         * Send a stack event to the agent and show the answer. The toolbar
+         * stays disabled until the answer, or until the time limit.
+         * @param {string} event name of the socket event
+         * @returns {void}
+         */
+        runStackAction(event) {
             this.processing = true;
 
-            this.$root.emitAgent(this.endpoint, "startStack", this.stack.name, (res) => {
+            this.$root.emitAgentWithTimeout(this.endpoint, event, [ this.stack.name ], 30000, (res) => {
+                if (this.pageGone) {
+                    return;
+                }
                 this.processing = false;
                 this.$root.toastRes(res);
             });
+        },
+
+        startStack() {
+            this.runStackAction("startStack");
         },
 
         stopStack() {
-            this.processing = true;
-
-            this.$root.emitAgent(this.endpoint, "stopStack", this.stack.name, (res) => {
-                this.processing = false;
-                this.$root.toastRes(res);
-            });
+            this.runStackAction("stopStack");
         },
 
         downStack() {
-            this.processing = true;
-
-            this.$root.emitAgent(this.endpoint, "downStack", this.stack.name, (res) => {
-                this.processing = false;
-                this.$root.toastRes(res);
-            });
+            this.runStackAction("downStack");
         },
 
         restartStack() {
-            this.processing = true;
-
-            this.$root.emitAgent(this.endpoint, "restartStack", this.stack.name, (res) => {
-                this.processing = false;
-                this.$root.toastRes(res);
-            });
+            this.runStackAction("restartStack");
         },
 
         updateStack() {
-            this.processing = true;
-
-            this.$root.emitAgent(this.endpoint, "updateStack", this.stack.name, (res) => {
-                this.processing = false;
-                this.$root.toastRes(res);
-            });
-        },
-
-        /**
-         * Open the merged configuration overlay and send a request for its
-         * content. The overlay shows the error text of docker if the
-         * configuration is not correct. A timer ends the wait if an agent
-         * does not answer.
-         * @param {string} noteKey i18n key of the note in the overlay head
-         * @param {string} event name of the socket event
-         * @param {...*} args arguments of the event
-         * @returns {void}
-         */
-        openMergedConfig(noteKey, event, ...args) {
-            this.expandedPanel = "merged";
-            this.mergedConfigNoteKey = noteKey;
-            this.mergedConfigLoading = true;
-            this.mergedConfigError = "";
-            this.mergedConfigYAML = "";
-
-            const seq = ++this.mergedConfigSeq;
-            clearTimeout(this.mergedConfigTimer);
-            this.mergedConfigTimer = setTimeout(() => {
-                if (seq !== this.mergedConfigSeq) {
-                    return;
-                }
-                this.mergedConfigLoading = false;
-                this.mergedConfigError = this.$t("requestTimeout");
-            }, 30000);
-
-            this.$root.emitAgent(this.endpoint, event, ...args, (res) => {
-                if (seq !== this.mergedConfigSeq) {
-                    return;
-                }
-                clearTimeout(this.mergedConfigTimer);
-                this.mergedConfigLoading = false;
-
-                if (res.ok) {
-                    this.mergedConfigYAML = res.composeConfig;
-                    this.mergedConfigError = res.configError || "";
-                } else {
-                    // A protocol error, for example an expired login. This
-                    // is not an error of the configuration, thus it also
-                    // goes to the usual toast.
-                    this.$root.toastRes(res);
-                    this.mergedConfigError = res.msgi18n ? this.$t(res.msg) : (res.msg ?? "");
-                }
-            });
-        },
-
-        /**
-         * Show the merged configuration of the files on the disk.
-         * @returns {void}
-         */
-        showMergedConfig() {
-            this.openMergedConfig("mergedConfigDiskNote", "getComposeConfig", this.stack.name);
+            this.runStackAction("updateStack");
         },
 
         /**
@@ -1491,44 +1247,30 @@ export default {
 
             // A pull and a deploy is the longest action of the page. An
             // agent that disconnects during it never answers, and the
-            // toolbar would stay disabled until a page reload. The timer
-            // gives the buttons back. A pull can be slow, thus the time is
-            // longer than the other timers. The handle stays in this
-            // function, so a later action cannot stop the timer of an
-            // earlier one. The pageGone flag makes the timer and the
-            // answer quiet after the page goes away.
-            let settled = false;
-            const timer = setTimeout(() => {
-                if (settled || this.pageGone) {
-                    return;
-                }
-                settled = true;
-                this.processing = false;
-                this.$root.toastError(this.$t("requestTimeout"));
-            }, 300000);
-
-            this.$root.emitAgent(this.endpoint, "gitPullStack", this.stack.name, (res) => {
-                clearTimeout(timer);
-
+            // toolbar would stay disabled until a page reload. The time
+            // limit gives the buttons back. A pull can be slow, thus the
+            // time is longer than the other limits. The pageGone flag makes
+            // the answer quiet after the page is unmounted.
+            this.$root.emitAgentWithTimeout(this.endpoint, "gitPullStack", [ this.stack.name ], 300000, (res) => {
                 if (this.pageGone) {
                     return;
                 }
+                this.$root.toastRes(res);
 
-                if (!settled) {
-                    settled = true;
-                    this.$root.toastRes(res);
-
-                    // loadStack keeps processing true until the new content
-                    // arrives, thus the toolbar stays closed while the page
-                    // shows the files from before the pull
-                    this.loadStack();
+                if (res.timeout) {
+                    this.processing = false;
                     return;
                 }
 
-                // A late answer, after the timeout. A pull can change the
-                // files on the disk, so the page loads them — but never
+                // loadStack keeps processing true until the new content
+                // arrives, thus the toolbar stays closed while the page
+                // shows the files from before the pull
+                this.loadStack();
+            }, () => {
+                // A late answer, after the time limit. A pull can change
+                // the files on the disk, so the page loads them, but never
                 // over an open edit session or an action that runs.
-                if (!this.processing && !this.isEditMode) {
+                if (!this.pageGone && !this.processing && !this.isEditMode) {
                     this.loadStack();
                 }
             });
@@ -1582,15 +1324,26 @@ export default {
                 this.yamlDoc = doc;
                 this.jsonConfig = config;
 
-                let env = dotenv.parse(this.stack.composeENV);
-                let envYAML = envsubstYAML(this.stack.composeYAML, env);
-                this.envsubstJSONConfig = this.yamlToJSON(envYAML).config;
-
-                clearTimeout(this.yamlErrorTimeout);
-                this.yamlError = "";
+                this.applyEnvsubst();
             } catch (e) {
                 this.showYamlError(e);
             }
+        },
+
+        /**
+         * Put the .env values in the compose YAML and parse the result into
+         * envsubstJSONConfig. A parse error goes to the caller.
+         * @returns {void}
+         */
+        applyEnvsubst() {
+            // envsubstYAML refuses a text with a parse error, thus an error
+            // of the raw text surfaces here too
+            const env = dotenv.parse(this.stack.composeENV);
+            const envYAML = envsubstYAML(this.stack.composeYAML, env);
+            this.envsubstJSONConfig = this.yamlToJSON(envYAML).config;
+
+            clearTimeout(this.yamlErrorTimeout);
+            this.yamlError = "";
         },
 
         /**
@@ -1602,14 +1355,7 @@ export default {
          */
         envCodeChange() {
             try {
-                // envsubstYAML refuses a text with a parse error, thus an
-                // error of the raw text surfaces here too
-                const env = dotenv.parse(this.stack.composeENV);
-                const envYAML = envsubstYAML(this.stack.composeYAML, env);
-                this.envsubstJSONConfig = this.yamlToJSON(envYAML).config;
-
-                clearTimeout(this.yamlErrorTimeout);
-                this.yamlError = "";
+                this.applyEnvsubst();
             } catch (e) {
                 this.showYamlError(e);
             }
@@ -1762,13 +1508,7 @@ export default {
             this.stack.composeOverrideYAML = null;
         },
 
-        checkYAML() {
-
-        },
-
         addContainer() {
-            this.checkYAML();
-
             if (this.jsonConfig.services[this.newContainerName]) {
                 this.$root.toastError("Container name already exists");
                 return;
@@ -1794,10 +1534,19 @@ export default {
             this.stack.name = this.stack?.name?.toLowerCase();
         },
 
-        startService(serviceName) {
+        /**
+         * Send a service event to the agent and show the answer.
+         * @param {string} event name of the socket event
+         * @param {string} serviceName the service
+         * @returns {void}
+         */
+        runServiceAction(event, serviceName) {
             this.processing = true;
 
-            this.$root.emitAgent(this.endpoint, "startService", this.stack.name, serviceName, (res) => {
+            this.$root.emitAgentWithTimeout(this.endpoint, event, [ this.stack.name, serviceName ], 30000, (res) => {
+                if (this.pageGone) {
+                    return;
+                }
                 this.processing = false;
                 this.$root.toastRes(res);
 
@@ -1805,32 +1554,18 @@ export default {
                     this.requestServiceStatus(); // Refresh service status
                 }
             });
+        },
+
+        startService(serviceName) {
+            this.runServiceAction("startService", serviceName);
         },
 
         stopService(serviceName) {
-            this.processing = true;
-
-            this.$root.emitAgent(this.endpoint, "stopService", this.stack.name, serviceName, (res) => {
-                this.processing = false;
-                this.$root.toastRes(res);
-
-                if (res.ok) {
-                    this.requestServiceStatus(); // Refresh service status
-                }
-            });
+            this.runServiceAction("stopService", serviceName);
         },
 
         restartService(serviceName) {
-            this.processing = true;
-
-            this.$root.emitAgent(this.endpoint, "restartService", this.stack.name, serviceName, (res) => {
-                this.processing = false;
-                this.$root.toastRes(res);
-
-                if (res.ok) {
-                    this.requestServiceStatus(); // Refresh service status
-                }
-            });
+            this.runServiceAction("restartService", serviceName);
         },
     }
 };
@@ -1961,6 +1696,8 @@ export default {
     flex: 0 0 6px;
     position: relative;
     cursor: col-resize;
+    // The browser must give the pointer to the drag, not to the scroll
+    touch-action: none;
 
     .split-grip {
         position: absolute;
