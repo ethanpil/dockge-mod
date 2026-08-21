@@ -50,17 +50,7 @@
 </template>
 
 <script>
-// The characters of a key that docker and dotenv accept. A digit can
-// start a key in an env file. One constant, so the check of the key
-// field and the parser cannot come apart.
-const KEY_PATTERN = "[A-Za-z0-9_][A-Za-z0-9_.-]*";
-
-// A different key does not go in the file, and the row shows a message
-const KEY_REGEX = new RegExp("^" + KEY_PATTERN + "$");
-
-// A pair line: an optional export prefix, a key, and the value after
-// the first "=" character
-const PAIR_REGEX = new RegExp("^((?:export\\s+)?)(" + KEY_PATTERN + ")=(.*)$");
+import { isEnvKey, parseEnvFile, serializeEnvFile } from "../env-file";
 
 let nextEntryId = 1;
 
@@ -72,7 +62,8 @@ let nextEntryId = 1;
  * The component does not interpret quotes. The value field holds the
  * exact text after the first "=". The line ends and the last line of
  * the file stay as they are, so the file text stays the same when the
- * user changes nothing.
+ * user changes nothing. The parse and the serialization are in
+ * env-file.ts, thus a test can examine them without this component.
  */
 export default {
     name: "EnvEditor",
@@ -123,101 +114,38 @@ export default {
          * @returns {boolean}
          */
         keyOK(entry) {
-            return KEY_REGEX.test(entry.key);
+            return isEnvKey(entry.key);
         },
 
         /**
-         * Divide the text into pairs and other lines. A value in quotes
-         * that continues on more lines stays one raw block, because the
-         * fields cannot show it correctly.
+         * Divide the text into pairs and other lines.
          * @param {string} text the .env text
          * @returns {void}
          */
         parse(text) {
-            // A binding can give null. Treat it as an empty file.
             text = text ?? "";
             this.lastSerialized = text;
-            this.entries = [];
-            this.eol = text.includes("\r\n") ? "\r\n" : "\n";
-            this.finalNewline = text === "" || text.endsWith("\n");
-
-            if (!text) {
-                return;
-            }
-
-            const lines = text.split(/\r?\n/);
-
-            // The split gives one empty last item for a text with a final
-            // line end. The serialization adds the line end back.
-            if (this.finalNewline && text !== "") {
-                lines.pop();
-            }
-
-            for (let i = 0; i < lines.length; i++) {
-                const match = lines[i].match(PAIR_REGEX);
-
-                if (match) {
-                    const value = match[3];
-                    const quote = value[0];
-
-                    // An open quote without its end on the same line: the
-                    // value continues on the lines below
-                    if ((quote === "\"" || quote === "'") && !value.slice(1).includes(quote)) {
-                        const block = [ lines[i] ];
-                        while (i + 1 < lines.length) {
-                            i++;
-                            block.push(lines[i]);
-                            if (lines[i].includes(quote)) {
-                                break;
-                            }
-                        }
-                        this.entries.push({
-                            id: nextEntryId++,
-                            type: "raw",
-                            text: block.join(this.eol),
-                        });
-                        continue;
-                    }
-
-                    this.entries.push({
-                        id: nextEntryId++,
-                        type: "pair",
-                        prefix: match[1],
-                        key: match[2],
-                        value,
-                    });
-                } else {
-                    this.entries.push({
-                        id: nextEntryId++,
-                        type: "raw",
-                        text: lines[i],
-                    });
-                }
-            }
+            const file = parseEnvFile(text);
+            this.eol = file.eol;
+            this.finalNewline = file.finalNewline;
+            this.entries = file.entries.map((entry) => ({
+                id: nextEntryId++,
+                ...entry,
+            }));
         },
 
         /**
-         * Make the .env text from the entries. A pair with a bad key gives
-         * no line, because docker refuses a file that holds one. The row
-         * of that pair shows a message, thus the user can see why the
-         * variable is not in the file yet.
+         * Make the .env text from the entries. The row of a pair with a
+         * bad key shows a message, thus the user can see why the variable
+         * is not in the file yet.
          * @returns {string} the .env text
          */
         serialize() {
-            const lines = [];
-            for (const entry of this.entries) {
-                if (entry.type === "pair") {
-                    if (this.keyOK(entry)) {
-                        lines.push(entry.prefix + entry.key + "=" + entry.value);
-                    }
-                } else {
-                    lines.push(entry.text);
-                }
-            }
-            if (lines.length === 0) {
-                return "";
-            }
-            return lines.join(this.eol) + (this.finalNewline ? this.eol : "");
+            return serializeEnvFile({
+                entries: this.entries,
+                eol: this.eol,
+                finalNewline: this.finalNewline,
+            });
         },
 
         /**
