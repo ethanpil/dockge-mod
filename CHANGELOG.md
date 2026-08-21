@@ -6,13 +6,31 @@ The base is dockge commit [f809ae1](https://github.com/louislam/dockge/commit/f8
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). This project has no releases, so each entry is a commit. The newest entry comes first. A commit that changes only this file or the project rules has no entry.
 
+## [67efc59](../../commit/67efc59) - 2026-08-21
+
+### Fixed
+
+- The end of a check goes out after the last step of the check. The steps after the images, for example the notifications, take time, and a client saw no check during that time.
+- A check that fails before its first image also sends the end. A client waited for an end that did not come before.
+- A client that opens a page during a check gets the state of that check.
+- A check of one stack that cannot start gives an answer with a message, not an error text in a different language.
+- The answer of a check of one stack holds the count of the images, and the page shows it. The page showed an empty message before.
+- A check of one stack gives a registry that had a problem a new try, the same as a check of each image.
+- A socket that goes away empties the progress of each host. The buttons of the check stayed closed after a loss of the connection before.
+- The **Resources** page starts again when it changes its host, and it opens the button after two minutes without progress events.
+- The stack page does not answer for a page that went away.
+
 ## [c789d16](../../commit/c789d16) - 2026-08-21
 
 ### Added
 
 - A button on the stack page that checks the images of that stack. The check examines each image of the stack.
-- The progress of a check. The **Resources** page shows how many images the check examined, and it reads the results again when the check ends. The page used fixed times of three and thirty seconds before.
+- The progress of a check. The **Resources** page shows how many images the check examined, and it reads the results again when the check ends.
 - The time of the next check of an image that waits after a failure, on the **Resources** page.
+
+### Removed
+
+- The fixed times of three and thirty seconds of the **Resources** page. The progress events give the state of a check now.
 
 ## [5c25756](../../commit/5c25756) - 2026-08-21
 
