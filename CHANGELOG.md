@@ -6,6 +6,32 @@ The base is dockge commit [f809ae1](https://github.com/louislam/dockge/commit/f8
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). This project has no releases, so each entry is a commit. The newest entry comes first. A commit that changes only this file or the project rules has no entry.
 
+## [903416f](../../commit/903416f) - 2026-08-21
+
+### Changed
+
+- The stack toolbar and the container table are their own components. The stack page gives them their data with properties.
+
+### Fixed
+
+- The **Down** menu does not show in edit mode.
+
+## [5cba2e9](../../commit/5cba2e9) - 2026-08-21
+
+### Added
+
+- An image update check. Every six hours the server compares the digest of each image of the managed stacks with the registry. The stack list gets the count of images with a new version. A **Check now** function starts a check at once.
+- Notification targets: a webhook, ntfy, or Apprise. A target gets a message for a new image version, a container that exits with an error, or an unhealthy container. A container that got a stop signal does not send a message.
+- Stack backups. A save and an update make a copy of the compose file, the `.env` file, and the override file in the `mod_stack_backup` table, when the files are different from the last copy. The last 20 copies stay. A restore writes a copy back to the disk.
+- Events that list the images, the volumes, and the networks of the host, remove one of them, and prune the unused ones.
+- A terminal with the log of one service.
+
+## [b060027](../../commit/b060027) - 2026-08-21
+
+### Changed
+
+- The stack page, the container editor, and the settings page give themselves to their components with `provide`. A chain of `$parent` broke when a component moved to a different depth.
+
 ## [f5f82a1](../../commit/f5f82a1) - 2026-08-21
 
 ### Fixed
