@@ -1,25 +1,11 @@
-import { describe, expect, it, vi } from "vitest";
-
-// util-frontend imports the i18n module, which needs the browser. The
-// functions under test do not use it.
-vi.mock("../../frontend/src/i18n", () => ({
-    currentLocale: () => "en",
-    localeDirection: () => "ltr",
-}));
-
-vi.mock("vue-toastification", () => ({
-    POSITION: {
-        BOTTOM_RIGHT: "bottom-right",
-    },
-}));
-
-const {
+import { describe, expect, it } from "vitest";
+import {
     formatBytes,
     formatPorts,
     formatUptime,
     isSimpleList,
     parseDockerSize,
-} = await import("../../frontend/src/util-frontend");
+} from "../../common/util-common";
 
 describe("formatUptime", () => {
     it.each([
@@ -38,7 +24,7 @@ describe("formatUptime", () => {
 });
 
 describe("formatPorts", () => {
-    it("removes the wildcard host and the IPv6 twin", () => {
+    it("removes the wildcard host and the same port on IPv6", () => {
         expect(formatPorts("0.0.0.0:8080->80/tcp, :::8080->80/tcp")).toBe("8080->80/tcp");
         expect(formatPorts("[::]:443->443/tcp, *:443->443/tcp")).toBe("443->443/tcp");
     });

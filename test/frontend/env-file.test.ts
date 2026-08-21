@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isEnvKey, parseEnvFile, serializeEnvFile } from "../../frontend/src/env-file";
+import { isEnvKey, parseEnvFile, serializeEnvFile } from "../../common/env-file";
 
 /**
  * Parse and serialize, which must give the text back unchanged.
@@ -81,8 +81,8 @@ describe("parseEnvFile", () => {
         expect(file.entries).toHaveLength(2);
     });
 
-    it("treats null as an empty file", () => {
-        expect(parseEnvFile(null)).toEqual({
+    it("gives no entries for an empty text", () => {
+        expect(parseEnvFile("")).toEqual({
             entries: [],
             eol: "\n",
             finalNewline: true,

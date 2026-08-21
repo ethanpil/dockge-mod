@@ -53,10 +53,7 @@ export function isEnvKey(key : string) : boolean {
  * @param text the .env text
  * @returns the entries, the line end, and the final line end flag
  */
-export function parseEnvFile(text : string | null | undefined) : EnvFile {
-    // A binding can give null. Treat it as an empty file.
-    text = text ?? "";
-
+export function parseEnvFile(text : string) : EnvFile {
     const file : EnvFile = {
         entries: [],
         eol: text.includes("\r\n") ? "\r\n" : "\n",

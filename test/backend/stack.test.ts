@@ -3,7 +3,7 @@ import fs from "fs";
 import os from "os";
 import path from "path";
 import { Stack } from "../../backend/stack";
-import { DockgeServer } from "../../backend/dockge-server";
+import type { DockgeServer } from "../../backend/dockge-server";
 import { ValidationError } from "../../backend/util-server";
 import { CREATED_STACK, EXITED, RUNNING, UNKNOWN } from "../../common/util-common";
 
@@ -75,18 +75,8 @@ describe("Stack.getComposeOptions", () => {
 });
 
 describe("Stack.getStack", () => {
-    let stacksDir : string;
-
-    beforeEach(() => {
-        stacksDir = fs.mkdtempSync(path.join(os.tmpdir(), "dockge-test-"));
-    });
-
-    afterEach(() => {
-        fs.rmSync(stacksDir, {
-            recursive: true,
-            force: true,
-        });
-    });
+    // The tests skip the file operations, thus no directory is necessary
+    const stacksDir = os.tmpdir();
 
     it.each([
         "..",

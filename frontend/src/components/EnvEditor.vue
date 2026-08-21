@@ -50,7 +50,7 @@
 </template>
 
 <script>
-import { isEnvKey, parseEnvFile, serializeEnvFile } from "../env-file";
+import { isEnvKey, parseEnvFile, serializeEnvFile } from "../../../common/env-file";
 
 let nextEntryId = 1;
 
