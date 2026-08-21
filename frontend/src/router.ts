@@ -17,6 +17,8 @@ const Security = () => import("./components/settings/Security.vue");
 const GlobalEnv = () => import("./components/settings/GlobalEnv.vue");
 const ComposeOverride = () => import("./components/settings/ComposeOverride.vue");
 const Health = () => import("./components/settings/Health.vue");
+const Notifications = () => import("./components/settings/Notifications.vue");
+const Resources = () => import("./pages/Resources.vue");
 import About from "./components/settings/About.vue";
 
 const routes = [
@@ -66,6 +68,14 @@ const routes = [
                         component: Console,
                     },
                     {
+                        path: "/resources",
+                        component: Resources,
+                    },
+                    {
+                        path: "/resources/:endpoint",
+                        component: Resources,
+                    },
+                    {
                         path: "/settings",
                         component: Settings,
                         children: [
@@ -92,6 +102,10 @@ const routes = [
                             {
                                 path: "health",
                                 component: Health,
+                            },
+                            {
+                                path: "notifications",
+                                component: Notifications,
                             },
                             {
                                 path: "about",

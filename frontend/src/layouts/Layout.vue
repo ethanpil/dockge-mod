@@ -29,6 +29,12 @@
                     </router-link>
                 </li>
 
+                <li v-if="$root.loggedIn" class="nav-item me-2">
+                    <router-link to="/resources" class="nav-link">
+                        <font-awesome-icon icon="layer-group" /> {{ $t("resources") }}
+                    </router-link>
+                </li>
+
                 <li v-if="$root.loggedIn" class="nav-item">
                     <div class="dropdown dropdown-profile-pic">
                         <div class="nav-link" data-bs-toggle="dropdown">

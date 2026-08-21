@@ -103,6 +103,9 @@ export default {
                 health: {
                     title: this.$t("dockgeHealth"),
                 },
+                notifications: {
+                    title: this.$t("notifications"),
+                },
                 about: {
                     title: this.$t("About"),
                 },

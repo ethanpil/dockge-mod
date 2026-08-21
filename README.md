@@ -48,6 +48,29 @@ Three conditions apply after you go back:
 - Change a `docker run` command into a `compose.yaml` file.
 - See the progress of a pull, an up, or a down operation while it runs.
 - See the resource usage of the containers in a stack.
+- See which images have a new version. The server checks the registry every six hours.
+- Get a notification on a webhook, ntfy, or Apprise for a new image version, a container that exits with an error, or an unhealthy container.
+- Go back to an earlier version of the files of a stack. A save and an update keep a copy.
+- List and prune the images, the volumes, and the networks of the host.
+- See the log of one service.
+- Use a git checkout as a stack, with an override file for the local changes.
+
+## Compare
+
+dockge-mod is for a user who runs Dockge now. It keeps the files on the disk, and it keeps the data of Dockge. Other tools do more, but they do not use the Dockge data:
+
+| | dockge-mod | Dockge | Arcane | Komodo |
+| --- | --- | --- | --- | --- |
+| Files on the disk, no lock-in | Yes | Yes | Yes | Yes |
+| Uses the Dockge data, goes back to Dockge | Yes | - | No | No |
+| Override file and git checkout | Yes | No | Git only | Git only |
+| Image update check | Yes | No | Yes | Yes |
+| Notifications | Yes | No | Yes | Yes |
+| Images, volumes, networks | Yes | No | Yes | Yes |
+| OIDC or SSO | No | No | Yes | Yes |
+| Kubernetes | No | No | No | No |
+
+If you need SSO or many users, use Arcane or Komodo. If you run Dockge and want to keep it, use dockge-mod.
 
 ## Requirements
 
@@ -230,6 +253,34 @@ When the checkout is on a tag or a commit, and not on a branch, the badge shows 
 Use a git checkout together with an override file: git holds the base compose file, and your local changes stay in the override file.
 
 The `.git` entry is not visible in the Dockge interface, and Dockge does not touch it. Thus the stacks directory stays compatible.
+
+### See Which Images Have a New Version
+
+The server compares each image of the managed stacks with the registry every six hours. A stack with a new image version shows a badge in the stack list and on the stack page. Click **Update** on the stack page to pull the new version and start the stack again.
+
+The **Resources** page shows each image with the time of the last check. Click **Check now** to start a check at once. A private registry needs the Docker credentials, see **Private Registries** below. An image from a local build has no registry version, and the page says so.
+
+### Get a Notification
+
+Open **Settings** > **Notifications** and add a target. A target is a webhook, an ntfy topic, or an Apprise API. Select the events for the target:
+
+- A new image version is available.
+- A container exits with an error. A container that you stop does not send a message.
+- A container is unhealthy.
+
+Click **Test** to send a test message. One container sends one message in five minutes, thus a container in a restart loop does not flood the target.
+
+### Go Back to an Earlier Version of a Stack
+
+A save and an update make a copy of the compose file, the `.env` file, and the override file before they change them. The last 20 copies of a stack stay in the database. Open the stack and click **Backups** to see the copies. Click **Restore** to write a copy back to the disk. The containers do not change until you click **Deploy**.
+
+### Manage the Images, the Volumes, and the Networks
+
+The **Resources** page lists the images, the volumes, and the networks of a host. You can remove one item, or prune the items that nothing uses. A prune of the volumes removes the data of the volumes that no container uses. Read the list before you confirm.
+
+### See the Log of One Service
+
+Click the log icon of a service in the container table of a stack. A panel shows the log of that service only. The **Logs** panel of the stack shows the log of all services.
 
 ### Examine the Health of the Server
 
