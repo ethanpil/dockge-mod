@@ -6,6 +6,24 @@ The base is dockge commit [f809ae1](https://github.com/louislam/dockge/commit/f8
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). This project has no releases, so each entry is a commit. The newest entry comes first. A commit that changes only this file or the project rules has no entry.
 
+## [9acb9fd](../../commit/9acb9fd) - 2026-08-21
+
+### Fixed
+
+- A mod migration ledger row without a file is a warning, the same as in the upstream patch. An older image of dockge-mod starts again after a newer one.
+- A problem with the legacy template file does not stop the server.
+- The write of a mod setting is one upsert statement, thus two saves at the same time cannot fail on the unique key.
+
+## [bced752](../../commit/bced752) - 2026-08-21
+
+### Added
+
+- A migration ledger for the tables of dockge-mod. The tables have the `mod_` prefix and their own ledger table, `mod_knex_migrations`. The upstream `knex_migrations` table does not change, thus Dockge can run its own migrations after a user goes back to it.
+
+### Changed
+
+- The override template is in the `mod_setting` table, not in a file of the data directory. The start of the server moves the content of an existing `compose.override.template.yaml` to the table and removes the file.
+
 ## [37b8c7a](../../commit/37b8c7a) - 2026-08-21
 
 ### Changed
