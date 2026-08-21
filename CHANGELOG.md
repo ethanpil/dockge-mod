@@ -6,6 +6,44 @@ The base is dockge commit [f809ae1](https://github.com/louislam/dockge/commit/f8
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). This project has no releases, so each entry is a commit. The newest entry comes first. A commit that changes only this file or the project rules has no entry.
 
+## [284619a](../../commit/284619a) - 2026-08-21
+
+### Fixed
+
+- The stack actions and the service actions have a limit of five minutes, not 30 seconds. An update with a long pull gave a false timeout before, and a late answer still applies now.
+- Ctrl+S does nothing in add mode. A second Ctrl+S on a new stack gave "Stack name already exists" before.
+- A row click in select mode does not open the stack.
+- A reconnect resets the terminal before it writes the buffer again. The output showed two times before.
+- The open service log joins again after a reconnect, and a second service log gets its own terminal component.
+- The pages use one request helper. A late answer cannot reach a page that went away, and an answer of a different agent cannot replace the lists.
+- The **Backups** button and the log buttons show only for a stack on a dockge-mod host. A Dockge host does not answer these events.
+- The selection of the stack list drops a stack that went away.
+- **Check now** says when a check is in progress. The times on the Resources page have the same format as the backup times.
+
+## [33729cc](../../commit/33729cc) - 2026-08-21
+
+### Fixed
+
+- A terminal exit runs one time and removes only its own map entry. A forced exit and a late exit event could remove a newer terminal with the same name before.
+- The compose operation limit sends SIGKILL after SIGHUP.
+- The host console keeps its shell for one minute after the last client disconnects, not ten seconds.
+- The docker events watcher starts again after a close event. A docker command that could not start left the watcher dead before. A stream that ends at once keeps the pause.
+- A kill with a reload signal, for example HUP, is not a stop. A later crash sends a notification.
+- A failed image check keeps the last result. A short outage of the registry removed the badges and sent the message again before.
+- The image update check reads four images at one time, and the new result replaces the old result at the end. A stack list during the check showed a mix before.
+- The image names get the variables of `global.env`, the same as docker.
+- A backup comes before a git pull, which changes the files, and not before an update, which does not. A file that the server cannot read gives no copy.
+- A failed `docker compose ps` is not a cached result. A status cache needs a stack that exists.
+- The single flight of the compose list stays on the action path. A burst of actions ran one `docker compose ls` for each action before.
+- The login limiter removes the keys with the oldest use first.
+- A notification target cannot redirect the request to a different host. The server reads the answer body, thus the connection goes back to the pool.
+- The service log terminal names use a separator that a stack name cannot hold. Two stacks could share one log before.
+- The first image check does not run after a stop of the server.
+
+### Removed
+
+- The build cache prune kind of the socket API. No page used it.
+
 ## [3c9262d](../../commit/3c9262d) - 2026-08-21
 
 ### Added
