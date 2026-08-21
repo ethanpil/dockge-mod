@@ -2,7 +2,7 @@ import { DockgeServer } from "./dockge-server";
 import fs, { promises as fsAsync } from "fs";
 import { log } from "./log";
 import yaml from "yaml";
-import { checkServiceName, checkShellName, DockgeSocket, errorMessage, fileExists, stderrOf, ValidationError } from "./util-server";
+import { checkServiceName, checkShellName, DOCKER_SPAWN_OPTIONS, DockgeSocket, errorMessage, fileExists, stderrOf, ValidationError } from "./util-server";
 import path from "path";
 import os from "os";
 import {
@@ -217,9 +217,7 @@ export class Stack {
     async ps() : Promise<object> {
         let res = await childProcessAsync.spawn("docker", this.getComposeOptions("ps", "--format", "json"), {
             cwd: this.path,
-            encoding: "utf-8",
-            maxBuffer: 10 * 1024 * 1024,
-            timeout: 30000,
+            ...DOCKER_SPAWN_OPTIONS,
         });
         if (!res.stdout) {
             return {};
@@ -530,6 +528,7 @@ export class Stack {
     async deploy(socket : DockgeSocket) : Promise<number> {
         const terminalName = getComposeTerminalName(socket.endpoint, this.name);
         let exitCode = await Terminal.exec(this.server, socket, terminalName, "docker", this.getComposeOptions("up", "-d", "--remove-orphans"), this.path);
+        Stack.invalidateCaches([ this.name ]);
         if (exitCode !== 0) {
             throw new Error("Failed to deploy, please check the terminal output for more information.");
         }
@@ -539,6 +538,7 @@ export class Stack {
     async delete(socket: DockgeSocket) : Promise<number> {
         const terminalName = getComposeTerminalName(socket.endpoint, this.name);
         let exitCode = await Terminal.exec(this.server, socket, terminalName, "docker", this.getComposeOptions("down", "--remove-orphans"), this.path);
+        Stack.invalidateCaches([ this.name ]);
         if (exitCode !== 0) {
             throw new Error("Failed to delete, please check the terminal output for more information.");
         }
@@ -679,25 +679,27 @@ export class Stack {
 
     /**
      * Remove the cached results. The next call runs docker again.
+     * @param names The stacks that changed. Without names, each stack
+     * changed.
      */
-    static invalidateCaches() {
+    static invalidateCaches(names? : Iterable<string>) {
         Stack.composeListCache.invalidate();
-        for (const cache of Stack.serviceStatusCaches.values()) {
-            cache.invalidate();
+        if (!names) {
+            Stack.serviceStatusCaches.clear();
+            return;
+        }
+        for (const name of names) {
+            Stack.serviceStatusCaches.delete(name);
         }
     }
 
     /**
-     * Run `docker compose ls`. A warning on stdout, or no output, gives
-     * an empty list and a log line, not a failure of the stack list.
+     * Run `docker compose ls`. No output gives an empty list. An output
+     * that is not JSON gives an empty list and a log line.
      * @returns The projects that docker knows
      */
     protected static async runComposeList() : Promise<{ Name : string, Status : string, ConfigFiles : string }[]> {
-        const res = await childProcessAsync.spawn("docker", [ "compose", "ls", "--all", "--format", "json" ], {
-            encoding: "utf-8",
-            maxBuffer: 10 * 1024 * 1024,
-            timeout: 30000,
-        });
+        const res = await childProcessAsync.spawn("docker", [ "compose", "ls", "--all", "--format", "json" ], DOCKER_SPAWN_OPTIONS);
 
         if (!res.stdout) {
             return [];
@@ -786,6 +788,7 @@ export class Stack {
     async start(socket: DockgeSocket) {
         const terminalName = getComposeTerminalName(socket.endpoint, this.name);
         let exitCode = await Terminal.exec(this.server, socket, terminalName, "docker", this.getComposeOptions("up", "-d", "--remove-orphans"), this.path);
+        Stack.invalidateCaches([ this.name ]);
         if (exitCode !== 0) {
             throw new Error("Failed to start, please check the terminal output for more information.");
         }
@@ -795,6 +798,7 @@ export class Stack {
     async stop(socket: DockgeSocket) : Promise<number> {
         const terminalName = getComposeTerminalName(socket.endpoint, this.name);
         let exitCode = await Terminal.exec(this.server, socket, terminalName, "docker", this.getComposeOptions("stop"), this.path);
+        Stack.invalidateCaches([ this.name ]);
         if (exitCode !== 0) {
             throw new Error("Failed to stop, please check the terminal output for more information.");
         }
@@ -804,6 +808,7 @@ export class Stack {
     async restart(socket: DockgeSocket) : Promise<number> {
         const terminalName = getComposeTerminalName(socket.endpoint, this.name);
         let exitCode = await Terminal.exec(this.server, socket, terminalName, "docker", this.getComposeOptions("restart"), this.path);
+        Stack.invalidateCaches([ this.name ]);
         if (exitCode !== 0) {
             throw new Error("Failed to restart, please check the terminal output for more information.");
         }
@@ -813,6 +818,7 @@ export class Stack {
     async down(socket: DockgeSocket) : Promise<number> {
         const terminalName = getComposeTerminalName(socket.endpoint, this.name);
         let exitCode = await Terminal.exec(this.server, socket, terminalName, "docker", this.getComposeOptions("down"), this.path);
+        Stack.invalidateCaches([ this.name ]);
         if (exitCode !== 0) {
             throw new Error("Failed to down, please check the terminal output for more information.");
         }
@@ -822,6 +828,7 @@ export class Stack {
     async update(socket: DockgeSocket) {
         const terminalName = getComposeTerminalName(socket.endpoint, this.name);
         let exitCode = await Terminal.exec(this.server, socket, terminalName, "docker", this.getComposeOptions("pull"), this.path);
+        Stack.invalidateCaches([ this.name ]);
         if (exitCode !== 0) {
             throw new Error("Failed to pull, please check the terminal output for more information.");
         }
@@ -937,11 +944,7 @@ export class Stack {
             const format = "{{.Name}}\t{{range .NetworkSettings.Networks}}{{.IPAddress}} {{end}}";
 
             try {
-                const res = await childProcessAsync.spawn("docker", [ "inspect", "--type", "container", "--format", format, ...uncached.map((c) => c.name) ], {
-                    encoding: "utf-8",
-                    maxBuffer: 10 * 1024 * 1024,
-                    timeout: 30000,
-                });
+                const res = await childProcessAsync.spawn("docker", [ "inspect", "--type", "container", "--format", format, ...uncached.map((c) => c.name) ], DOCKER_SPAWN_OPTIONS);
                 parse(res.stdout?.toString() ?? "");
             } catch (e) {
                 // A container removed between `ps` and `inspect` makes inspect exit
@@ -987,10 +990,6 @@ export class Stack {
         if (!cache) {
             cache = new CachedCall(() => this.readServiceStatusList(), 5 * 1000);
             Stack.serviceStatusCaches.set(this.name, cache);
-            // A limit for a host with many stacks that come and go
-            if (Stack.serviceStatusCaches.size > 2000) {
-                Stack.serviceStatusCaches.clear();
-            }
         }
         return cache.get();
     }
@@ -1001,9 +1000,7 @@ export class Stack {
         try {
             let res = await childProcessAsync.spawn("docker", this.getComposeOptions("ps", "--format", "json"), {
                 cwd: this.path,
-                encoding: "utf-8",
-                maxBuffer: 10 * 1024 * 1024,
-                timeout: 30000,
+                ...DOCKER_SPAWN_OPTIONS,
             });
 
             if (!res.stdout) {
@@ -1068,6 +1065,7 @@ export class Stack {
         checkServiceName(serviceName);
         const terminalName = getComposeTerminalName(socket.endpoint, this.name);
         const exitCode = await Terminal.exec(this.server, socket, terminalName, "docker", this.getComposeOptions("up", "-d", serviceName), this.path);
+        Stack.invalidateCaches([ this.name ]);
         if (exitCode !== 0) {
             throw new Error(`Failed to start service ${serviceName}, please check logs for more information.`);
         }
@@ -1079,6 +1077,7 @@ export class Stack {
         checkServiceName(serviceName);
         const terminalName = getComposeTerminalName(socket.endpoint, this.name);
         const exitCode = await Terminal.exec(this.server, socket, terminalName, "docker", this.getComposeOptions("stop", serviceName), this.path);
+        Stack.invalidateCaches([ this.name ]);
         if (exitCode !== 0) {
             throw new Error(`Failed to stop service ${serviceName}, please check logs for more information.`);
         }
@@ -1090,6 +1089,7 @@ export class Stack {
         checkServiceName(serviceName);
         const terminalName = getComposeTerminalName(socket.endpoint, this.name);
         const exitCode = await Terminal.exec(this.server, socket, terminalName, "docker", this.getComposeOptions("restart", serviceName), this.path);
+        Stack.invalidateCaches([ this.name ]);
         if (exitCode !== 0) {
             throw new Error(`Failed to restart service ${serviceName}, please check logs for more information.`);
         }

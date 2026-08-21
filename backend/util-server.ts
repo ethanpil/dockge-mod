@@ -39,6 +39,17 @@ export interface Config extends Arguments {
     stacksDir : string;
 }
 
+/**
+ * The limits for a docker process that the server waits for. A process
+ * that does not end, or an output that is too large, must not stop the
+ * server.
+ */
+export const DOCKER_SPAWN_OPTIONS = {
+    encoding: "utf-8",
+    maxBuffer: 10 * 1024 * 1024,
+    timeout: 30000,
+} as const;
+
 export function checkLogin(socket : DockgeSocket) {
     if (!socket.userID) {
         throw new Error("You are not logged in.");

@@ -47,6 +47,35 @@ describe("CachedCall", () => {
         expect(fn).toHaveBeenCalledTimes(2);
     });
 
+    it("does not keep the result of a call from before an invalidate", async () => {
+        let resolve : (value : number) => void = () => undefined;
+        let calls = 0;
+        const cache = new CachedCall(() => {
+            calls++;
+            if (calls === 1) {
+                return new Promise<number>((r) => {
+                    resolve = r;
+                });
+            }
+            return Promise.resolve(2);
+        }, 60000);
+
+        const first = cache.get();
+        cache.invalidate();
+
+        // A call after the invalidate runs the function again
+        const second = cache.get();
+        expect(calls).toBe(2);
+
+        resolve(1);
+        expect(await first).toBe(1);
+        expect(await second).toBe(2);
+
+        // The cache holds the new result, not the old one
+        expect(await cache.get()).toBe(2);
+        expect(calls).toBe(2);
+    });
+
     it("does not keep a failure", async () => {
         let calls = 0;
         const cache = new CachedCall(async () => {

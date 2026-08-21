@@ -21,7 +21,7 @@ import { R } from "redbean-node";
 import { genSecret, isDev, LooseObject } from "../common/util-common";
 import { generatePasswordHash } from "./password-hash";
 import { Bean } from "redbean-node/dist/bean";
-import { Arguments, Config, DockgeSocket, errorMessage } from "./util-server";
+import { Arguments, Config, DOCKER_SPAWN_OPTIONS, DockgeSocket, errorMessage } from "./util-server";
 import { DockerSocketHandler } from "./agent-socket-handlers/docker-socket-handler";
 import expressStaticGzip from "express-static-gzip";
 import path from "path";
@@ -79,8 +79,12 @@ export class DockgeServer {
     needSetup = false;
 
     /** Cached host statistics shared by every client (see getHostStats) */
-    private hostStatsCache : { time : number, data : object } | null = null;
-    private hostStatsPromise : Promise<object> | null = null;
+    /**
+     * The host statistics, for all clients. `docker system df` reads the
+     * full image store and the full volume store, thus it must not run
+     * one time for each open tab.
+     */
+    private hostStatsCache = new CachedCall(() => this.collectHostStats(), 60 * 1000);
 
     /**
      * The output of `docker stats`, for all clients. The command blocks
@@ -422,13 +426,15 @@ export class DockgeServer {
                 protect: true,  // Enabled over-run protection.
             }, () => {
                 //log.debug("server", "Cron job running");
-                this.sendStackList(true);
+                this.sendStackList(true).catch((e) => {
+                    log.warn("server", "Cannot send the stack list: " + errorMessage(e));
+                });
             });
 
             // A change of a container sends a new stack list at once, and
             // it removes the cached status. The polls of the clients then
             // see the change on their next request.
-            this.dockerEvents = new DockerEvents(() => this.onDockerChange());
+            this.dockerEvents = new DockerEvents((projects, other) => this.onDockerChange(projects, other));
             this.dockerEvents.start();
         });
 
@@ -661,9 +667,11 @@ export class DockgeServer {
     /**
      * A container changed. Remove the cached status and send the stack
      * list to each client.
+     * @param projects The compose projects that changed
+     * @param other True when a container without a project changed
      */
-    onDockerChange() {
-        Stack.invalidateCaches();
+    onDockerChange(projects : Set<string>, other : boolean) {
+        Stack.invalidateCaches(other ? undefined : projects);
         this.dockerStatsCache.invalidate();
         this.sendStackList(true).catch((e) => {
             log.warn("server", "Cannot send the stack list: " + errorMessage(e));
@@ -671,11 +679,7 @@ export class DockgeServer {
     }
 
     async getDockerNetworkList() : Promise<string[]> {
-        let res = await childProcessAsync.spawn("docker", [ "network", "ls", "--format", "{{.Name}}" ], {
-            encoding: "utf-8",
-            maxBuffer: 10 * 1024 * 1024,
-            timeout: 30000,
-        });
+        let res = await childProcessAsync.spawn("docker", [ "network", "ls", "--format", "{{.Name}}" ], DOCKER_SPAWN_OPTIONS);
 
         if (!res.stdout) {
             return [];
@@ -701,11 +705,7 @@ export class DockgeServer {
         let stats = new Map<string, object>();
 
         try {
-            let res = await childProcessAsync.spawn("docker", [ "stats", "--format", "json", "--no-stream" ], {
-                encoding: "utf-8",
-                maxBuffer: 10 * 1024 * 1024,
-                timeout: 30000,
-            });
+            let res = await childProcessAsync.spawn("docker", [ "stats", "--format", "json", "--no-stream" ], DOCKER_SPAWN_OPTIONS);
 
             if (!res.stdout) {
                 return stats;
@@ -741,30 +741,8 @@ export class DockgeServer {
      *
      * Disk use comes from `docker system df`.
      */
-    async getHostStats() : Promise<object> {
-        // One collection serves every client. `docker system df` reads the
-        // full image store and the full volume store, so it must not run once
-        // for each open tab. The guard also stops slow replies from collecting.
-        const now = Date.now();
-        if (this.hostStatsCache && now - this.hostStatsCache.time < 60 * 1000) {
-            return this.hostStatsCache.data;
-        }
-        if (this.hostStatsPromise) {
-            return this.hostStatsPromise;
-        }
-
-        // Release the guard for a failure too. A rejected promise that stays
-        // here would answer every later call with the same old failure.
-        this.hostStatsPromise = this.collectHostStats().then((data) => {
-            this.hostStatsCache = {
-                time: Date.now(),
-                data,
-            };
-            return data;
-        }).finally(() => {
-            this.hostStatsPromise = null;
-        });
-        return this.hostStatsPromise;
+    getHostStats() : Promise<object> {
+        return this.hostStatsCache.get();
     }
 
     private async collectHostStats() : Promise<object> {

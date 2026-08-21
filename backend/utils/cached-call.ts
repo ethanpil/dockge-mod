@@ -11,6 +11,10 @@ export class CachedCall<T> {
     private value? : { time : number, data : T };
     private pending : Promise<T> | null = null;
 
+    // Goes up at each invalidate. A call that started before the change
+    // does not put its result in the cache.
+    private generation = 0;
+
     /**
      * @param fn The function that makes the result
      * @param ttl How long a result stays good, in milliseconds
@@ -32,37 +36,35 @@ export class CachedCall<T> {
         if (this.pending) {
             return this.pending;
         }
+
+        const generation = this.generation;
         // A failure does not stay in the cache. The next call runs the
         // function again.
-        this.pending = this.fn().then((data) => {
-            this.value = {
-                time: Date.now(),
-                data,
-            };
+        const call = this.fn().then((data) => {
+            if (generation === this.generation) {
+                this.value = {
+                    time: Date.now(),
+                    data,
+                };
+            }
             return data;
         }).finally(() => {
-            this.pending = null;
+            if (this.pending === call) {
+                this.pending = null;
+            }
         });
-        return this.pending;
+        this.pending = call;
+        return call;
     }
 
     /**
-     * Remove the result. The next call runs the function. A call that
-     * runs now completes and serves its callers, but its result does
-     * not go in the cache.
+     * Remove the result. The next call runs the function again, also
+     * when a call from before the change still runs. That call serves
+     * its own callers, but its result does not go in the cache.
      */
     invalidate() {
+        this.generation++;
         this.value = undefined;
-        if (this.pending) {
-            const stale = this.pending;
-            // The result of the stale call must not go in the cache
-            stale.then(() => {
-                if (this.value && this.value.data !== undefined && this.pending === null) {
-                    // The then-handler of get() ran before this one, and
-                    // it put the stale result in the cache
-                    this.value = undefined;
-                }
-            }, () => undefined);
-        }
+        this.pending = null;
     }
 }

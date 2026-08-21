@@ -20,42 +20,62 @@ const CONTAINER_ACTIONS = new Set([
 ]);
 
 /**
- * True when an event line of `docker events` shows a change of a
- * container. A health change comes as "health_status: healthy".
- * @param line One line of `docker events --format '{{json .}}'`
- * @returns True when the interface must read the status again
+ * A change of a container, from one line of `docker events`.
  */
-export function isContainerChange(line : string) : boolean {
-    let event : { Type? : string, Action? : string };
+export interface ContainerChange {
+    /** The compose project of the container, or null for a different container */
+    project : string | null;
+}
+
+/**
+ * Read one line of `docker events --format '{{json .}}'`. A health change
+ * comes as "health_status: healthy".
+ * @param line One line of the output
+ * @returns The change, or null when the line shows no change of a container
+ */
+export function parseContainerChange(line : string) : ContainerChange | null {
+    let event : { Type? : string, Action? : string, Actor? : { Attributes? : Record<string, string> } };
     try {
         event = JSON.parse(line);
     } catch (e) {
-        return false;
+        return null;
     }
     if (event.Type !== "container" || typeof event.Action !== "string") {
-        return false;
+        return null;
     }
-    return CONTAINER_ACTIONS.has(event.Action) || event.Action.startsWith("health_status");
+    if (!CONTAINER_ACTIONS.has(event.Action) && !event.Action.startsWith("health_status")) {
+        return null;
+    }
+    return {
+        project: event.Actor?.Attributes?.["com.docker.compose.project"] ?? null,
+    };
 }
 
 /**
  * A watcher on `docker events`. It calls the handler a short time after
- * a change of a container. Many events in a short time give one call.
- * The process starts again after an exit, with a pause that grows.
+ * a change of a container, with the compose projects that changed. Many
+ * events in a short time give one call. The process starts again after
+ * an exit, with a pause that grows.
  */
 export class DockerEvents {
 
-    private handler : () => void;
+    private handler : (projects : Set<string>, other : boolean) => void;
     private process : ChildProcess | null = null;
     private timer : NodeJS.Timeout | null = null;
     private restartTimer : NodeJS.Timeout | null = null;
     private pause = 1000;
     private stopped = false;
 
+    // The changes since the last call of the handler
+    private projects : Set<string> = new Set();
+    private other = false;
+
     /**
-     * @param handler The function to call after a change
+     * @param handler The function to call after a change. It gets the
+     * compose projects that changed, and a flag for a container that is
+     * not in a compose project.
      */
-    constructor(handler : () => void) {
+    constructor(handler : (projects : Set<string>, other : boolean) => void) {
         this.handler = handler;
     }
 
@@ -93,7 +113,13 @@ export class DockerEvents {
             const lines = rest.split("\n");
             rest = lines.pop() ?? "";
             for (const line of lines) {
-                if (isContainerChange(line)) {
+                const change = parseContainerChange(line);
+                if (change) {
+                    if (change.project !== null) {
+                        this.projects.add(change.project);
+                    } else {
+                        this.other = true;
+                    }
                     this.schedule();
                 }
             }
@@ -135,8 +161,12 @@ export class DockerEvents {
         }
         this.timer = setTimeout(() => {
             this.timer = null;
+            const projects = this.projects;
+            const other = this.other;
+            this.projects = new Set();
+            this.other = false;
             try {
-                this.handler();
+                this.handler(projects, other);
             } catch (e) {
                 log.warn("dockerEvents", "Handler failed: " + (e as Error).message);
             }
