@@ -54,6 +54,7 @@ export default {
                 docker: this.$t("healthDocker"),
                 dockerCompose: this.$t("healthDockerCompose"),
                 git: this.$t("healthGit"),
+                buildx: this.$t("healthBuildx"),
                 stacksDir: this.$t("healthStacksDir"),
                 dataDir: this.$t("healthDataDir"),
             };

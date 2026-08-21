@@ -446,6 +446,7 @@ export class MainSocketHandler extends SocketHandler {
                     checkTool("docker", "docker", [ "--version" ]),
                     checkTool("dockerCompose", "docker", [ "compose", "version" ]),
                     checkTool("git", "git", [ "--version" ]),
+                    checkTool("buildx", "docker", [ "buildx", "version" ]),
                     checkWritableDir("stacksDir", server.stacksDir),
                     checkWritableDir("dataDir", server.config.dataDir),
                 ]);

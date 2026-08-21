@@ -40,43 +40,6 @@ export function digestsMatch(localRepoDigests : string[], remoteDigest : string)
 }
 
 /**
- * Read the digest of the registry from `docker manifest inspect -v`. The
- * output is one object for a single image, or a list for a manifest
- * list. Each object has a Descriptor with the digest. For a list, the
- * digest of the list itself is not in the output, thus the result is
- * the digest of the first entry. A pull with the same platform gives
- * this digest in the RepoDigests too, thus the comparison is correct
- * for the platform of the host.
- * @param output The output of docker manifest inspect -v
- * @param platform The platform of the host, for example linux/amd64
- * @returns The digest, or null when the output has none
- */
-export function parseManifestDigest(output : string, platform? : string) : string | null {
-    let data : unknown;
-    try {
-        data = JSON.parse(output);
-    } catch (e) {
-        return null;
-    }
-
-    type Entry = { Descriptor? : { digest? : string, platform? : { os? : string, architecture? : string, variant? : string } } };
-    const entries : Entry[] = Array.isArray(data) ? data : [ data as Entry ];
-
-    if (platform) {
-        const [ os, architecture, variant ] = platform.split("/");
-        const match = entries.find((entry) => {
-            const p = entry.Descriptor?.platform;
-            return p && p.os === os && p.architecture === architecture && (!variant || !p.variant || p.variant === variant);
-        });
-        if (match?.Descriptor?.digest) {
-            return match.Descriptor.digest;
-        }
-    }
-
-    return entries[0]?.Descriptor?.digest ?? null;
-}
-
-/**
  * The check for new image versions. It reads the digest of each image of
  * the managed stacks from the registry and compares it with the local
  * image. The results go in the mod_image_update table, and a set in
@@ -93,7 +56,6 @@ export class ImageUpdateChecker {
     private server : DockgeServer;
     private running = false;
     private timer? : NodeJS.Timeout;
-    private platform? : string;
 
     constructor(server : DockgeServer) {
         this.server = server;
@@ -242,17 +204,17 @@ export class ImageUpdateChecker {
             } else {
                 result.localDigest = digestOf(repoDigests[0]);
 
-                if (!this.platform) {
-                    const info = await childProcessAsync.spawn("docker", [ "version", "--format", "{{.Server.Os}}/{{.Server.Arch}}" ], DOCKER_SPAWN_OPTIONS);
-                    this.platform = info.stdout?.toString().trim() || undefined;
-                }
-
-                const remote = await childProcessAsync.spawn("docker", [ "manifest", "inspect", "-v", image ], {
+                // The digest of the index, or of the manifest for an image
+                // without an index. A pull by tag puts this digest in the
+                // RepoDigests, on the classic store and on the containerd
+                // store. The per-platform manifest digest is different,
+                // thus it cannot be the comparison.
+                const remote = await childProcessAsync.spawn("docker", [ "buildx", "imagetools", "inspect", "--format", "{{.Manifest.Digest}}", image ], {
                     ...DOCKER_SPAWN_OPTIONS,
                     timeout: 60000,
                 });
-                const remoteDigest = parseManifestDigest(remote.stdout?.toString() ?? "", this.platform);
-                if (!remoteDigest) {
+                const remoteDigest = remote.stdout?.toString().trim() ?? "";
+                if (!/^sha256:[0-9a-f]{64}$/.test(remoteDigest)) {
                     result.error = "The registry gave no digest";
                 } else {
                     result.remoteDigest = remoteDigest;

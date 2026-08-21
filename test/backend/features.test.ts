@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { digestsMatch, parseManifestDigest } from "../../backend/image-update";
+import { digestsMatch } from "../../backend/image-update";
 import { buildRequest, checkNotification, Notification } from "../../backend/notification";
 import { isDockerResourceName, parseJSONLines } from "../../backend/docker-resources";
 import { parseContainerChange } from "../../backend/docker-events";
@@ -11,43 +11,6 @@ describe("digestsMatch", () => {
         expect(digestsMatch([ "nginx@sha256:aaa", "docker.io/library/nginx@sha256:bbb" ], "sha256:bbb")).toBe(true);
         expect(digestsMatch([ "nginx@sha256:aaa" ], "sha256:bbb")).toBe(false);
         expect(digestsMatch([], "sha256:bbb")).toBe(false);
-    });
-});
-
-describe("parseManifestDigest", () => {
-    it("reads the digest of a single image", () => {
-        const output = JSON.stringify({
-            Ref: "nginx:latest",
-            Descriptor: { digest: "sha256:one" },
-        });
-        expect(parseManifestDigest(output)).toBe("sha256:one");
-    });
-
-    it("selects the platform of the host in a manifest list", () => {
-        const output = JSON.stringify([
-            {
-                Descriptor: {
-                    digest: "sha256:arm",
-                    platform: { os: "linux",
-                        architecture: "arm64" },
-                },
-            },
-            {
-                Descriptor: {
-                    digest: "sha256:amd",
-                    platform: { os: "linux",
-                        architecture: "amd64" },
-                },
-            },
-        ]);
-        expect(parseManifestDigest(output, "linux/amd64")).toBe("sha256:amd");
-        expect(parseManifestDigest(output, "linux/arm64")).toBe("sha256:arm");
-        // An unknown platform gives the first entry
-        expect(parseManifestDigest(output, "linux/s390x")).toBe("sha256:arm");
-    });
-
-    it("gives null for a text that is not JSON", () => {
-        expect(parseManifestDigest("no such manifest")).toBeNull();
     });
 });
 

@@ -7,6 +7,8 @@
 #
 # git is necessary for the stack directory that is a git checkout.
 # Without it the branch does not show and a pull is not possible.
+# The buildx plugin reads the image digest of a registry, for the
+# image update check.
 ############################################
 FROM node:22-bookworm-slim AS base
 RUN apt update && apt install --yes --no-install-recommends \
@@ -27,6 +29,7 @@ RUN apt update && apt install --yes --no-install-recommends \
     && apt --yes --no-install-recommends install \
          docker-ce-cli \
          docker-compose-plugin \
+         docker-buildx-plugin \
     && rm -rf /var/lib/apt/lists/* \
     && npm install -g tsx
 
