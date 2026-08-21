@@ -19,84 +19,29 @@
                     <span v-if="!isEditMode && serviceCount > 0" class="panel-note d-none d-sm-inline">{{ serviceCount }} {{ $tc("container", serviceCount).toLowerCase() }}</span>
                 </template>
 
-                <div v-if="stack.isManagedByDockge" class="toolbar ms-auto">
-                    <div class="btn-group btn-group-sm me-2" role="group">
-                        <button v-if="isEditMode" class="btn btn-primary" :disabled="processing" @click="deployStack">
-                            <font-awesome-icon icon="rocket" class="me-1" />
-                            {{ $t("deployStack") }}
-                        </button>
-
-                        <!-- Examine the editor content with docker, before a
-                             save writes it. The guard is approximate: it
-                             tests override support. An agent without the
-                             event does not answer, and the timer of the
-                             overlay then ends the wait. -->
-                        <button v-if="isEditMode && (isAdd || overrideSupported)" class="btn btn-normal" :disabled="processing || mergedConfigLoading" :title="$t('validateConfigNote')" @click="validateCompose">
-                            <font-awesome-icon icon="check-double" class="me-1" />
-                            {{ $t("validateConfig") }}
-                        </button>
-
-                        <button
-                            v-if="isEditMode"
-                            class="btn"
-                            :class="isDirty ? 'btn-success' : 'btn-normal'"
-                            :disabled="processing || (!isDirty && !isAdd)"
-                            @click="saveStackAndExit"
-                        >
-                            <font-awesome-icon icon="save" class="me-1" />
-                            {{ $t("saveStackDraft") }}<template v-if="isDirty"> &#9679;</template>
-                        </button>
-
-                        <button v-if="!isEditMode" class="btn btn-secondary" :disabled="processing" @click="enableEditMode">
-                            <font-awesome-icon icon="pen" class="me-1" />
-                            {{ $t("editStack") }}
-                        </button>
-
-                        <button v-if="!isEditMode && !active" class="btn btn-primary" :disabled="processing" @click="startStack">
-                            <font-awesome-icon icon="play" class="me-1" />
-                            {{ $t("startStack") }}
-                        </button>
-
-                        <button v-if="!isEditMode && active" class="btn btn-normal" :disabled="processing" @click="restartStack">
-                            <font-awesome-icon icon="rotate" class="me-1" />
-                            {{ $t("restartStack") }}
-                        </button>
-
-                        <button v-if="!isEditMode" class="btn btn-normal" :disabled="processing" @click="updateStack">
-                            <font-awesome-icon icon="cloud-arrow-down" class="me-1" />
-                            {{ $t("updateStack") }}
-                        </button>
-
-                        <!-- A detached HEAD cannot pull, thus no button for it -->
-                        <button v-if="!isEditMode && gitInfo && !gitInfo.isDetached" class="btn btn-normal" :disabled="processing" @click="gitPullStack">
-                            <font-awesome-icon icon="code-branch" class="me-1" />
-                            {{ $t("gitPullRedeploy") }}
-                        </button>
-
-                        <button v-if="!isEditMode && active" class="btn btn-normal" :disabled="processing" @click="stopStack">
-                            <font-awesome-icon icon="stop" class="me-1" />
-                            {{ $t("stopStack") }}
-                        </button>
-
-                        <button type="button" class="btn btn-normal dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" aria-expanded="false">
-                            <span class="visually-hidden">{{ $t("downStack") }}</span>
-                        </button>
-                        <ul class="dropdown-menu dropdown-menu-end">
-                            <li>
-                                <button type="button" class="dropdown-item" @click="downStack">
-                                    <font-awesome-icon icon="stop" class="me-1" />
-                                    {{ $t("downStack") }}
-                                </button>
-                            </li>
-                        </ul>
-                    </div>
-
-                    <button v-if="isEditMode && !isAdd" class="btn btn-sm btn-normal" :disabled="processing" @click="discardStack">{{ $t("discardStack") }}</button>
-                    <button v-if="!isEditMode" class="btn btn-sm btn-outline-danger" :disabled="processing" @click="$refs.confirmDeleteStack.show()">
-                        <font-awesome-icon icon="trash" class="me-1" />
-                        {{ $t("deleteStack") }}
-                    </button>
-                </div>
+                <StackToolbar
+                    v-if="stack.isManagedByDockge"
+                    :processing="processing"
+                    :is-edit-mode="isEditMode"
+                    :is-add="isAdd"
+                    :active="active"
+                    :is-dirty="isDirty"
+                    :override-supported="overrideSupported"
+                    :merged-config-loading="mergedConfigLoading"
+                    :git-info="gitInfo"
+                    @deploy="deployStack"
+                    @validate="validateCompose"
+                    @save="saveStackAndExit"
+                    @edit="enableEditMode"
+                    @start="startStack"
+                    @restart="restartStack"
+                    @update="updateStack"
+                    @git-pull="gitPullStack"
+                    @stop="stopStack"
+                    @down="downStack"
+                    @discard="discardStack"
+                    @delete="$refs.confirmDeleteStack.show()"
+                />
             </div>
 
             <!-- URLs -->
@@ -173,127 +118,19 @@
                     </div>
 
                     <!-- Containers (view mode): dense table, stacked cards on mobile -->
-                    <div v-if="!isEditMode && hasContainers" class="panel">
-                        <div class="panel-head">
-                            <span class="panel-title">{{ $tc("container", 2) }}</span>
-                            <span class="panel-note">{{ containerRows.length }}</span>
-                        </div>
-
-                        <!-- One layout renders at a time. Both together would
-                             double the rows that every 5 second poll patches. -->
-                        <div v-if="wideLayout" class="ctable-scroll">
-                            <table class="ctable">
-                                <thead>
-                                    <tr>
-                                        <th class="c-svc">{{ $t("service") }}</th>
-                                        <th class="c-img">{{ $t("dockerImage") }}</th>
-                                        <th class="c-state">{{ $t("state") }}</th>
-                                        <th class="c-up">{{ $t("uptime") }}</th>
-                                        <th class="c-addr">{{ $t("ip") }} / {{ $tc("port", 2) }}</th>
-                                        <th class="c-num">{{ $t("CPU") }}</th>
-                                        <th class="c-num">{{ $t("memory") }}</th>
-                                        <th class="c-num c-net">{{ $t("networkIO") }}</th>
-                                        <th class="c-num c-blk">{{ $t("blockIO") }}</th>
-                                        <th class="c-act"></th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr v-for="row in containerRows" :key="row.key">
-                                        <td class="c-svc">
-                                            <span class="status-dot me-2" :class="'dot-' + row.color"></span><strong class="svc-name" :title="row.service">{{ row.service }}</strong>
-                                            <div v-if="row.showInstanceName" class="cell-sub">{{ row.instanceName }}</div>
-                                        </td>
-                                        <td class="c-img cell-muted">{{ imageOf(row.service) }}</td>
-                                        <td class="c-state"><span class="badge state-badge" :class="stateBadgeClass(row.status)">{{ row.status }}</span></td>
-                                        <td class="c-up mono">{{ row.uptime ?? "—" }}</td>
-                                        <td class="c-addr mono">
-                                            <div v-if="row.ip">{{ row.ip }}</div>
-                                            <div v-for="link in row.portLinks" :key="link.text" class="cell-muted">
-                                                <a :href="link.url" target="_blank" rel="noopener" class="port-link">{{ link.text }}</a>
-                                            </div>
-                                            <template v-if="!row.ip && row.portLinks.length === 0">—</template>
-                                        </td>
-                                        <td class="c-num mono">{{ row.stat?.CPUPerc ?? "—" }}</td>
-                                        <td class="c-num mono" :title="memoryTitleOf(row.stat)">
-                                            <template v-if="row.memUsed">
-                                                <div>{{ row.memUsed }}</div>
-                                                <div v-if="row.memPerc" class="cell-muted">{{ row.memPerc }}</div>
-                                            </template>
-                                            <template v-else>—</template>
-                                        </td>
-                                        <td class="c-num c-net mono cell-muted">
-                                            <template v-if="row.net">
-                                                <div><span class="io-k">I</span>{{ row.net.in }}</div>
-                                                <div><span class="io-k">O</span>{{ row.net.out }}</div>
-                                            </template>
-                                            <template v-else>—</template>
-                                        </td>
-                                        <td class="c-num c-blk mono cell-muted">
-                                            <template v-if="row.blk">
-                                                <div><span class="io-k">I</span>{{ row.blk.in }}</div>
-                                                <div><span class="io-k">O</span>{{ row.blk.out }}</div>
-                                            </template>
-                                            <template v-else>—</template>
-                                        </td>
-                                        <td class="c-act">
-                                            <!-- Actions are service-scoped (docker compose has no per-replica
-                                             stop), so they render once per service, on its first row. -->
-                                            <ContainerActions
-                                                v-if="row.first"
-                                                :status="row.status"
-                                                :service-count="serviceCount"
-                                                :processing="processing"
-                                                :bash-to="bashLink(row.service)"
-                                                @start="startService(row.service)"
-                                                @restart="restartService(row.service)"
-                                                @stop="stopService(row.service)"
-                                            />
-                                            <span v-else class="cell-muted">—</span>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-
-                        <!-- Narrow screens: stacked cards -->
-                        <div v-else>
-                            <div v-for="row in containerRows" :key="row.key" class="mcard">
-                                <div class="mcard-top">
-                                    <span class="status-dot" :class="'dot-' + row.color"></span>
-                                    <strong class="text-truncate">{{ row.service }}</strong>
-                                    <span class="badge state-badge" :class="stateBadgeClass(row.status)">{{ row.status }}</span>
-                                    <ContainerActions
-                                        v-if="row.first"
-                                        class="ms-auto"
-                                        :status="row.status"
-                                        :service-count="serviceCount"
-                                        :processing="processing"
-                                        :bash-to="bashLink(row.service)"
-                                        @start="startService(row.service)"
-                                        @restart="restartService(row.service)"
-                                        @stop="stopService(row.service)"
-                                    />
-                                </div>
-                                <div class="mcard-img cell-muted">{{ imageOf(row.service) }}</div>
-                                <div class="mcard-grid">
-                                    <span class="k">{{ $t("uptime") }}</span><span class="mono">{{ row.uptime ?? "—" }}</span>
-                                    <span class="k">{{ $t("ip") }}</span><span class="mono">{{ row.ip || "—" }}</span>
-                                    <span class="k">{{ $tc("port", 2) }}</span><span class="mono">
-                                        <template v-if="row.portLinks.length">
-                                            <div v-for="link in row.portLinks" :key="link.text">
-                                                <a :href="link.url" target="_blank" rel="noopener" class="port-link">{{ link.text }}</a>
-                                            </div>
-                                        </template>
-                                        <template v-else>—</template>
-                                    </span>
-                                    <span class="k">{{ $t("CPU") }}</span><span class="mono">{{ row.stat?.CPUPerc ?? "—" }}</span>
-                                    <span class="k">{{ $t("memory") }}</span><span class="mono">{{ row.stat?.MemUsage ?? "—" }}</span>
-                                    <span class="k">{{ $t("networkIO") }}</span><span class="mono">{{ row.stat?.NetIO ?? "—" }}</span>
-                                    <span class="k">{{ $t("blockIO") }}</span><span class="mono">{{ row.stat?.BlockIO ?? "—" }}</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                    <ContainerTable
+                        v-if="!isEditMode && hasContainers"
+                        :services="jsonConfig.services"
+                        :envsubst-services="envsubstJSONConfig.services"
+                        :service-status-list="serviceStatusList"
+                        :docker-stats="dockerStats"
+                        :stack="stack"
+                        :endpoint="endpoint"
+                        :processing="processing"
+                        @start-service="startService"
+                        @stop-service="stopService"
+                        @restart-service="restartService"
+                    />
 
                     <button v-if="false && isEditMode && jsonConfig.services && Object.keys(jsonConfig.services).length > 0" class="btn btn-normal mb-3" @click="addContainer">{{ $t("addContainer") }}</button>
 
@@ -598,21 +435,20 @@ import {
     copyYAMLComments, envsubstYAML,
     getCombinedTerminalName,
     getComposeTerminalName,
-    parseDockerPort,
     PROGRESS_TERMINAL_ROWS,
     RUNNING,
     defaultComposeOverrideTemplate,
     POLL_INTERVAL_DEFAULT,
 } from "../../../common/util-common";
-import { formatPorts, formatUptime } from "../util-frontend";
 import NetworkInput from "../components/NetworkInput.vue";
 import Confirm, { isDialogOpen } from "../components/Confirm.vue";
 import Container from "../components/Container.vue";
-import ContainerActions from "../components/ContainerActions.vue";
+import ContainerTable from "../components/ContainerTable.vue";
 import EnvEditor from "../components/EnvEditor.vue";
 import Terminal from "../components/Terminal.vue";
 import Uptime from "../components/Uptime.vue";
 import ArrayInput from "../components/ArrayInput.vue";
+import StackToolbar from "../components/StackToolbar.vue";
 import dotenv from "dotenv";
 import { ref } from "vue";
 
@@ -633,11 +469,12 @@ export default {
         CodeMirror,
         Confirm,
         Container,
-        ContainerActions,
+        ContainerTable,
         EnvEditor,
         Terminal,
         Uptime,
         ArrayInput,
+        StackToolbar,
     },
     beforeRouteUpdate(to, from, next) {
         this.exitConfirm(next);
@@ -736,10 +573,6 @@ export default {
             // Content of an override file that the user deleted. The save
             // removes the file, so a new create gives this content back.
             discardedOverride: null,
-            // True when the container table fits. Below this the page shows
-            // cards instead. Only one of the two renders at a time.
-            wideLayout: true,
-            wideLayoutQuery: null,
             // True while exitConfirm holds a navigation, from the moment the
             // dialog opens until the choice is complete
             leaving: false,
@@ -889,64 +722,6 @@ export default {
         },
 
         /**
-         * One row per container instance of every service, joined with the
-         * docker stats when the container is running. Services that have no
-         * container yet still get a placeholder row.
-         * @return {object[]}
-         */
-        containerRows() {
-            const rows = [];
-            for (const service of Object.keys(this.jsonConfig.services ?? {})) {
-                const instances = this.serviceStatusList[service];
-                if (Array.isArray(instances) && instances.length > 0) {
-                    for (const [ i, instance ] of instances.entries()) {
-                        const stat = this.dockerStats?.[instance.name] ?? null;
-                        const ports = formatPorts(instance.ports);
-                        rows.push({
-                            key: `${service}#${i}`,
-                            service,
-                            // Actions are service-wide, so only the first row carries them
-                            first: i === 0,
-                            instanceName: instance.name,
-                            showInstanceName: instances.length > 1,
-                            status: instance.status ?? "N/A",
-                            color: this.rowColor(instance.status),
-                            uptime: formatUptime(instance.uptime),
-                            ip: instance.ip ?? "",
-                            ports,
-                            portLinks: this.portLinks(ports),
-                            stat,
-                            memUsed: stat?.MemUsage ? stat.MemUsage.split(" /")[0] : "",
-                            memPerc: stat?.MemPerc ?? "",
-                            net: this.splitIO(stat?.NetIO),
-                            blk: this.splitIO(stat?.BlockIO),
-                        });
-                    }
-                } else {
-                    rows.push({
-                        key: `${service}#none`,
-                        service,
-                        first: true,
-                        instanceName: "",
-                        showInstanceName: false,
-                        status: "N/A",
-                        color: "secondary",
-                        uptime: null,
-                        ip: "",
-                        ports: "",
-                        portLinks: [],
-                        stat: null,
-                        memUsed: "",
-                        memPerc: "",
-                        net: null,
-                        blk: null,
-                    });
-                }
-            }
-            return rows;
-        },
-
-        /**
          * Get the stack from the global stack list, because it may contain more real-time data like status
          * @return {*}
          */
@@ -1086,11 +861,6 @@ export default {
 
         window.addEventListener("keydown", this.onComposeKeydown);
         window.addEventListener("beforeunload", this.onBeforeUnload);
-
-        // Same value as the bootstrap md breakpoint
-        this.wideLayoutQuery = window.matchMedia("(min-width: 768px)");
-        this.wideLayout = this.wideLayoutQuery.matches;
-        this.wideLayoutQuery.addEventListener("change", this.onWideLayoutChange);
     },
     beforeUnmount() {
         // The page can be destroyed without a route change, for example when
@@ -1107,7 +877,6 @@ export default {
 
         window.removeEventListener("keydown", this.onComposeKeydown);
         window.removeEventListener("beforeunload", this.onBeforeUnload);
-        this.wideLayoutQuery?.removeEventListener("change", this.onWideLayoutChange);
         this.endSplitDrag();
         this.endHeightDrag();
 
@@ -1182,15 +951,6 @@ export default {
         },
 
         /**
-         * Resolved image of a service after env substitution.
-         * @param {string} service service name
-         * @returns {string} image reference
-         */
-        imageOf(service) {
-            return this.envsubstJSONConfig?.services?.[service]?.image ?? "";
-        },
-
-        /**
          * Start to drag the divider between the two panels.
          * @param {MouseEvent} e the mousedown on the divider
          * @returns {void}
@@ -1235,15 +995,6 @@ export default {
          */
         setSplit(percent) {
             this.splitLeft = percent;
-        },
-
-        /**
-         * Change between the table and the cards when the window changes.
-         * @param {MediaQueryListEvent} e the media query change
-         * @returns {void}
-         */
-        onWideLayoutChange(e) {
-            this.wideLayout = e.matches;
         },
 
         /**
@@ -1357,107 +1108,6 @@ export default {
          */
         resetHeight(key) {
             this.panelHeights[key] = null;
-        },
-
-        /**
-         * Full memory usage for the cell tooltip. The cell has no room for
-         * the limit, but the limit is what makes the percentage meaningful.
-         * @param {object|null} stat docker stats entry
-         * @returns {string} usage and limit, for example "2.77MiB / 3.822GiB"
-         */
-        memoryTitleOf(stat) {
-            return stat?.MemUsage ?? "";
-        },
-
-        /**
-         * Divide a docker "in / out" value into its two parts, so the cell
-         * can show them on two lines and stay narrow.
-         * @param {string|undefined} value for example "2.4kB / 126B"
-         * @returns {object|null} the in and out parts, or null when no value
-         */
-        splitIO(value) {
-            if (!value) {
-                return null;
-            }
-            const parts = value.split("/").map((part) => part.trim());
-            return {
-                in: parts[0] || "—",
-                out: parts[1] || "—",
-            };
-        },
-
-        /**
-         * Make the ports column into links. The Primary Hostname setting
-         * says which name to open. A port with its own bind address keeps
-         * that address, because the user set it on purpose.
-         * @param {string} ports formatted ports column
-         * @returns {object[]} text and url for each port
-         */
-        portLinks(ports) {
-            if (!ports) {
-                return [];
-            }
-
-            const hostname = this.stack.endpoint
-                ? this.stack.primaryHostname
-                : (this.$root.info.primaryHostname || location.hostname);
-
-            return ports.split(", ").map((port) => ({
-                text: port,
-                url: parseDockerPort(port, hostname).url,
-            }));
-        },
-
-        /**
-         * Status dot colour for a container state.
-         * @param {string} status container state
-         * @returns {string} success | danger | secondary
-         */
-        rowColor(status) {
-            if (status === "running" || status === "healthy") {
-                return "success";
-            }
-            if (status === "unhealthy" || status === "exited" || (status ?? "").startsWith("restarting")) {
-                return "danger";
-            }
-            return "secondary";
-        },
-
-        /**
-         * Theme-adaptive badge classes for a container state.
-         * @param {string} status container state
-         * @returns {string} badge classes
-         */
-        stateBadgeClass(status) {
-            const color = this.rowColor(status);
-            return `bg-${color}-subtle text-${color}-emphasis`;
-        },
-
-        /**
-         * Route of the Bash terminal for a service.
-         * @param {string} service service name
-         * @returns {object} router location
-         */
-        bashLink(service) {
-            if (this.endpoint) {
-                return {
-                    name: "containerTerminalEndpoint",
-                    params: {
-                        endpoint: this.endpoint,
-                        stackName: this.stack.name,
-                        serviceName: service,
-                        type: "bash",
-                    },
-                };
-            }
-            return {
-                name: "containerTerminal",
-                params: {
-                    stackName: this.stack.name,
-                    serviceName: service,
-                    type: "bash",
-                },
-            };
         },
 
         startServiceStatusTimeout() {
@@ -2222,18 +1872,6 @@ export default {
     min-width: 0;
 }
 
-.toolbar {
-    display: flex;
-    align-items: center;
-    gap: 0.25rem;
-    flex-wrap: wrap;
-
-    .btn {
-        padding: 0.15rem 0.5rem;
-        font-size: 12px;
-    }
-}
-
 /* Edit-mode editors inside panels: give them room to work in */
 .panel .editor-box {
     min-height: 300px;
@@ -2527,145 +2165,5 @@ export default {
     font-size: 0.7rem;
     line-height: 1;
     flex: 0 0 auto;
-}
-
-/* ---------- containers table ----------
-   .state-badge is global (main.scss); .actions-btn lives in ContainerActions. */
-.cell-muted {
-    color: var(--bs-secondary-color);
-}
-
-.cell-sub {
-    font-size: 11px;
-    color: var(--bs-secondary-color);
-}
-
-// A very long service name must not widen the nowrap column past the panel;
-// the full name is in the cell tooltip.
-.svc-name {
-    display: inline-block;
-    max-width: 220px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    vertical-align: bottom;
-
-    @media (max-width: 1400px) {
-        max-width: 140px;
-    }
-}
-
-.ctable {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 12.5px;
-
-    th {
-        text-align: left;
-        font-size: 10.5px;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.04em;
-        color: var(--bs-secondary-color);
-        padding: 0.28rem 0.5rem;
-        border-bottom: 1px solid var(--bs-border-color);
-        white-space: nowrap;
-    }
-
-    td {
-        padding: 0.28rem 0.5rem;
-        border-bottom: 1px solid var(--bs-border-color);
-        vertical-align: middle;
-    }
-
-    tbody tr:last-child td {
-        border-bottom: 0;
-    }
-
-    tbody tr:nth-child(even) {
-        background-color: var(--bs-tertiary-bg);
-    }
-
-    tbody tr:hover {
-        background-color: var(--bs-secondary-bg);
-    }
-
-    th.c-num,
-    td.c-num {
-        text-align: right;
-    }
-
-    // Cells that must never wrap
-    .c-svc,
-    .c-up,
-    .c-addr,
-    .c-act {
-        white-space: nowrap;
-    }
-
-    // Stacked cells: two short lines are narrower than one long line
-    .c-num div,
-    .c-addr div {
-        line-height: 1.25;
-    }
-}
-
-// Marks the in line and the out line of a two line I/O cell
-.io-k {
-    display: inline-block;
-    min-width: 1.1em;
-    margin-right: 0.15rem;
-    color: var(--bs-secondary-color);
-    font-size: 0.85em;
-}
-
-// A narrow window scrolls the table sideways. To hide the columns instead
-// puts them out of reach, because the cards start below 768px only.
-.ctable-scroll {
-    overflow-x: auto;
-}
-
-.port-link {
-    color: inherit;
-    text-decoration: none;
-
-    &:hover {
-        color: var(--bs-link-color);
-        text-decoration: underline;
-    }
-}
-
-/* ---------- mobile cards ---------- */
-.mcard {
-    padding: 0.45rem 0.5rem;
-    border-bottom: 1px solid var(--bs-border-color);
-
-    &:last-child {
-        border-bottom: 0;
-    }
-}
-
-.mcard-top {
-    display: flex;
-    align-items: center;
-    gap: 0.45rem;
-    min-width: 0;
-}
-
-.mcard-img {
-    font-size: 11px;
-    margin: 0.1rem 0 0.25rem 1.05rem;
-}
-
-.mcard-grid {
-    display: grid;
-    grid-template-columns: auto 1fr;
-    gap: 0.1rem 0.7rem;
-    font-size: 11.5px;
-    margin-left: 1.05rem;
-    overflow-wrap: anywhere;
-
-    .k {
-        color: var(--bs-secondary-color);
-    }
 }
 </style>
