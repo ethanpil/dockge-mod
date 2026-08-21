@@ -6,6 +6,12 @@ The base is dockge commit [f809ae1](https://github.com/louislam/dockge/commit/f8
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). This project has no releases, so each entry is a commit. The newest entry comes first. A commit that changes only this file or the project rules has no entry.
 
+## [3c9262d](../../commit/3c9262d) - 2026-08-21
+
+### Added
+
+- The texts of the new features in each language of the interface. They are machine translations. Before, each new text showed in English in the other languages.
+
 ## [3306542](../../commit/3306542) - 2026-08-21
 
 ### Added
