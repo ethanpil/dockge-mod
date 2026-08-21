@@ -6,6 +6,36 @@ The base is dockge commit [f809ae1](https://github.com/louislam/dockge/commit/f8
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). This project has no releases, so each entry is a commit. The newest entry comes first. A commit that changes only this file or the project rules has no entry.
 
+## [f5f82a1](../../commit/f5f82a1) - 2026-08-21
+
+### Fixed
+
+- An invalidate of a cache also removes the call that runs. A call from before a change of a container does not serve a later poll.
+- The docker events watcher gives the compose projects that changed. Only their status leaves the cache, thus a container in a restart loop does not remove the status of the other stacks.
+- Each action removes the cached status of its stack, thus the next poll sees the change at once.
+- The cron catches a failure of the stack list. A docker daemon that does not answer cannot stop the server.
+
+### Changed
+
+- The host statistics use the same cache class as the other docker commands. One constant holds the limits of a docker process.
+
+## [c5dd757](../../commit/c5dd757) - 2026-08-21
+
+### Added
+
+- A watcher on `docker events`. A change of a container removes the cached status and sends the stack list to each client at once.
+
+### Changed
+
+- The output of `docker compose ls`, `docker compose ps`, and `docker stats` goes in a cache with a short time limit. One docker process serves all clients that poll at the same time.
+- Each docker process has a time limit and a buffer limit. A compose operation has a limit of one hour.
+- A stats poll does not send the stack list. The watcher and the cron do that.
+- The cache and the watcher modules came in commit 65ce920, with the security repairs.
+
+### Removed
+
+- The poll interval setting under **Settings** > **General**. The polls are cheap now, thus the time is not a setting. A stored value stays in the database and has no effect.
+
 ## [65ce920](../../commit/65ce920) - 2026-08-21
 
 ### Fixed
