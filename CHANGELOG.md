@@ -6,6 +6,39 @@ The base is dockge commit [f809ae1](https://github.com/louislam/dockge/commit/f8
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). This project has no releases, so each entry is a commit. The newest entry comes first. A commit that changes only this file or the project rules has no entry.
 
+## [a67e34a](../../commit/a67e34a) - 2026-08-21
+
+### Added
+
+- Ctrl+S saves in edit mode.
+- The resize handles work with a pointer, with touch, and with the arrow keys. The panel layout stays in the local storage of the browser.
+
+### Changed
+
+- The resize handles and the merged configuration request are mixins of the stack page. One helper gives each request a time limit. The service actions have a time limit of 30 seconds.
+
+### Removed
+
+- The dead pause and resume handlers of the stack list, and the heartbeat leftovers of the dashboard.
+
+### Fixed
+
+- A bad `docker run` command gives a message, not an error in the console.
+- A status request does not run in add mode.
+
+## [231af4a](../../commit/231af4a) - 2026-08-21
+
+### Added
+
+- A **Notifications** page under **Settings** for the notification targets, with a test button.
+- A **Resources** page that lists the images, the volumes, and the networks of a host, with remove and prune functions, and the results of the image update check with a **Check now** button.
+
+## [f70c0a2](../../commit/f70c0a2) - 2026-08-21
+
+### Fixed
+
+- The image update check compares the index digest of the registry with the local image. The digest of a platform manifest gave a new version for each image. The image holds the buildx plugin for this, and the **Health** page examines it.
+
 ## [903416f](../../commit/903416f) - 2026-08-21
 
 ### Changed
