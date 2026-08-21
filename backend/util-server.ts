@@ -2,7 +2,7 @@ import { Socket } from "socket.io";
 import { Terminal } from "./terminal";
 import { randomBytes } from "crypto";
 import { log } from "./log";
-import { ERROR_TYPE_VALIDATION } from "../common/util-common";
+import { ERROR_TYPE_VALIDATION, isComposeServiceName, isShellName } from "../common/util-common";
 import { R } from "redbean-node";
 import { verifyPassword } from "./password-hash";
 import fs from "fs";
@@ -48,6 +48,28 @@ export function checkLogin(socket : DockgeSocket) {
 export class ValidationError extends Error {
     constructor(message : string) {
         super(message);
+    }
+}
+
+/**
+ * Refuse a service name that cannot go to docker compose as an
+ * argument. A name such as --project-directory=/ is an option, and
+ * docker would accept it.
+ * @param serviceName The service name from the client
+ */
+export function checkServiceName(serviceName : string) {
+    if (!isComposeServiceName(serviceName)) {
+        throw new ValidationError("Invalid service name");
+    }
+}
+
+/**
+ * Refuse a shell that cannot go to docker compose exec as an argument.
+ * @param shell The shell from the client
+ */
+export function checkShellName(shell : string) {
+    if (!isShellName(shell)) {
+        throw new ValidationError("Invalid shell");
     }
 }
 

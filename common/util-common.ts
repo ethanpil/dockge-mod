@@ -246,6 +246,27 @@ export function getCryptoRandomInt(min: number, max: number):number {
     }
 }
 
+/**
+ * True when a service name can go to docker compose as an argument. A
+ * name that starts with a dash is an option, not a name. Docker accepts
+ * letters, digits, and the characters _ . - in a service name.
+ * @param name The service name from the client
+ * @returns True when the name is safe as an argument
+ */
+export function isComposeServiceName(name : string) : boolean {
+    return /^[a-zA-Z0-9][a-zA-Z0-9_.-]*$/.test(name);
+}
+
+/**
+ * True when a shell name can go to docker compose exec as an argument.
+ * A path such as /bin/bash is correct. An option or a space is not.
+ * @param shell The shell from the client
+ * @returns True when the shell is safe as an argument
+ */
+export function isShellName(shell : string) : boolean {
+    return /^[a-zA-Z0-9_/][a-zA-Z0-9_./-]*$/.test(shell);
+}
+
 export function getComposeTerminalName(endpoint : string, stack : string) {
     return "compose-" + endpoint + "-" + stack;
 }

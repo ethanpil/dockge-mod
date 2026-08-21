@@ -35,7 +35,7 @@ RUN apt update && apt install --yes --no-install-recommends \
 # Go compiles for the target architecture on the build platform, so
 # this stage does not run under emulation.
 ############################################
-FROM --platform=$BUILDPLATFORM golang:1.21-bookworm AS build_healthcheck
+FROM --platform=$BUILDPLATFORM golang:1.24-bookworm AS build_healthcheck
 WORKDIR /app
 ARG TARGETOS
 ARG TARGETARCH

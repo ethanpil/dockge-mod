@@ -1,5 +1,5 @@
 import { DockgeServer } from "../dockge-server";
-import { callbackError, callbackResult, checkLogin, DockgeSocket, ValidationError } from "../util-server";
+import { callbackError, callbackResult, checkLogin, checkServiceName, checkShellName, DockgeSocket, ValidationError } from "../util-server";
 import { log } from "../log";
 import { InteractiveTerminal, MainTerminal, Terminal } from "../terminal";
 import { Stack } from "../stack";
@@ -23,7 +23,7 @@ export class TerminalSocketHandler extends AgentSocketHandler {
 
                 let terminal = Terminal.getTerminal(terminalName);
                 if (terminal instanceof InteractiveTerminal) {
-                    //log.debug("terminalInput", "Terminal found, writing to terminal.");
+                    terminal.checkUser(socket);
                     terminal.write(cmd);
                 } else {
                     throw new Error("Terminal not found or it is not a Interactive Terminal.");
@@ -55,10 +55,13 @@ export class TerminalSocketHandler extends AgentSocketHandler {
                 let terminal = Terminal.getTerminal(terminalName);
 
                 if (!terminal) {
-                    terminal = new MainTerminal(server, terminalName);
+                    terminal = new MainTerminal(server, terminalName, socket.userID);
                     terminal.rows = 50;
                     log.debug("mainTerminal", "Terminal created");
                 }
+
+                // The shell of a different user stays closed to this one
+                (terminal as MainTerminal).checkUser(socket);
 
                 terminal.join(socket);
                 terminal.start();
@@ -100,6 +103,9 @@ export class TerminalSocketHandler extends AgentSocketHandler {
                     throw new ValidationError("Shell must be a string.");
                 }
 
+                checkServiceName(serviceName);
+                checkShellName(shell);
+
                 log.debug("interactiveTerminal", "Stack name: " + stackName);
                 log.debug("interactiveTerminal", "Service name: " + serviceName);
 
@@ -128,7 +134,11 @@ export class TerminalSocketHandler extends AgentSocketHandler {
                     throw new ValidationError("Terminal name must be a string.");
                 }
 
-                let buffer : string = Terminal.getTerminal(terminalName)?.getBuffer() ?? "";
+                const terminal = Terminal.getTerminal(terminalName);
+                if (terminal instanceof InteractiveTerminal) {
+                    terminal.checkUser(socket);
+                }
+                let buffer : string = terminal?.getBuffer() ?? "";
 
                 if (!buffer) {
                     log.debug("console", "No buffer found.");

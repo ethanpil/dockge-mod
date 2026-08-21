@@ -257,6 +257,7 @@ export class DockgeServer {
             dockgeSocket.instanceManager = new AgentManager(dockgeSocket);
 
             socket.on("disconnect", () => {
+                Terminal.leaveAll(dockgeSocket);
                 Terminal.removeSizeHintsForSocket(socket.id);
             });
             dockgeSocket.emitAgent = (event : string, ...args : unknown[]) => {

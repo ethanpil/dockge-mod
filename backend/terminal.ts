@@ -356,6 +356,20 @@ export class Terminal {
     public static getTerminalCount() {
         return Terminal.terminalMap.size;
     }
+
+    /**
+     * Remove a client from each terminal. The disconnect of a socket
+     * calls this, thus a terminal with keep alive can close when its
+     * last client goes away.
+     * @param socket The client
+     */
+    public static leaveAll(socket : DockgeSocket) {
+        for (const terminal of Terminal.terminalMap.values()) {
+            if (terminal.socketList[socket.id]) {
+                terminal.leave(socket);
+            }
+        }
+    }
 }
 
 /**
@@ -363,6 +377,23 @@ export class Terminal {
  * Mainly used for container exec
  */
 export class InteractiveTerminal extends Terminal {
+    /**
+     * The user that made the terminal. Only this user can read the
+     * buffer and write input. A terminal without a user is open to each
+     * user with a login, the same as before.
+     */
+    public userID? : number;
+
+    /**
+     * Refuse a client of a different user.
+     * @param socket The client
+     */
+    public checkUser(socket : DockgeSocket) {
+        if (this.userID !== undefined && this.userID !== socket.userID) {
+            throw new Error("This terminal belongs to a different user.");
+        }
+    }
+
     public write(input : string) {
         this.ptyProcess?.write(input);
     }
@@ -377,7 +408,7 @@ export class InteractiveTerminal extends Terminal {
  * User interactive terminal that use bash or powershell with limited commands such as docker, ls, cd, dir
  */
 export class MainTerminal extends InteractiveTerminal {
-    constructor(server : DockgeServer, name : string) {
+    constructor(server : DockgeServer, name : string, userID? : number) {
         let shell;
 
         // Throw an error if console is not enabled
@@ -395,9 +426,21 @@ export class MainTerminal extends InteractiveTerminal {
             shell = "bash";
         }
         super(server, name, shell, [], server.stacksDir);
+        this.userID = userID;
+        // The shell closes when its last client goes away. Without this
+        // the shell of one session stayed open for the next session.
+        this.enableKeepAlive = true;
     }
 
     public write(input : string) {
         super.write(input);
+    }
+
+    /**
+     * End the shell process. Ctrl+C does not stop a shell.
+     */
+    close() {
+        clearInterval(this.keepAliveInterval);
+        this.ptyProcess?.kill();
     }
 }

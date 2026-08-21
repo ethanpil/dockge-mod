@@ -96,6 +96,28 @@ async function checkWritableDir(key : string, dir : string) : Promise<HealthItem
     }
 }
 
+/**
+ * A lock for one operation at a time. A call waits for the calls before
+ * it.
+ */
+class AsyncLock {
+    private last : Promise<unknown> = Promise.resolve();
+
+    /**
+     * Run the function after the calls before it.
+     * @param fn The function
+     * @returns The result of the function
+     */
+    run<T>(fn : () => Promise<T>) : Promise<T> {
+        const next = this.last.then(fn, fn);
+        // A failure of one call must not stop the calls after it
+        this.last = next.catch(() => undefined);
+        return next;
+    }
+}
+
+const setupLock = new AsyncLock();
+
 export class MainSocketHandler extends SocketHandler {
     create(socket : DockgeSocket, server : DockgeServer) {
 
@@ -106,18 +128,30 @@ export class MainSocketHandler extends SocketHandler {
         // Setup
         socket.on("setup", async (username, password, callback) => {
             try {
+                if (typeof callback !== "function") {
+                    return;
+                }
+
+                if (!await loginRateLimiter.pass(await server.getClientIP(socket), callback)) {
+                    return;
+                }
+
                 if (passwordStrength(password).value === "Too weak") {
                     throw new Error("Password is too weak. It should contain alphabetic and numeric characters. It must be at least 6 characters in length.");
                 }
 
-                if ((await R.knex("user").count("id as count").first()).count !== 0) {
-                    throw new Error("dockge-mod has been initialized. If you want to run setup again, please delete the database.");
-                }
+                // One setup at a time. Two requests at the same time could
+                // both see an empty user table before.
+                await setupLock.run(async () => {
+                    if ((await R.knex("user").count("id as count").first()).count !== 0) {
+                        throw new Error("dockge-mod has been initialized. If you want to run setup again, please delete the database.");
+                    }
 
-                const user = R.dispense("user");
-                user.username = username;
-                user.password = generatePasswordHash(password);
-                await R.store(user);
+                    const user = R.dispense("user");
+                    user.username = username;
+                    user.password = generatePasswordHash(password);
+                    await R.store(user);
+                });
 
                 server.needSetup = false;
 
@@ -210,8 +244,8 @@ export class MainSocketHandler extends SocketHandler {
                 return;
             }
 
-            // Login Rate Limit
-            if (!await loginRateLimiter.pass(callback)) {
+            // Login Rate Limit, for each client address
+            if (!await loginRateLimiter.pass(clientIP, callback)) {
                 log.info("auth", `Too many failed requests for user ${data.username}. IP=${clientIP}`);
                 return;
             }
@@ -239,7 +273,10 @@ export class MainSocketHandler extends SocketHandler {
                     });
                 }
 
-                if (data.token) {
+                // The 2FA branch of the upstream project. The verify
+                // library is not in this project, thus the branch must not
+                // run for a user without 2FA.
+                if (user.twofa_status === 1 && data.token) {
                     // @ts-ignore
                     const verify = notp.totp.verify(data.token, user.twofa_secret, twoFAVerifyOptions);
 

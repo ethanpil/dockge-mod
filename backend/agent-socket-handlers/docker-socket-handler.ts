@@ -1,6 +1,6 @@
 import { AgentSocketHandler } from "../agent-socket-handler";
 import { DockgeServer } from "../dockge-server";
-import { callbackError, callbackResult, checkLogin, DockgeSocket, ValidationError } from "../util-server";
+import { callbackError, callbackResult, checkLogin, checkServiceName, DockgeSocket, ValidationError } from "../util-server";
 import { Stack } from "../stack";
 import { AgentSocket } from "../../common/agent-socket";
 
@@ -371,6 +371,7 @@ export class DockerSocketHandler extends AgentSocketHandler {
                 if (typeof (stackName) !== "string" || typeof (serviceName) !== "string") {
                     throw new ValidationError("Stack name and service name must be strings");
                 }
+                checkServiceName(serviceName);
 
                 const stack = await Stack.getStack(server, stackName);
                 await stack.startService(socket, serviceName);
@@ -393,6 +394,7 @@ export class DockerSocketHandler extends AgentSocketHandler {
                 if (typeof (stackName) !== "string" || typeof (serviceName) !== "string") {
                     throw new ValidationError("Stack name and service name must be strings");
                 }
+                checkServiceName(serviceName);
 
                 const stack = await Stack.getStack(server, stackName);
                 await stack.stopService(socket, serviceName);
@@ -413,6 +415,7 @@ export class DockerSocketHandler extends AgentSocketHandler {
                 if (typeof stackName !== "string" || typeof serviceName !== "string") {
                     throw new Error("Invalid stackName or serviceName");
                 }
+                checkServiceName(serviceName);
 
                 const stack = await Stack.getStack(server, stackName, true);
                 await stack.restartService(socket, serviceName);

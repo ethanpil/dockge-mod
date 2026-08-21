@@ -59,7 +59,60 @@ class KumaRateLimiter {
     }
 }
 
-export const loginRateLimiter = new KumaRateLimiter({
+/**
+ * One rate limiter for each key, for example for each client address.
+ * One client cannot use the tokens of the other clients.
+ */
+export class KeyedRateLimiter {
+
+    config : KumaRateLimiterOpts;
+    limiters : Map<string, { limiter : KumaRateLimiter, lastUse : number }> = new Map();
+
+    /**
+     * @param {object} config Rate limiter configuration object
+     */
+    constructor(config : KumaRateLimiterOpts) {
+        this.config = config;
+    }
+
+    /**
+     * Should the request be passed through
+     * @param key The client key, for example the address
+     * @param callback Callback function to call with decision
+     * @param {number} num Number of tokens to remove
+     * @returns {Promise<boolean>} Should the request be allowed?
+     */
+    async pass(key : string, callback : KumaRateLimiterCallback, num = 1) {
+        const now = Date.now();
+
+        // Remove the limiters that had no use for ten minutes. A check
+        // at each call is cheap, because the map is small.
+        if (this.limiters.size > 100) {
+            for (const [ k, entry ] of this.limiters) {
+                if (now - entry.lastUse > 10 * 60 * 1000) {
+                    this.limiters.delete(k);
+                }
+            }
+        }
+
+        let entry = this.limiters.get(key);
+        if (!entry) {
+            entry = {
+                limiter: new KumaRateLimiter(this.config),
+                lastUse: now,
+            };
+            this.limiters.set(key, entry);
+        }
+        entry.lastUse = now;
+        return entry.limiter.pass(callback, num);
+    }
+}
+
+/**
+ * The login limiter counts for each client address. One address cannot
+ * lock out the other addresses.
+ */
+export const loginRateLimiter = new KeyedRateLimiter({
     tokensPerInterval: 20,
     interval: "minute",
     fireImmediately: true,
