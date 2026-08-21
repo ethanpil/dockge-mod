@@ -30,6 +30,7 @@
                     :merged-config-loading="mergedConfigLoading"
                     :git-info="gitInfo"
                     :image-updates="stack.imageUpdates ?? 0"
+                    :check-running="checkRunning"
                     :show-backups="modFeatures"
                     @deploy="deployStack"
                     @validate="validateCompose"
@@ -38,7 +39,6 @@
                     @start="startStack"
                     @restart="restartStack"
                     @update="updateStack"
-                    :check-running="checkRunning"
                     @check-updates="checkStackUpdates"
                     @git-pull="gitPullStack"
                     @stop="stopStack"
@@ -1532,8 +1532,19 @@ export default {
          * @returns {void}
          */
         checkStackUpdates() {
-            this.$root.emitAgentWithTimeout(this.endpoint, "checkStackImageUpdates", [ this.stack.name ], 300000, (res) => {
-                this.$root.toastRes(res);
+            // An older agent does not answer this event. A shorter limit
+            // than a stack action keeps the message near the click.
+            this.$root.emitAgentWithTimeout(this.endpoint, "checkStackImageUpdates", [ this.stack.name ], 60000, (res) => {
+                if (this.pageGone) {
+                    return;
+                }
+                if (!res.ok) {
+                    this.$root.toastRes(res);
+                } else if (res.started === false) {
+                    this.$root.toastSuccess(this.$t("checkInProgress"));
+                } else {
+                    this.$root.toastSuccess(this.$t("checkedImageCount", { n: res.count ?? 0 }));
+                }
             });
         },
 

@@ -120,7 +120,7 @@
     "removeAgentMsg": "Are you sure you want to remove this agent?",
     "GlobalEnv": "Global .env",
     "LongSyntaxNotSupported": "Long syntax is not supported here. Please use the YAML editor.",
-    "name": "dockge-mod Agent Display name",
+    "name": "Name",
     "updatedName": "New dockge-mod Agent Display name",
     "Saved": "Saved",
     "Deployed": "Deployed",
@@ -225,14 +225,12 @@
     "event_container_exited": "Container exited",
     "event_container_unhealthy": "Container unhealthy",
     "resources": "Resources",
-    "images": "Images",
     "volumes": "Volumes",
     "networks": "Networks",
     "image": "Image",
     "imageId": "ID",
     "size": "Size",
     "created": "Created",
-    "name": "Name",
     "driver": "Driver",
     "scope": "Scope",
     "status": "Status",
@@ -272,5 +270,6 @@
     "noStackSelected": "No stack selected",
     "checkProgress": "Checked {n} of {m}",
     "nextCheck": "Next check at {t}",
-    "checkUpdatesForStack": "Check the images of this stack"
+    "checkUpdatesForStack": "Check the images of this stack",
+    "checkedImageCount": "Checked {n} images"
 }

@@ -245,6 +245,9 @@ export default {
 
     watch: {
         endpoint() {
+            // The check of the host before this one is not the check of
+            // this host, thus the button becomes usable again
+            this.checking = false;
             this.loadAll();
         },
 
@@ -257,6 +260,17 @@ export default {
             this.checking = false;
             this.loadUpdates();
         },
+
+        // A check that gives no progress event, for example on an older
+        // agent, must not keep the button closed
+        checking(value) {
+            clearTimeout(this.checkTimer);
+            if (value) {
+                this.checkTimer = setTimeout(() => {
+                    this.checking = false;
+                }, 120000);
+            }
+        },
     },
 
     mounted() {
@@ -266,6 +280,7 @@ export default {
     unmounted() {
         // The requests that wait must stay quiet after the page is gone
         this.cancels.forEach((cancel) => cancel());
+        clearTimeout(this.checkTimer);
     },
 
     created() {

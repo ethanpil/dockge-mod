@@ -217,6 +217,10 @@ export default defineComponent({
                 console.log("disconnect");
                 this.socketIO.connectionErrorMsg = `${this.$t("Lost connection to the socket server. Reconnecting...")}`;
                 this.socketIO.connected = false;
+
+                // The end event of a check cannot arrive now. Without
+                // this the buttons of the check stay closed for ever.
+                this.imageUpdateProgressList = {};
             });
 
             socket.on("connect_error", (err) => {

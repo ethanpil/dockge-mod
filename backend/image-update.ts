@@ -222,34 +222,29 @@ export class ImageUpdateChecker {
         };
         this.server.sendImageUpdateProgress();
 
-        try {
-            const localDigests = await ImageUpdateChecker.readLocalDigests([ ...images ]);
-            const queue = [ ...images ];
-            let lastEvent = Date.now();
+        const localDigests = await ImageUpdateChecker.readLocalDigests([ ...images ]);
+        const queue = [ ...images ];
+        let lastEvent = Date.now();
 
-            const worker = async () => {
-                for (let image = queue.shift(); image !== undefined; image = queue.shift()) {
-                    const row = await this.check(image, localDigests.get(ImageUpdateChecker.key(image)), previous.get(image), force);
-                    if (row.updateAvailable) {
-                        updated.add(image);
-                        if (!ImageUpdateChecker.available.has(image)) {
-                            newUpdates.push(image);
-                        }
-                    }
-
-                    ImageUpdateChecker.progress.checked++;
-                    const now = Date.now();
-                    if (now - lastEvent >= ImageUpdateChecker.PROGRESS_INTERVAL) {
-                        lastEvent = now;
-                        this.server.sendImageUpdateProgress();
+        const worker = async () => {
+            for (let image = queue.shift(); image !== undefined; image = queue.shift()) {
+                const row = await this.check(image, localDigests.get(ImageUpdateChecker.key(image)), previous.get(image), force);
+                if (row.updateAvailable) {
+                    updated.add(image);
+                    if (!ImageUpdateChecker.available.has(image)) {
+                        newUpdates.push(image);
                     }
                 }
-            };
-            await Promise.all(Array.from({ length: ImageUpdateChecker.CONCURRENCY }, worker));
-        } finally {
-            ImageUpdateChecker.progress.running = false;
-            this.server.sendImageUpdateProgress();
-        }
+
+                ImageUpdateChecker.progress.checked++;
+                const now = Date.now();
+                if (now - lastEvent >= ImageUpdateChecker.PROGRESS_INTERVAL) {
+                    lastEvent = now;
+                    this.server.sendImageUpdateProgress();
+                }
+            }
+        };
+        await Promise.all(Array.from({ length: ImageUpdateChecker.CONCURRENCY }, worker));
 
         return {
             updated,
@@ -263,12 +258,20 @@ export class ImageUpdateChecker {
      * @param stackName The name of the stack
      * @returns The count of the images that the check examined
      */
-    async checkStack(stackName : string) : Promise<number> {
+    async checkStack(stackName : string) : Promise<{ started : boolean, count : number }> {
         if (this.running) {
-            throw new Error("A check is in progress.");
+            // The client shows a message. A check that runs is not an error.
+            return {
+                started: false,
+                count: 0,
+            };
         }
         this.running = true;
         try {
+            // A registry that had a problem gets a new try, the same as
+            // in a check of each image
+            this.registry.reset();
+
             const stack = await Stack.getStack(this.server, stackName);
             const images = new Set(stack.images.filter((image) => {
                 try {
@@ -299,10 +302,24 @@ export class ImageUpdateChecker {
             }
 
             this.server.sendStackList(true).catch(() => undefined);
-            return images.size;
+            return {
+                started: true,
+                count: images.size,
+            };
         } finally {
             this.running = false;
+            this.endProgress();
         }
+    }
+
+    /**
+     * Tell the clients that no check runs. This also goes out when a
+     * check failed before its first image, thus a client does not wait
+     * for an end that does not come.
+     */
+    private endProgress() {
+        ImageUpdateChecker.progress.running = false;
+        this.server.sendImageUpdateProgress();
     }
 
     /**
@@ -364,6 +381,7 @@ export class ImageUpdateChecker {
             return true;
         } finally {
             this.running = false;
+            this.endProgress();
         }
     }
 

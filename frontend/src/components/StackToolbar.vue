@@ -161,12 +161,12 @@ export default {
             type: Number,
             default: 0,
         },
-        /** True when the agent has the backup events */
         /** True while a check of the images of this host runs */
         checkRunning: {
             type: Boolean,
             default: false,
         },
+        /** True when the agent has the backup events */
         showBackups: {
             type: Boolean,
             default: false,

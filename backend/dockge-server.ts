@@ -378,6 +378,9 @@ export class DockgeServer {
 
         socket.instanceManager.sendAgentList();
 
+        // A client that opens a page during a check must see that check
+        socket.emitAgent("imageUpdateProgress", { ...ImageUpdateChecker.progress });
+
         // Also connect to other dockge instances
         socket.instanceManager.connectAll();
     }
@@ -490,10 +493,6 @@ export class DockgeServer {
     }
 
     /**
-     * Send the info event to each client with a login. A settings save
-     * must reach the open pages of the other clients too.
-     */
-    /**
      * Send the progress of the image update check to each client with a
      * login. This event only adds data, thus a client without the
      * feature ignores it.
@@ -510,6 +509,10 @@ export class DockgeServer {
         }
     }
 
+    /**
+     * Send the info event to each client with a login. A settings save
+     * must reach the open pages of the other clients too.
+     */
     async sendInfoToAllClients() {
         for (const rawSocket of this.io.sockets.sockets.values()) {
             const socket = rawSocket as DockgeSocket;

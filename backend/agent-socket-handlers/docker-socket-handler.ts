@@ -468,10 +468,11 @@ export class DockerSocketHandler extends AgentSocketHandler {
                 if (typeof(stackName) !== "string") {
                     throw new ValidationError("Stack name must be a string");
                 }
-                const count = await server.imageUpdateChecker.checkStack(stackName);
+                const result = await server.imageUpdateChecker.checkStack(stackName);
                 callbackResult({
                     ok: true,
-                    count,
+                    started: result.started,
+                    count: result.count,
                 }, callback);
             } catch (e) {
                 callbackError(e, callback);
