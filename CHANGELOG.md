@@ -6,6 +6,43 @@ The base is dockge commit [f809ae1](https://github.com/louislam/dockge/commit/f8
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). This project has no releases, so each entry is a commit. The newest entry comes first. A commit that changes only this file or the project rules has no entry.
 
+## [65ce920](../../commit/65ce920) - 2026-08-21
+
+### Fixed
+
+- A service name can start with an underscore or a dot, the same as docker accepts.
+- The Stack methods that make the docker arguments check the service name and the shell, thus no caller can go around the check.
+- A container shell also belongs to the user that made it.
+- The terminal component joins its terminal again after a reconnect.
+- The login has a limit for all clients together, thus a client that changes its address for each request still meets a limit.
+- The setup has its own limit, separate from the login limit.
+
+### Changed
+
+- An interactive terminal closes ten seconds after its last client disconnects. Before, the host console stayed open for the next session.
+
+## [7cf1415](../../commit/7cf1415) - 2026-08-21
+
+### Security
+
+- A service name or a shell from the client must be a name that docker accepts. An option such as `--project-directory=/` was accepted as an argument before.
+- The login limit counts for each client address. One address could lock out all other addresses before.
+- The setup runs one request at a time. Two requests at the same time could both make a user before.
+- An interactive terminal belongs to the user that made it. A different user cannot read its buffer or write input.
+- The host console closes when its last client disconnects. Before, the shell of one session stayed open for the next session.
+
+### Fixed
+
+- The 2FA branch of the login does not run for a user without 2FA. A client that sent a token field caused an error before.
+
+### Changed
+
+- The healthcheck builds with Go 1.24. The xterm packages have exact versions, thus a build gives the same result each time.
+
+### Removed
+
+- The mysql2 package. No code used it.
+
 ## [9acb9fd](../../commit/9acb9fd) - 2026-08-21
 
 ### Fixed
