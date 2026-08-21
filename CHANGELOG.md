@@ -6,6 +6,14 @@ The base is dockge commit [f809ae1](https://github.com/louislam/dockge/commit/f8
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). This project has no releases, so each entry is a commit. The newest entry comes first. A commit that changes only this file or the project rules has no entry.
 
+## [c789d16](../../commit/c789d16) - 2026-08-21
+
+### Added
+
+- A button on the stack page that checks the images of that stack. The check examines each image of the stack.
+- The progress of a check. The **Resources** page shows how many images the check examined, and it reads the results again when the check ends. The page used fixed times of three and thirty seconds before.
+- The time of the next check of an image that waits after a failure, on the **Resources** page.
+
 ## [5c25756](../../commit/5c25756) - 2026-08-21
 
 ### Fixed
