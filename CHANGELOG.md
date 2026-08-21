@@ -6,6 +6,18 @@ The base is dockge commit [f809ae1](https://github.com/louislam/dockge/commit/f8
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). This project has no releases, so each entry is a commit. The newest entry comes first. A commit that changes only this file or the project rules has no entry.
 
+## [37b8c7a](../../commit/37b8c7a) - 2026-08-21
+
+### Changed
+
+- The pure format helpers and the `.env` parser are in the `common` directory, thus the tests and the type check cover them. The pages keep their import paths.
+
+## [7cdc795](../../commit/7cdc795) - 2026-08-21
+
+### Added
+
+- A test harness with vitest. `npm test` runs the tests, and the CI job runs them after the type check. The tests examine the port parser, the env substitution, the status names, the compose argument sequence, the stack name checks, and the `.env` row parser. These tests protect the compatibility with Dockge.
+
 ## [3571439](../../commit/3571439) - 2026-08-07
 
 ### Fixed
