@@ -6,6 +6,12 @@ The base is dockge commit [f809ae1](https://github.com/louislam/dockge/commit/f8
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). This project has no releases, so each entry is a commit. The newest entry comes first. A commit that changes only this file or the project rules has no entry.
 
+## [4f4fad7](../../commit/4f4fad7) - 2026-08-21
+
+### Added
+
+- A longer time between the checks of an image that fails. An image such as a local build, or an image of a registry without credentials, failed at each check before. The time doubles with each failure, up to 72 hours. A check that the user starts with **Check now** examines each image. The `mod_image_update` table holds the count of the failures and the time of the next check.
+
 ## [b05d452](../../commit/b05d452) - 2026-08-21
 
 ### Security
