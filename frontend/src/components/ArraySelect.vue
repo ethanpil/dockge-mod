@@ -52,6 +52,8 @@ export default {
 
         };
     },
+    inject: [ "containerEditor" ],
+
     computed: {
         array() {
             // Create the array if not exists, it should be safe.
@@ -71,7 +73,7 @@ export default {
         },
 
         service() {
-            return this.$parent.$parent.service;
+            return this.containerEditor.service;
         },
 
         valid() {

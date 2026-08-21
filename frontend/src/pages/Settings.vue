@@ -46,6 +46,17 @@
 import { useRoute } from "vue-router";
 
 export default {
+    /**
+     * The settings components get this page with inject. A chain of
+     * $parent broke when a component moved to a different depth.
+     * @returns {object} the provided values
+     */
+    provide() {
+        return {
+            settingsPage: this,
+        };
+    },
+
     data() {
         return {
             show: true,

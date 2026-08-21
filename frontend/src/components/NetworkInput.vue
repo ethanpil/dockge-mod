@@ -53,21 +53,23 @@ export default {
             externalNetworkList: [],
         };
     },
+    inject: [ "composePage" ],
+
     computed: {
         jsonConfig() {
-            return this.$parent.$parent.jsonConfig;
+            return this.composePage.jsonConfig;
         },
 
         stack() {
-            return this.$parent.$parent.stack;
+            return this.composePage.stack;
         },
 
         editorFocus() {
-            return this.$parent.$parent.editorFocus;
+            return this.composePage.editorFocus;
         },
 
         endpoint() {
-            return this.$parent.$parent.endpoint;
+            return this.composePage.endpoint;
         },
     },
     watch: {

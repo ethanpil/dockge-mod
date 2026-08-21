@@ -21,9 +21,11 @@
 
 <script>
 export default {
+    inject: [ "settingsPage" ],
+
     computed: {
         settingsLoaded() {
-            return this.$parent.$parent.$parent.settingsLoaded;
+            return this.settingsPage.settingsLoaded;
         },
     },
 

@@ -62,15 +62,17 @@ export default {
             extensions };
     },
 
+    inject: [ "settingsPage" ],
+
     computed: {
         settings() {
-            return this.$parent.$parent.$parent.settings;
+            return this.settingsPage.settings;
         },
         saveSettings() {
-            return this.$parent.$parent.$parent.saveSettings;
+            return this.settingsPage.saveSettings;
         },
         settingsLoaded() {
-            return this.$parent.$parent.$parent.settingsLoaded;
+            return this.settingsPage.settingsLoaded;
         },
     },
 

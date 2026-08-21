@@ -696,6 +696,18 @@ export default {
             editorFocus };
     },
     yamlDoc: null,  // For keeping the yaml comments
+    /**
+     * The container editor and its inputs get this page with inject. A
+     * chain of $parent broke when a component moved to a different
+     * depth.
+     * @returns {object} the provided values
+     */
+    provide() {
+        return {
+            composePage: this,
+        };
+    },
+
     data() {
         return {
             jsonConfig: {},

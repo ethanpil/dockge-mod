@@ -136,12 +136,24 @@ export default defineComponent({
             default: false,
         },
     },
+    /**
+     * The inputs of this container get this component with inject.
+     * @returns {object} the provided values
+     */
+    provide() {
+        return {
+            containerEditor: this,
+        };
+    },
+
     data() {
         return {
             // null means "follow defaultOpen"; a click sets an explicit choice
             openChoice: null,
         };
     },
+    inject: [ "composePage" ],
+
     computed: {
 
         /**
@@ -194,11 +206,11 @@ export default defineComponent({
         },
 
         jsonObject() {
-            return this.$parent.$parent.jsonConfig;
+            return this.composePage.jsonConfig;
         },
 
         envsubstJSONConfig() {
-            return this.$parent.$parent.envsubstJSONConfig;
+            return this.composePage.envsubstJSONConfig;
         },
 
         envsubstService() {

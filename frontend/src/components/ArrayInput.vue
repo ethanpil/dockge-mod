@@ -48,6 +48,15 @@ export default {
 
         };
     },
+    // containerEditor is absent when the input is directly in the page,
+    // for the x-dockge object
+    inject: {
+        composePage: {},
+        containerEditor: {
+            default: null,
+        },
+    },
+
     computed: {
         array() {
             // Create the array if not exists, it should be safe.
@@ -72,15 +81,15 @@ export default {
         service() {
             if (this.objectType === "service") {
                 // Used in Container.vue
-                return this.$parent.$parent.service;
+                return this.containerEditor.service;
             } else if (this.objectType === "x-dockge") {
 
-                if (!this.$parent.$parent.jsonConfig["x-dockge"]) {
+                if (!this.composePage.jsonConfig["x-dockge"]) {
                     return {};
                 }
 
                 // Used in Compose.vue
-                return this.$parent.$parent.jsonConfig["x-dockge"];
+                return this.composePage.jsonConfig["x-dockge"];
             } else {
                 return {};
             }
@@ -99,8 +108,8 @@ export default {
 
             // Create the object if not exists.
             if (this.objectType === "x-dockge") {
-                if (!this.$parent.$parent.jsonConfig["x-dockge"]) {
-                    this.$parent.$parent.jsonConfig["x-dockge"] = {};
+                if (!this.composePage.jsonConfig["x-dockge"]) {
+                    this.composePage.jsonConfig["x-dockge"] = {};
                 }
             }
 
@@ -123,7 +132,7 @@ export default {
 
                 // The x-dockge object also goes away when it holds nothing
                 if (this.objectType === "x-dockge" && Object.keys(service).length === 0) {
-                    delete this.$parent.$parent.jsonConfig["x-dockge"];
+                    delete this.composePage.jsonConfig["x-dockge"];
                 }
             }
         },
