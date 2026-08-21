@@ -362,6 +362,48 @@ export default defineComponent({
         },
 
         /**
+         * Send an event to the server and wait for the answer, with a time
+         * limit. This is the same contract as emitAgentWithTimeout, for an
+         * event that does not go to an agent.
+         * @param eventName name of the event
+         * @param args arguments of the event, without the callback
+         * @param timeoutMs the time limit in milliseconds
+         * @param callback gets the answer or the timeout result
+         * @returns a function that stops the wait. The callback then does
+         * not run.
+         */
+        emitWithTimeout(eventName : string, args : unknown[], timeoutMs : number, callback : (res) => void) : () => void {
+            let settled = false;
+
+            const timer = setTimeout(() => {
+                if (settled) {
+                    return;
+                }
+                settled = true;
+                callback({
+                    ok: false,
+                    msg: "requestTimeout",
+                    msgi18n: true,
+                    timeout: true,
+                });
+            }, timeoutMs);
+
+            this.getSocket().emit(eventName, ...args, (res) => {
+                clearTimeout(timer);
+                if (settled) {
+                    return;
+                }
+                settled = true;
+                callback(res);
+            });
+
+            return () => {
+                settled = true;
+                clearTimeout(timer);
+            };
+        },
+
+        /**
          * Get payload of JWT cookie
          * @returns {(object | undefined)} JWT payload
          */

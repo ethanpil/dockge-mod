@@ -65,7 +65,7 @@
                             <!-- Actions are service-scoped (docker compose has no per-replica
                              stop), so they render once per service, on its first row. -->
                             <div v-if="row.first" class="act-row">
-                                <button type="button" class="mini-btn" :title="$t('serviceLogs')" :disabled="processing" @click="$emit('service-logs', row.service)">
+                                <button v-if="showLogs" type="button" class="mini-btn" :title="$t('serviceLogs')" :disabled="processing" @click="$emit('service-logs', row.service)">
                                     <font-awesome-icon icon="file-lines" />
                                 </button>
                                 <ContainerActions
@@ -92,7 +92,7 @@
                     <span class="status-dot" :class="'dot-' + row.color"></span>
                     <strong class="text-truncate">{{ row.service }}</strong>
                     <span class="badge state-badge" :class="stateBadgeClass(row.status)">{{ row.status }}</span>
-                    <button v-if="row.first" type="button" class="mini-btn ms-auto" :title="$t('serviceLogs')" :disabled="processing" @click="$emit('service-logs', row.service)">
+                    <button v-if="row.first && showLogs" type="button" class="mini-btn ms-auto" :title="$t('serviceLogs')" :disabled="processing" @click="$emit('service-logs', row.service)">
                         <font-awesome-icon icon="file-lines" />
                     </button>
                     <ContainerActions
@@ -177,6 +177,11 @@ export default {
             type: Boolean,
             default: false,
         },
+        /** True when the agent has the service log events */
+        showLogs: {
+            type: Boolean,
+            default: false,
+        },
     },
     emits: [
         "start-service",
@@ -222,7 +227,6 @@ export default {
                             color: this.rowColor(instance.status),
                             uptime: formatUptime(instance.uptime),
                             ip: instance.ip ?? "",
-                            ports,
                             portLinks: this.portLinks(ports),
                             stat,
                             memUsed: stat?.MemUsage ? stat.MemUsage.split(" /")[0] : "",
@@ -242,7 +246,6 @@ export default {
                         color: "secondary",
                         uptime: null,
                         ip: "",
-                        ports: "",
                         portLinks: [],
                         stat: null,
                         memUsed: "",

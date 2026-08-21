@@ -66,44 +66,24 @@ export default {
     },
 
     unmounted() {
-        this.pageGone = true;
-        clearTimeout(this.healthTimer);
+        // An answer for a page that went away must stay quiet
+        this.cancelLoad?.();
     },
 
     methods: {
         /**
-         * Get the health report from the server. A timer ends the wait if
-         * the server does not answer, so the button does not stay disabled
-         * for ever. An error keeps no old results on the screen.
+         * Get the health report from the server. A time limit ends the
+         * wait if the server does not answer, so the button does not stay
+         * disabled for ever. An error keeps no old results on the screen.
          * @returns {void}
          */
         load() {
             this.loaded = false;
 
-            // The handle stays in this function, so a late answer of an
-            // earlier request cannot stop the timer of a later one. The
-            // Refresh button is not usable while a request runs, thus at
-            // most one timer waits, and the unmount stops that one.
-            let settled = false;
-            const timer = setTimeout(() => {
-                if (settled) {
-                    return;
-                }
-                settled = true;
-                this.loaded = true;
-                this.health = [];
-                this.$root.toastError(this.$t("requestTimeout"));
-            }, 30000);
-            this.healthTimer = timer;
-
-            this.$root.getSocket().emit("getDockgeHealth", (res) => {
-                clearTimeout(timer);
-
-                // An answer for a page that went away must stay quiet
-                if (this.pageGone || settled) {
-                    return;
-                }
-                settled = true;
+            // The Refresh button is not usable while a request runs, thus
+            // at most one request waits, and the unmount stops that one.
+            this.cancelLoad = this.$root.emitWithTimeout("getDockgeHealth", [], 30000, (res) => {
+                this.cancelLoad = null;
                 this.loaded = true;
                 if (res.ok) {
                     this.health = res.health;

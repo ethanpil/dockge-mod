@@ -65,7 +65,8 @@
                 {{ $t("stopStack") }}
             </button>
 
-            <button v-if="!isEditMode && !isAdd" class="btn btn-normal" :disabled="processing" @click="$emit('backups')">
+            <!-- Only an agent of dockge-mod keeps backups -->
+            <button v-if="!isEditMode && !isAdd && showBackups" class="btn btn-normal" :disabled="processing" @click="$emit('backups')">
                 <font-awesome-icon icon="box-archive" class="me-1" />
                 {{ $t("backups") }}
             </button>
@@ -146,6 +147,11 @@ export default {
         imageUpdates: {
             type: Number,
             default: 0,
+        },
+        /** True when the agent has the backup events */
+        showBackups: {
+            type: Boolean,
+            default: false,
         },
     },
     emits: [

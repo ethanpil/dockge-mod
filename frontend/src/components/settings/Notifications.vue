@@ -118,37 +118,31 @@ export default {
         this.load();
     },
 
+    created() {
+        // The cancel functions of the requests that wait for an answer
+        this.cancels = [];
+    },
+
     unmounted() {
-        this.pageGone = true;
+        // The requests that wait must stay quiet after the page is gone
+        this.cancels.forEach((cancel) => cancel());
     },
 
     methods: {
         /**
-         * Send an event to the server, with a timer that ends the wait.
+         * Send an event to the server and keep the cancel function, so
+         * the unmount can stop the wait.
          * @param {string} event event name
          * @param {Array} args arguments before the callback
          * @param {Function} cb gets the answer, or a timeout result
          * @returns {void}
          */
-        emit(event, args, cb) {
-            let settled = false;
-            const timer = setTimeout(() => {
-                if (settled) {
-                    return;
-                }
-                settled = true;
-                cb({ ok: false,
-                    msg: this.$t("requestTimeout") });
-            }, 30000);
-
-            this.$root.getSocket().emit(event, ...args, (res) => {
-                clearTimeout(timer);
-                if (this.pageGone || settled) {
-                    return;
-                }
-                settled = true;
+        request(event, args, cb) {
+            const cancel = this.$root.emitWithTimeout(event, args, 30000, (res) => {
+                this.cancels = this.cancels.filter((c) => c !== cancel);
                 cb(res);
             });
+            this.cancels.push(cancel);
         },
 
         /**
@@ -157,7 +151,7 @@ export default {
          */
         load() {
             this.loaded = false;
-            this.emit("getNotifications", [], (res) => {
+            this.request("getNotifications", [], (res) => {
                 this.loaded = true;
                 if (res.ok) {
                     this.notifications = res.notifications;
@@ -200,7 +194,7 @@ export default {
          */
         save() {
             this.busy = true;
-            this.emit("saveNotification", [ this.form ], (res) => {
+            this.request("saveNotification", [ this.form ], (res) => {
                 this.busy = false;
                 this.$root.toastRes(res);
                 if (res.ok) {
@@ -216,7 +210,7 @@ export default {
          */
         test() {
             this.busy = true;
-            this.emit("testNotification", [ this.form ], (res) => {
+            this.request("testNotification", [ this.form ], (res) => {
                 this.busy = false;
                 this.$root.toastRes(res);
             });
@@ -228,7 +222,7 @@ export default {
          */
         remove() {
             this.busy = true;
-            this.emit("deleteNotification", [ this.form.id ], (res) => {
+            this.request("deleteNotification", [ this.form.id ], (res) => {
                 this.busy = false;
                 this.$root.toastRes(res);
                 if (res.ok) {

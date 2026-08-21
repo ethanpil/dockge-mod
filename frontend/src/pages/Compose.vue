@@ -30,6 +30,7 @@
                     :merged-config-loading="mergedConfigLoading"
                     :git-info="gitInfo"
                     :image-updates="stack.imageUpdates ?? 0"
+                    :show-backups="modFeatures"
                     @deploy="deployStack"
                     @validate="validateCompose"
                     @save="saveStackAndExit"
@@ -129,6 +130,7 @@
                         :stack="stack"
                         :endpoint="endpoint"
                         :processing="processing"
+                        :show-logs="modFeatures"
                         @start-service="startService"
                         @stop-service="stopService"
                         @restart-service="restartService"
@@ -289,6 +291,7 @@
                         </div>
                         <div class="panel-fill">
                             <Terminal
+                                :key="serviceLogTerminalName"
                                 class="terminal"
                                 mode="displayOnly"
                                 :name="serviceLogTerminalName"
@@ -659,6 +662,8 @@ export default {
             // its terminal on the server
             serviceLogName: "",
             serviceLogTerminalName: "",
+            // True while a service log request waits for the answer
+            serviceLogsBusy: false,
             // The backups of the stack, newest first
             backups: [],
             backupsLoading: false,
@@ -729,6 +734,16 @@ export default {
 
         overrideFileName() {
             return this.stack.composeOverrideFileName;
+        },
+
+        /**
+         * True when the stack comes from a dockge-mod server. Only such a
+         * server sends imageUpdates, and only it has the backup and the
+         * service log events. A Dockge agent does not answer them.
+         * @return {boolean}
+         */
+        modFeatures() {
+            return this.stack.imageUpdates !== undefined;
         },
 
         /**
@@ -898,6 +913,22 @@ export default {
             }
         },
 
+        /**
+         * A login after a reconnect gives a new socket. The server removed
+         * the old socket from the log process, thus the open service log
+         * joins again. The terminal component binds itself again.
+         * @returns {void}
+         */
+        "$root.socketIO.loginCount"() {
+            if (this.expandedPanel === "serviceLogs" && this.serviceLogName) {
+                this.$root.emitAgent(this.endpoint, "serviceLogs", this.stack.name, this.serviceLogName, (res) => {
+                    if (!res.ok) {
+                        this.$root.toastRes(res);
+                    }
+                });
+            }
+        },
+
         jsonConfig: {
             handler() {
                 if (!this.editorFocus) {
@@ -988,13 +1019,14 @@ export default {
     methods: {
         /**
          * Close an expanded logs/yaml overlay with Escape. Save the editor
-         * content with Ctrl+S or Cmd+S in edit mode.
+         * content with Ctrl+S or Cmd+S in edit mode of a stack that
+         * exists. A new stack has no file to save until the deploy.
          * @param {KeyboardEvent} e keydown event
          * @returns {void}
          */
         onComposeKeydown(e) {
             if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
-                if (!this.isEditMode) {
+                if (!this.isEditMode || this.isAdd) {
                     return;
                 }
                 e.preventDefault();
@@ -1179,9 +1211,15 @@ export default {
          * @returns {void}
          */
         openServiceLogs(serviceName) {
+            // A second click while the request runs would open two logs
+            if (this.serviceLogsBusy) {
+                return;
+            }
             this.leaveServiceLogs();
+            this.serviceLogsBusy = true;
 
             this.$root.emitAgentWithTimeout(this.endpoint, "serviceLogs", [ this.stack.name, serviceName ], 30000, (res) => {
+                this.serviceLogsBusy = false;
                 if (this.pageGone) {
                     return;
                 }
@@ -1438,20 +1476,25 @@ export default {
 
         /**
          * Send a stack event to the agent and show the answer. The toolbar
-         * stays disabled until the answer, or until the time limit.
+         * stays disabled until the answer, or until the time limit. An
+         * update pulls images, thus the limit is the same as the bulk
+         * actions use. A late answer also shows, so the user sees the
+         * result of a slow action.
          * @param {string} event name of the socket event
          * @returns {void}
          */
         runStackAction(event) {
             this.processing = true;
 
-            this.$root.emitAgentWithTimeout(this.endpoint, event, [ this.stack.name ], 30000, (res) => {
+            const onAnswer = (res) => {
                 if (this.pageGone) {
                     return;
                 }
                 this.processing = false;
                 this.$root.toastRes(res);
-            });
+            };
+
+            this.$root.emitAgentWithTimeout(this.endpoint, event, [ this.stack.name ], 300000, onAnswer, onAnswer);
         },
 
         startStack() {
@@ -1799,7 +1842,8 @@ export default {
         runServiceAction(event, serviceName) {
             this.processing = true;
 
-            this.$root.emitAgentWithTimeout(this.endpoint, event, [ this.stack.name, serviceName ], 30000, (res) => {
+            // A late answer, after the time limit, gets the same treatment
+            const onAnswer = (res) => {
                 if (this.pageGone) {
                     return;
                 }
@@ -1809,7 +1853,9 @@ export default {
                 if (res.ok) {
                     this.requestServiceStatus(); // Refresh service status
                 }
-            });
+            };
+
+            this.$root.emitAgentWithTimeout(this.endpoint, event, [ this.stack.name, serviceName ], 300000, onAnswer, onAnswer);
         },
 
         startService(serviceName) {

@@ -119,6 +119,9 @@ export default {
          * @returns {void}
          */
         "$root.socketIO.loginCount"() {
+            // The join writes the full buffer of the server again. An empty
+            // terminal then shows the text one time only.
+            this.terminal.reset();
             this.joinServerTerminal();
         },
     },

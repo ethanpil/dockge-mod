@@ -1,7 +1,9 @@
 <template>
-    <router-link :to="url" :class="{ 'dim' : !stack.isManagedByDockge, 'active': isSelectMode && isSelected(selectKey) }" class="item" :title="stackName" @click="onClick">
+    <router-link :to="url" :class="{ 'dim' : !stack.isManagedByDockge, 'active': isSelectMode && isSelected(selectKey) }" class="item" :title="stackName" @click.capture="onClick">
         <!-- In select mode a click on the row changes the selection, and
-             the link does not open -->
+             the link does not open. The capture listener runs before the
+             navigate handler of the link, which stops on a prevented
+             event. -->
         <input v-if="isSelectMode" type="checkbox" class="form-check-input select-box me-2" :checked="isSelected(selectKey)" :disabled="!stack.isManagedByDockge" tabindex="-1" />
         <Uptime :stack="stack" :dot="true" class="me-2" />
         <div class="title">
@@ -136,6 +138,7 @@ export default {
                 return;
             }
             e.preventDefault();
+            e.stopPropagation();
             if (this.stack.isManagedByDockge) {
                 this.toggleSelection();
             }

@@ -184,6 +184,7 @@
 
 <script>
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
+import dayjs from "dayjs";
 import Confirm from "../components/Confirm.vue";
 
 const KINDS = [ "images", "volumes", "networks" ];
@@ -232,43 +233,39 @@ export default {
     },
 
     unmounted() {
-        this.pageGone = true;
+        // The requests that wait must stay quiet after the page is gone
+        this.cancels.forEach((cancel) => cancel());
         this.timers.forEach((t) => clearTimeout(t));
     },
 
     created() {
         // Timers of the check that reload the page later
         this.timers = [];
+        // The cancel functions of the requests that wait for an answer
+        this.cancels = [];
     },
 
     methods: {
         /**
-         * Send an event to the agent of this page, with a timer that ends
-         * the wait.
+         * Send an event to the agent of this page. The answer is for the
+         * agent that the page showed at the time of the request. An answer
+         * for a different agent is ignored, because the page changed in
+         * the interval.
          * @param {string} event event name
          * @param {Array} args arguments before the callback
          * @param {Function} cb gets the answer, or a timeout result
          * @returns {void}
          */
-        emit(event, args, cb) {
-            let settled = false;
-            const timer = setTimeout(() => {
-                if (settled) {
+        request(event, args, cb) {
+            const endpoint = this.endpoint;
+            const cancel = this.$root.emitAgentWithTimeout(endpoint, event, args, 30000, (res) => {
+                this.cancels = this.cancels.filter((c) => c !== cancel);
+                if (endpoint !== this.endpoint) {
                     return;
                 }
-                settled = true;
-                cb({ ok: false,
-                    msg: this.$t("requestTimeout") });
-            }, 30000);
-
-            this.$root.emitAgent(this.endpoint, event, ...args, (res) => {
-                clearTimeout(timer);
-                if (this.pageGone || settled) {
-                    return;
-                }
-                settled = true;
                 cb(res);
             });
+            this.cancels.push(cancel);
         },
 
         /**
@@ -296,7 +293,7 @@ export default {
          */
         load(kind) {
             this.busy[kind] = true;
-            this.emit("getDockerResources", [ kind ], (res) => {
+            this.request("getDockerResources", [ kind ], (res) => {
                 this.busy[kind] = false;
                 if (res.ok) {
                     this.resources[kind] = res.resources;
@@ -313,7 +310,7 @@ export default {
          */
         loadUpdates() {
             this.busy.updates = true;
-            this.emit("getImageUpdates", [], (res) => {
+            this.request("getImageUpdates", [], (res) => {
                 this.busy.updates = false;
                 if (res.ok) {
                     this.imageUpdates = res.imageUpdates;
@@ -331,10 +328,24 @@ export default {
          */
         checkNow() {
             this.checking = true;
-            this.emit("checkImageUpdates", [], (res) => {
+            this.request("checkImageUpdates", [], (res) => {
                 if (!res.ok) {
                     this.checking = false;
                     this.$root.toastRes(res);
+                    return;
+                }
+                // A check that already runs gives started false. The page
+                // then only loads the rows again, and the button stays
+                // usable.
+                if (res.started === false) {
+                    this.checking = false;
+                    this.$root.toastRes({
+                        ok: true,
+                        msg: "checkInProgress",
+                        msgi18n: true,
+                    });
+                    this.timers.push(setTimeout(() => this.loadUpdates(), 3000));
+                    this.timers.push(setTimeout(() => this.loadUpdates(), 30000));
                     return;
                 }
                 this.timers.push(setTimeout(() => this.loadUpdates(), 3000));
@@ -372,7 +383,7 @@ export default {
 
             const args = action === "remove" ? [ kind, name ] : [ kind ];
             const event = action === "remove" ? "removeDockerResource" : "pruneDockerResources";
-            this.emit(event, args, (res) => {
+            this.request(event, args, (res) => {
                 this.busy[listKind] = false;
                 this.$root.toastRes(res);
                 this.load(listKind);
@@ -410,7 +421,7 @@ export default {
         },
 
         /**
-         * A readable time, in the local zone.
+         * A readable time, in the same format as the compose page.
          * @param {string|number} value a date string or a timestamp
          * @returns {string} the time, or an empty string
          */
@@ -418,11 +429,7 @@ export default {
             if (!value) {
                 return "";
             }
-            const date = new Date(value);
-            if (isNaN(date.getTime())) {
-                return String(value);
-            }
-            return date.toLocaleString();
+            return dayjs(value).format("YYYY-MM-DD HH:mm:ss");
         },
     },
 };

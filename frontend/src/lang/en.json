@@ -259,6 +259,8 @@
     "backupReason_save": "Save",
     "backupReason_update": "Update",
     "backupReason_restore": "Restore",
+    "backupReason_pull": "Git pull",
+    "checkInProgress": "A check is in progress.",
     "noBackups": "No backups",
     "backupRestored": "Backup restored. Deploy the stack to apply it.",
     "clear": "Clear",

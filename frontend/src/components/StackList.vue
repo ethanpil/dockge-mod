@@ -284,6 +284,19 @@ export default {
                 this.selectedStacks = {};
             }
         },
+
+        /**
+         * A stack that is no longer in the list leaves the selection. A
+         * bulk action then does not run for a stack that was deleted.
+         * @returns {void}
+         */
+        "$root.completeStackList"(list) {
+            for (const key of Object.keys(this.selectedStacks)) {
+                if (!(key in list)) {
+                    delete this.selectedStacks[key];
+                }
+            }
+        },
     },
     mounted() {
         window.addEventListener("scroll", this.onScroll);
