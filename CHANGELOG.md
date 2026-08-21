@@ -6,6 +6,28 @@ The base is dockge commit [f809ae1](https://github.com/louislam/dockge/commit/f8
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). This project has no releases, so each entry is a commit. The newest entry comes first. A commit that changes only this file or the project rules has no entry.
 
+## [4ec0748](../../commit/4ec0748) - 2026-08-21
+
+### Changed
+
+- The image update check asks the registry with a HEAD request, not the docker CLI. Docker Hub gives 100 pulls each hour to an address, it counts the GET of the CLI as a pull, and it does not count a HEAD. A check of 40 images used 40 pulls of the user each time before. The check is also faster: 0.3 seconds for an image, not 2.5 seconds.
+- The docker CLI is the second method. It reads a registry with a private certificate, a registry with a mirror, or a registry that gives no digest header.
+- One docker process reads the repo digests of all images, not one process for each image.
+- The buildx process has the usual time limit of 30 seconds, not 60.
+
+### Fixed
+
+- A configuration file of docker with a credential helper does not stop the check of the public images. The docker CLI reads the credentials before it reads a public image, thus one helper entry stopped each check before. The helper binary is not in the image, and the secret of a helper is on the host.
+- A credentials directory that a user mounts read-only does not stop the check. The buildx plugin writes in that directory.
+- An image with a digest in its name gets no check. Such a name gives one image for ever.
+- An image that is not on this host says so, and does not give the error text of docker.
+
+## [e6d5227](../../commit/e6d5227) - 2026-08-21
+
+### Added
+
+- A registry client that reads the digest of an image with a HEAD request. It reads the parts of an image name, the authentication challenge of a registry, and the credentials of the configuration file of docker, with the old key of Docker Hub.
+
 ## [284619a](../../commit/284619a) - 2026-08-21
 
 ### Fixed
