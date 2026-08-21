@@ -85,18 +85,9 @@ export class KeyedRateLimiter {
     async pass(key : string, callback : KumaRateLimiterCallback, num = 1) {
         const now = Date.now();
 
-        // Remove the limiters that had no use for ten minutes. A check
-        // at each call is cheap, because the map is small.
-        if (this.limiters.size > 100) {
-            for (const [ k, entry ] of this.limiters) {
-                if (now - entry.lastUse > 10 * 60 * 1000) {
-                    this.limiters.delete(k);
-                }
-            }
-        }
-
         let entry = this.limiters.get(key);
         if (!entry) {
+            this.prune(now);
             entry = {
                 limiter: new KumaRateLimiter(this.config),
                 lastUse: now,
@@ -106,6 +97,33 @@ export class KeyedRateLimiter {
         entry.lastUse = now;
         return entry.limiter.pass(callback, num);
     }
+
+    /**
+     * Remove the limiters that had no use for ten minutes. When the map
+     * is still too large, remove the oldest entries. A client that can
+     * set its own address cannot make the map grow without a limit.
+     * @param now The current time
+     */
+    private prune(now : number) {
+        if (this.limiters.size < KeyedRateLimiter.MAX_KEYS) {
+            return;
+        }
+        for (const [ k, entry ] of this.limiters) {
+            if (now - entry.lastUse > 10 * 60 * 1000) {
+                this.limiters.delete(k);
+            }
+        }
+        // A Map keeps the insert sequence, thus the first keys are the
+        // oldest
+        for (const k of this.limiters.keys()) {
+            if (this.limiters.size < KeyedRateLimiter.MAX_KEYS) {
+                break;
+            }
+            this.limiters.delete(k);
+        }
+    }
+
+    static readonly MAX_KEYS = 1000;
 }
 
 /**
@@ -114,6 +132,28 @@ export class KeyedRateLimiter {
  */
 export const loginRateLimiter = new KeyedRateLimiter({
     tokensPerInterval: 20,
+    interval: "minute",
+    fireImmediately: true,
+    errorMessage: "Too frequently, try again later."
+});
+
+/**
+ * The limit for all logins together. A client that can change its
+ * address for each request still meets this limit.
+ */
+export const loginGlobalRateLimiter = new KumaRateLimiter({
+    tokensPerInterval: 100,
+    interval: "minute",
+    fireImmediately: true,
+    errorMessage: "Too frequently, try again later."
+});
+
+/**
+ * The limit for the setup, for each client address. It is separate
+ * from the login limit.
+ */
+export const setupRateLimiter = new KeyedRateLimiter({
+    tokensPerInterval: 10,
     interval: "minute",
     fireImmediately: true,
     errorMessage: "Too frequently, try again later."

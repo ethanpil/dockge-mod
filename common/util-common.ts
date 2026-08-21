@@ -254,7 +254,7 @@ export function getCryptoRandomInt(min: number, max: number):number {
  * @returns True when the name is safe as an argument
  */
 export function isComposeServiceName(name : string) : boolean {
-    return /^[a-zA-Z0-9][a-zA-Z0-9_.-]*$/.test(name);
+    return /^[a-zA-Z0-9_.][a-zA-Z0-9_.-]*$/.test(name);
 }
 
 /**

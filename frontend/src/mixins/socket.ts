@@ -17,6 +17,9 @@ export default defineComponent({
                 firstConnect: true,
                 connected: false,
                 connectCount: 0,
+                // Goes up at each login, also after a reconnect. A
+                // terminal component joins its terminal again on a change.
+                loginCount: 0,
                 initedSocketIO: false,
                 connectionErrorMsg: `${this.$t("Cannot connect to the socket server.")} ${this.$t("Reconnecting...")}`,
                 showReverseProxyGuide: true,
@@ -397,7 +400,7 @@ export default defineComponent({
         },
 
         afterLogin() {
-
+            this.socketIO.loginCount++;
         },
 
         bindTerminal(endpoint : string, terminalName : string, terminal : Terminal) {

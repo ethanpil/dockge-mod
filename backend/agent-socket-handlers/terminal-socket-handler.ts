@@ -1,5 +1,5 @@
 import { DockgeServer } from "../dockge-server";
-import { callbackError, callbackResult, checkLogin, checkServiceName, checkShellName, DockgeSocket, ValidationError } from "../util-server";
+import { callbackError, callbackResult, checkLogin, DockgeSocket, ValidationError } from "../util-server";
 import { log } from "../log";
 import { InteractiveTerminal, MainTerminal, Terminal } from "../terminal";
 import { Stack } from "../stack";
@@ -60,8 +60,12 @@ export class TerminalSocketHandler extends AgentSocketHandler {
                     log.debug("mainTerminal", "Terminal created");
                 }
 
+                if (!(terminal instanceof MainTerminal)) {
+                    throw new ValidationError("The terminal name is in use.");
+                }
+
                 // The shell of a different user stays closed to this one
-                (terminal as MainTerminal).checkUser(socket);
+                terminal.checkUser(socket);
 
                 terminal.join(socket);
                 terminal.start();
@@ -102,9 +106,6 @@ export class TerminalSocketHandler extends AgentSocketHandler {
                 if (typeof(shell) !== "string") {
                     throw new ValidationError("Shell must be a string.");
                 }
-
-                checkServiceName(serviceName);
-                checkShellName(shell);
 
                 log.debug("interactiveTerminal", "Stack name: " + stackName);
                 log.debug("interactiveTerminal", "Service name: " + serviceName);

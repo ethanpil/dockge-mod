@@ -38,4 +38,14 @@ describe("KeyedRateLimiter", () => {
         await limiter.pass("b", vi.fn());
         expect(limiter.limiters.size).toBe(2);
     });
+
+    it("removes the oldest keys when the map is full", async () => {
+        const limiter = smallLimiter();
+        for (let i = 0; i < KeyedRateLimiter.MAX_KEYS + 5; i++) {
+            await limiter.pass("key" + i, vi.fn());
+        }
+        expect(limiter.limiters.size).toBeLessThanOrEqual(KeyedRateLimiter.MAX_KEYS);
+        expect(limiter.limiters.has("key0")).toBe(false);
+        expect(limiter.limiters.has("key" + (KeyedRateLimiter.MAX_KEYS + 4))).toBe(true);
+    });
 });

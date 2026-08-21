@@ -359,8 +359,8 @@ export class Terminal {
 
     /**
      * Remove a client from each terminal. The disconnect of a socket
-     * calls this, thus a terminal with keep alive can close when its
-     * last client goes away.
+     * calls this, thus an interactive terminal can close when its last
+     * client disconnects.
      * @param socket The client
      */
     public static leaveAll(socket : DockgeSocket) {
@@ -385,6 +385,14 @@ export class InteractiveTerminal extends Terminal {
     public userID? : number;
 
     /**
+     * The time between the disconnect of the last client and the close
+     * of the shell. A short disconnect of the network keeps the shell.
+     */
+    public static readonly CLOSE_DELAY = 10 * 1000;
+
+    protected closeTimer? : NodeJS.Timeout;
+
+    /**
      * Refuse a client of a different user.
      * @param socket The client
      */
@@ -396,6 +404,65 @@ export class InteractiveTerminal extends Terminal {
 
     public write(input : string) {
         this.ptyProcess?.write(input);
+    }
+
+    public join(socket : DockgeSocket) {
+        clearTimeout(this.closeTimer);
+        this.closeTimer = undefined;
+        super.join(socket);
+    }
+
+    /**
+     * Remove a client. The shell closes a short time after the last
+     * client disconnects. Without this, the shell of one session stayed
+     * open for the next session, and a different user could not make a
+     * new one.
+     * @param socket The client
+     */
+    public leave(socket : DockgeSocket) {
+        super.leave(socket);
+        if (Object.keys(this.socketList).length === 0 && !this.closeTimer) {
+            this.closeTimer = setTimeout(() => {
+                this.closeTimer = undefined;
+                if (Object.keys(this.socketList).length === 0) {
+                    this.close();
+                }
+            }, InteractiveTerminal.CLOSE_DELAY);
+        }
+    }
+
+    /**
+     * End the shell process. Ctrl+C does not stop a shell. A process
+     * that ignores the first signal gets SIGKILL. If no exit event
+     * comes, the terminal leaves the map, thus a new one can start.
+     */
+    close() {
+        clearInterval(this.keepAliveInterval);
+        clearInterval(this.kickDisconnectedClientsInterval);
+        clearTimeout(this.closeTimer);
+        this.closeTimer = undefined;
+
+        const process = this.ptyProcess;
+        if (!process) {
+            this.exit({ exitCode: 0 });
+            return;
+        }
+        process.kill();
+        setTimeout(() => {
+            if (Terminal.terminalMap.get(this.name) === this) {
+                try {
+                    process.kill("SIGKILL");
+                } catch (e) {
+                    log.debug("Terminal", "Cannot kill " + this.name + ": " + (e as Error).message);
+                }
+            }
+        }, 5000);
+        setTimeout(() => {
+            if (Terminal.terminalMap.get(this.name) === this) {
+                log.warn("Terminal", "No exit event from " + this.name + ", remove it");
+                this.exit({ exitCode: 137 });
+            }
+        }, 10000);
     }
 
     resetCWD() {
@@ -427,20 +494,9 @@ export class MainTerminal extends InteractiveTerminal {
         }
         super(server, name, shell, [], server.stacksDir);
         this.userID = userID;
-        // The shell closes when its last client goes away. Without this
-        // the shell of one session stayed open for the next session.
-        this.enableKeepAlive = true;
     }
 
     public write(input : string) {
         super.write(input);
-    }
-
-    /**
-     * End the shell process. Ctrl+C does not stop a shell.
-     */
-    close() {
-        clearInterval(this.keepAliveInterval);
-        this.ptyProcess?.kill();
     }
 }

@@ -113,6 +113,14 @@ export default {
         name() {
             this.emitResize();
         },
+        /**
+         * A login after a reconnect gives a new socket. The server removed
+         * the old socket from the terminal, thus this one must join again.
+         * @returns {void}
+         */
+        "$root.socketIO.loginCount"() {
+            this.joinServerTerminal();
+        },
     },
     created() {
 
@@ -165,23 +173,8 @@ export default {
             }
         });
 
-        this.bind();
+        this.joinServerTerminal();
 
-        // Create a new Terminal
-        if (this.mode === "mainTerminal") {
-            this.$root.emitAgent(this.endpoint, "mainTerminal", this.name, (res) => {
-                if (!res.ok) {
-                    this.$root.toastRes(res);
-                }
-            });
-        } else if (this.mode === "interactive") {
-            console.debug("Create Interactive terminal:", this.name);
-            this.$root.emitAgent(this.endpoint, "interactiveTerminal", this.stackName, this.serviceName, this.shell, (res) => {
-                if (!res.ok) {
-                    this.$root.toastRes(res);
-                }
-            });
-        }
         // Fit the terminal width to the div container size after terminal is created.
         this.updateTerminalSize();
     },
@@ -196,6 +189,29 @@ export default {
     },
 
     methods: {
+        /**
+         * Bind the output, and make or join the terminal on the server.
+         * @returns {void}
+         */
+        joinServerTerminal() {
+            this.bind();
+
+            if (this.mode === "mainTerminal") {
+                this.$root.emitAgent(this.endpoint, "mainTerminal", this.name, (res) => {
+                    if (!res.ok) {
+                        this.$root.toastRes(res);
+                    }
+                });
+            } else if (this.mode === "interactive") {
+                console.debug("Create Interactive terminal:", this.name);
+                this.$root.emitAgent(this.endpoint, "interactiveTerminal", this.stackName, this.serviceName, this.shell, (res) => {
+                    if (!res.ok) {
+                        this.$root.toastRes(res);
+                    }
+                });
+            }
+        },
+
         bind(endpoint, name) {
             // Workaround: normally this.name should be set, but it is not sometimes, so we use the parameter, but eventually this.name and name must be the same name
             if (name) {

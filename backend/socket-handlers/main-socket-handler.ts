@@ -4,7 +4,7 @@ import { SocketHandler } from "../socket-handler.js";
 import { DockgeServer } from "../dockge-server";
 import { log } from "../log";
 import { R } from "redbean-node";
-import { loginRateLimiter, twoFaRateLimiter } from "../rate-limiter";
+import { loginGlobalRateLimiter, loginRateLimiter, setupRateLimiter, twoFaRateLimiter } from "../rate-limiter";
 import { generatePasswordHash, needRehashPassword, shake256, SHAKE256_LENGTH, verifyPassword } from "../password-hash";
 import { User } from "../models/user";
 import {
@@ -96,27 +96,9 @@ async function checkWritableDir(key : string, dir : string) : Promise<HealthItem
     }
 }
 
-/**
- * A lock for one operation at a time. A call waits for the calls before
- * it.
- */
-class AsyncLock {
-    private last : Promise<unknown> = Promise.resolve();
-
-    /**
-     * Run the function after the calls before it.
-     * @param fn The function
-     * @returns The result of the function
-     */
-    run<T>(fn : () => Promise<T>) : Promise<T> {
-        const next = this.last.then(fn, fn);
-        // A failure of one call must not stop the calls after it
-        this.last = next.catch(() => undefined);
-        return next;
-    }
-}
-
-const setupLock = new AsyncLock();
+// True while a setup request runs. A second request at the same time
+// gets an error. Two requests could both see an empty user table before.
+let setupInProgress = false;
 
 export class MainSocketHandler extends SocketHandler {
     create(socket : DockgeSocket, server : DockgeServer) {
@@ -132,7 +114,7 @@ export class MainSocketHandler extends SocketHandler {
                     return;
                 }
 
-                if (!await loginRateLimiter.pass(await server.getClientIP(socket), callback)) {
+                if (!await setupRateLimiter.pass(await server.getClientIP(socket), callback)) {
                     return;
                 }
 
@@ -140,9 +122,12 @@ export class MainSocketHandler extends SocketHandler {
                     throw new Error("Password is too weak. It should contain alphabetic and numeric characters. It must be at least 6 characters in length.");
                 }
 
-                // One setup at a time. Two requests at the same time could
-                // both see an empty user table before.
-                await setupLock.run(async () => {
+                if (setupInProgress) {
+                    throw new Error("A setup is in progress.");
+                }
+                setupInProgress = true;
+
+                try {
                     if ((await R.knex("user").count("id as count").first()).count !== 0) {
                         throw new Error("dockge-mod has been initialized. If you want to run setup again, please delete the database.");
                     }
@@ -151,7 +136,9 @@ export class MainSocketHandler extends SocketHandler {
                     user.username = username;
                     user.password = generatePasswordHash(password);
                     await R.store(user);
-                });
+                } finally {
+                    setupInProgress = false;
+                }
 
                 server.needSetup = false;
 
@@ -244,8 +231,8 @@ export class MainSocketHandler extends SocketHandler {
                 return;
             }
 
-            // Login Rate Limit, for each client address
-            if (!await loginRateLimiter.pass(clientIP, callback)) {
+            // Login Rate Limit, for all clients and for each client address
+            if (!await loginGlobalRateLimiter.pass(callback) || !await loginRateLimiter.pass(clientIP, callback)) {
                 log.info("auth", `Too many failed requests for user ${data.username}. IP=${clientIP}`);
                 return;
             }
@@ -273,9 +260,7 @@ export class MainSocketHandler extends SocketHandler {
                     });
                 }
 
-                // The 2FA branch of the upstream project. The verify
-                // library is not in this project, thus the branch must not
-                // run for a user without 2FA.
+                // A user without 2FA must not reach the verify branch
                 if (user.twofa_status === 1 && data.token) {
                     // @ts-ignore
                     const verify = notp.totp.verify(data.token, user.twofa_secret, twoFAVerifyOptions);

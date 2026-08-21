@@ -7,6 +7,8 @@ describe("isComposeServiceName", () => {
         [ "db-1", true ],
         [ "my_service.v2", true ],
         [ "1abc", true ],
+        [ "_cache", true ],
+        [ ".internal", true ],
         [ "", false ],
         [ "-d", false ],
         [ "--project-directory=/", false ],

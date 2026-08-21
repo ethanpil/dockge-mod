@@ -2,7 +2,7 @@ import { DockgeServer } from "./dockge-server";
 import fs, { promises as fsAsync } from "fs";
 import { log } from "./log";
 import yaml from "yaml";
-import { DockgeSocket, errorMessage, fileExists, stderrOf, ValidationError } from "./util-server";
+import { checkServiceName, checkShellName, DockgeSocket, errorMessage, fileExists, stderrOf, ValidationError } from "./util-server";
 import path from "path";
 import os from "os";
 import {
@@ -826,14 +826,26 @@ export class Stack {
     }
 
     async joinContainerTerminal(socket: DockgeSocket, serviceName: string, shell : string = "sh", index: number = 0) {
+        checkServiceName(serviceName);
+        checkShellName(shell);
+
         const terminalName = getContainerExecTerminalName(socket.endpoint, this.name, serviceName, index);
         let terminal = Terminal.getTerminal(terminalName);
 
         if (!terminal) {
-            terminal = new InteractiveTerminal(this.server, terminalName, "docker", this.getComposeOptions("exec", serviceName, shell), this.path);
-            terminal.rows = TERMINAL_ROWS;
+            const newTerminal = new InteractiveTerminal(this.server, terminalName, "docker", this.getComposeOptions("exec", serviceName, shell), this.path);
+            newTerminal.rows = TERMINAL_ROWS;
+            newTerminal.userID = socket.userID;
+            terminal = newTerminal;
             log.debug("joinContainerTerminal", "Terminal created");
         }
+
+        if (!(terminal instanceof InteractiveTerminal)) {
+            throw new ValidationError("The terminal name is in use.");
+        }
+
+        // The shell of a different user stays closed to this one
+        terminal.checkUser(socket);
 
         terminal.join(socket);
         terminal.start();
@@ -992,6 +1004,7 @@ export class Stack {
     }
 
     async startService(socket: DockgeSocket, serviceName: string) {
+        checkServiceName(serviceName);
         const terminalName = getComposeTerminalName(socket.endpoint, this.name);
         const exitCode = await Terminal.exec(this.server, socket, terminalName, "docker", this.getComposeOptions("up", "-d", serviceName), this.path);
         if (exitCode !== 0) {
@@ -1002,6 +1015,7 @@ export class Stack {
     }
 
     async stopService(socket: DockgeSocket, serviceName: string): Promise<number> {
+        checkServiceName(serviceName);
         const terminalName = getComposeTerminalName(socket.endpoint, this.name);
         const exitCode = await Terminal.exec(this.server, socket, terminalName, "docker", this.getComposeOptions("stop", serviceName), this.path);
         if (exitCode !== 0) {
@@ -1012,6 +1026,7 @@ export class Stack {
     }
 
     async restartService(socket: DockgeSocket, serviceName: string): Promise<number> {
+        checkServiceName(serviceName);
         const terminalName = getComposeTerminalName(socket.endpoint, this.name);
         const exitCode = await Terminal.exec(this.server, socket, terminalName, "docker", this.getComposeOptions("restart", serviceName), this.path);
         if (exitCode !== 0) {
