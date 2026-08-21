@@ -342,7 +342,6 @@ export class DockerSocketHandler extends AgentSocketHandler {
                     ok: true,
                     dockerStats,
                 }, callback);
-                server.sendStackList();
             } catch (e) {
                 callbackError(e, callback);
             }

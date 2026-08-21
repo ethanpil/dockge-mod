@@ -22,6 +22,7 @@ import {
 import { InteractiveTerminal, Terminal } from "./terminal";
 import childProcessAsync from "promisify-child-process";
 import { Settings } from "./settings";
+import { CachedCall } from "./utils/cached-call";
 
 export class Stack {
 
@@ -217,6 +218,8 @@ export class Stack {
         let res = await childProcessAsync.spawn("docker", this.getComposeOptions("ps", "--format", "json"), {
             cwd: this.path,
             encoding: "utf-8",
+            maxBuffer: 10 * 1024 * 1024,
+            timeout: 30000,
         });
         if (!res.stdout) {
             return {};
@@ -616,18 +619,13 @@ export class Stack {
 
             // Cache by copying
             this.managedStackList = new Map(stackList);
+
+            // A full scan comes after an action. The status must be new too.
+            Stack.composeListCache.invalidate();
         }
 
         // Get status from docker compose ls
-        let res = await childProcessAsync.spawn("docker", [ "compose", "ls", "--all", "--format", "json" ], {
-            encoding: "utf-8",
-        });
-
-        if (!res.stdout) {
-            return stackList;
-        }
-
-        let composeList = JSON.parse(res.stdout.toString());
+        const composeList = await Stack.composeListCache.get();
 
         for (let composeStack of composeList) {
             let stack = stackList.get(composeStack.Name);
@@ -657,21 +655,61 @@ export class Stack {
     static async getStatusList() : Promise<Map<string, number>> {
         let statusList = new Map<string, number>();
 
-        let res = await childProcessAsync.spawn("docker", [ "compose", "ls", "--all", "--format", "json" ], {
-            encoding: "utf-8",
-        });
-
-        if (!res.stdout) {
-            return statusList;
-        }
-
-        let composeList = JSON.parse(res.stdout.toString());
+        const composeList = await Stack.composeListCache.get();
 
         for (let composeStack of composeList) {
             statusList.set(composeStack.Name, this.statusConvert(composeStack.Status));
         }
 
         return statusList;
+    }
+
+    /**
+     * The output of `docker compose ls`, for all callers. The docker
+     * events watcher removes the result after a change of a container.
+     * The time limit covers a watcher that does not run.
+     */
+    static composeListCache = new CachedCall(() => Stack.runComposeList(), 10 * 1000);
+
+    /**
+     * The service status of each stack, by stack name. The same watcher
+     * removes the results.
+     */
+    protected static serviceStatusCaches : Map<string, CachedCall<Map<string, Array<object>>>> = new Map();
+
+    /**
+     * Remove the cached results. The next call runs docker again.
+     */
+    static invalidateCaches() {
+        Stack.composeListCache.invalidate();
+        for (const cache of Stack.serviceStatusCaches.values()) {
+            cache.invalidate();
+        }
+    }
+
+    /**
+     * Run `docker compose ls`. A warning on stdout, or no output, gives
+     * an empty list and a log line, not a failure of the stack list.
+     * @returns The projects that docker knows
+     */
+    protected static async runComposeList() : Promise<{ Name : string, Status : string, ConfigFiles : string }[]> {
+        const res = await childProcessAsync.spawn("docker", [ "compose", "ls", "--all", "--format", "json" ], {
+            encoding: "utf-8",
+            maxBuffer: 10 * 1024 * 1024,
+            timeout: 30000,
+        });
+
+        if (!res.stdout) {
+            return [];
+        }
+
+        try {
+            const list = JSON.parse(res.stdout.toString());
+            return Array.isArray(list) ? list : [];
+        } catch (e) {
+            log.warn("getStackList", "docker compose ls gave no JSON: " + errorMessage(e));
+            return [];
+        }
     }
 
     /**
@@ -901,6 +939,8 @@ export class Stack {
             try {
                 const res = await childProcessAsync.spawn("docker", [ "inspect", "--type", "container", "--format", format, ...uncached.map((c) => c.name) ], {
                     encoding: "utf-8",
+                    maxBuffer: 10 * 1024 * 1024,
+                    timeout: 30000,
                 });
                 parse(res.stdout?.toString() ?? "");
             } catch (e) {
@@ -936,13 +976,34 @@ export class Stack {
         return map;
     }
 
-    async getServiceStatusList() {
+    /**
+     * The service status of this stack. Many clients that poll the same
+     * stack share one docker process, and a result stays good until a
+     * container changes.
+     * @returns The containers of each service
+     */
+    async getServiceStatusList() : Promise<Map<string, Array<object>>> {
+        let cache = Stack.serviceStatusCaches.get(this.name);
+        if (!cache) {
+            cache = new CachedCall(() => this.readServiceStatusList(), 5 * 1000);
+            Stack.serviceStatusCaches.set(this.name, cache);
+            // A limit for a host with many stacks that come and go
+            if (Stack.serviceStatusCaches.size > 2000) {
+                Stack.serviceStatusCaches.clear();
+            }
+        }
+        return cache.get();
+    }
+
+    protected async readServiceStatusList() : Promise<Map<string, Array<object>>> {
         let statusList = new Map<string, Array<object>>();
 
         try {
             let res = await childProcessAsync.spawn("docker", this.getComposeOptions("ps", "--format", "json"), {
                 cwd: this.path,
                 encoding: "utf-8",
+                maxBuffer: 10 * 1024 * 1024,
+                timeout: 30000,
             });
 
             if (!res.stdout) {

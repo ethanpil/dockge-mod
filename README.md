@@ -34,7 +34,6 @@ Change the image in your compose file to the Dockge image, then start the contai
 Three conditions apply after you go back:
 
 - The `mod_` tables stay in the database. Dockge does not read them, and they do not change the tables of Dockge.
-
 - The Dockge interface does not show the override file, but `docker compose` continues to merge it. Your stacks keep their behavior, but the interface shows only the base file.
 - Dockge does not write the `.env` file when you save a stack. Your `.env` files stay on the disk, but a change that you make in the Dockge editor does not go to the disk.
 
@@ -231,12 +230,6 @@ When the checkout is on a tag or a commit, and not on a branch, the badge shows 
 Use a git checkout together with an override file: git holds the base compose file, and your local changes stay in the override file.
 
 The `.git` entry is not visible in the Dockge interface, and Dockge does not touch it. Thus the stacks directory stays compatible.
-
-### Change the Poll Interval
-
-An open stack page asks the server for container status and statistics every 5 seconds. Each poll runs docker commands on the server. Set a different time under **Settings** > **General** > **Poll interval**. A larger value decreases the load on a slow host.
-
-The setting comes from the server whose interface is open. The stacks of an agent also get this interval, not the interval of the agent.
 
 ### Examine the Health of the Server
 

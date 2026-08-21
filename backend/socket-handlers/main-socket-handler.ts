@@ -24,7 +24,7 @@ import { Settings } from "../settings";
 import fs, { promises as fsAsync } from "fs";
 import path from "path";
 import childProcessAsync from "promisify-child-process";
-import { defaultComposeOverrideTemplate, POLL_INTERVAL_DEFAULT, POLL_INTERVAL_MAX, POLL_INTERVAL_MIN } from "../../common/util-common";
+import { defaultComposeOverrideTemplate } from "../../common/util-common";
 import { ModSetting } from "../mod-setting";
 
 /**
@@ -399,20 +399,6 @@ export class MainSocketHandler extends SocketHandler {
                 }
                 delete data.composeOverrideTemplate;
 
-                // Keep the stored poll interval in its limits. The form
-                // limits are only in the browser, and a different client
-                // can send any value. An empty field gives the default,
-                // not the minimum, because Number("") is 0.
-                if ("pollInterval" in data) {
-                    const raw = data.pollInterval;
-                    const empty = raw == null || (typeof raw === "string" && raw.trim() === "");
-                    const n = Number(raw);
-                    if (empty || !Number.isFinite(n)) {
-                        data.pollInterval = POLL_INTERVAL_DEFAULT;
-                    } else {
-                        data.pollInterval = Math.min(POLL_INTERVAL_MAX, Math.max(POLL_INTERVAL_MIN, Math.round(n)));
-                    }
-                }
 
                 await Settings.setSettings("general", data);
 

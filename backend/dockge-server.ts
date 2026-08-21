@@ -18,7 +18,7 @@ import { SocketHandler } from "./socket-handler";
 import { Settings } from "./settings";
 import dayjs from "dayjs";
 import { R } from "redbean-node";
-import { genSecret, isDev, LooseObject, POLL_INTERVAL_DEFAULT } from "../common/util-common";
+import { genSecret, isDev, LooseObject } from "../common/util-common";
 import { generatePasswordHash } from "./password-hash";
 import { Bean } from "redbean-node/dist/bean";
 import { Arguments, Config, DockgeSocket, errorMessage } from "./util-server";
@@ -37,6 +37,8 @@ import { AgentSocketHandler } from "./agent-socket-handler";
 import { AgentSocket } from "../common/agent-socket";
 import { ManageAgentSocketHandler } from "./socket-handlers/manage-agent-socket-handler";
 import { Terminal } from "./terminal";
+import { DockerEvents } from "./docker-events";
+import { CachedCall } from "./utils/cached-call";
 
 export class DockgeServer {
     app : Express;
@@ -79,6 +81,16 @@ export class DockgeServer {
     /** Cached host statistics shared by every client (see getHostStats) */
     private hostStatsCache : { time : number, data : object } | null = null;
     private hostStatsPromise : Promise<object> | null = null;
+
+    /**
+     * The output of `docker stats`, for all clients. The command blocks
+     * for about a second and reads each container of the host, thus it
+     * must not run one time for each open page.
+     */
+    private dockerStatsCache = new CachedCall(() => this.collectDockerStats(), 4 * 1000);
+
+    /** The watcher on `docker events` */
+    private dockerEvents? : DockerEvents;
 
     jwtSecret : string = "";
 
@@ -404,13 +416,20 @@ export class DockgeServer {
                 log.info("server", `Listening on ${this.config.port}`);
             }
 
-            // Run every 10 seconds
+            // Run every 10 seconds. The caches answer most of these
+            // runs, thus the cost is small.
             Cron("*/10 * * * * *", {
                 protect: true,  // Enabled over-run protection.
             }, () => {
                 //log.debug("server", "Cron job running");
                 this.sendStackList(true);
             });
+
+            // A change of a container sends a new stack list at once, and
+            // it removes the cached status. The polls of the clients then
+            // see the change on their next request.
+            this.dockerEvents = new DockerEvents(() => this.onDockerChange());
+            this.dockerEvents.start();
         });
 
         gracefulShutdown(this.httpServer, {
@@ -418,7 +437,7 @@ export class DockgeServer {
             timeout: 30000,                   // timeout: 30 secs
             development: false,               // not in dev mode
             forceExit: true,                  // triggers process.exit() at the end of shutdown process
-            onShutdown: this.shutdownFunction,     // shutdown function (async) - e.g. for cleanup DB, ...
+            onShutdown: (signal) => this.shutdownFunction(signal),     // shutdown function (async) - e.g. for cleanup DB, ...
             finally: this.finalFunction,            // finally function (sync) - e.g. for logging
         });
 
@@ -443,13 +462,6 @@ export class DockgeServer {
             version: versionProperty,
             isContainer,
             primaryHostname: await Settings.get("primaryHostname"),
-            // Seconds between the status polls of the interface. A client
-            // without this feature ignores the field. Each info event
-            // carries the value, also before the login. The client
-            // replaces its full info object with each event. An absent
-            // value would thus put the polls back to the default after
-            // each new connection.
-            pollInterval: await Settings.get("pollInterval") ?? POLL_INTERVAL_DEFAULT,
             //serverTimezone: await this.getTimezone(),
             //serverTimezoneOffset: this.getTimezoneOffset(),
         });
@@ -646,9 +658,23 @@ export class DockgeServer {
         }
     }
 
+    /**
+     * A container changed. Remove the cached status and send the stack
+     * list to each client.
+     */
+    onDockerChange() {
+        Stack.invalidateCaches();
+        this.dockerStatsCache.invalidate();
+        this.sendStackList(true).catch((e) => {
+            log.warn("server", "Cannot send the stack list: " + errorMessage(e));
+        });
+    }
+
     async getDockerNetworkList() : Promise<string[]> {
         let res = await childProcessAsync.spawn("docker", [ "network", "ls", "--format", "{{.Name}}" ], {
             encoding: "utf-8",
+            maxBuffer: 10 * 1024 * 1024,
+            timeout: 30000,
         });
 
         if (!res.stdout) {
@@ -667,12 +693,18 @@ export class DockgeServer {
         return list;
     }
 
-    async getDockerStats() : Promise<Map<string, object>> {
+    getDockerStats() : Promise<Map<string, object>> {
+        return this.dockerStatsCache.get();
+    }
+
+    private async collectDockerStats() : Promise<Map<string, object>> {
         let stats = new Map<string, object>();
 
         try {
             let res = await childProcessAsync.spawn("docker", [ "stats", "--format", "json", "--no-stream" ], {
                 encoding: "utf-8",
+                maxBuffer: 10 * 1024 * 1024,
+                timeout: 30000,
             });
 
             if (!res.stdout) {
@@ -799,6 +831,7 @@ export class DockgeServer {
 
         // TODO: Close all terminals?
 
+        this.dockerEvents?.stop();
         await Database.close();
         Settings.stopCacheCleaner();
     }

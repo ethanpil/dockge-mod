@@ -347,11 +347,26 @@ export class Terminal {
             }
 
             terminal.onExit((exitCode : number) => {
+                clearTimeout(limit);
                 resolve(exitCode);
             });
+
+            // An operation that never ends blocks each later operation of
+            // the stack. A pull of a large image can take a long time,
+            // thus the limit is large.
+            const limit = setTimeout(() => {
+                if (Terminal.terminalMap.get(terminalName) === terminal) {
+                    log.warn("Terminal", "The operation " + terminalName + " did not end in time, stop it");
+                    terminal.ptyProcess?.kill();
+                }
+            }, Terminal.EXEC_LIMIT);
+
             terminal.start();
         });
     }
+
+    /** The longest time for one compose operation, in milliseconds */
+    static readonly EXEC_LIMIT = 60 * 60 * 1000;
 
     public static getTerminalCount() {
         return Terminal.terminalMap.size;

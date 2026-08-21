@@ -97,10 +97,8 @@ export function statusColor(status : number) : string {
     }
 }
 
-// Limits and default of the poll interval setting, in seconds. The
-// backend, the settings form, and the stack page share these values.
-export const POLL_INTERVAL_MIN = 2;
-export const POLL_INTERVAL_MAX = 3600;
+// The time between the status polls of a stack page, in seconds. The
+// server answers most polls from a cache, thus the time is not a setting.
 export const POLL_INTERVAL_DEFAULT = 5;
 
 export const isDev = process.env.NODE_ENV === "development";
