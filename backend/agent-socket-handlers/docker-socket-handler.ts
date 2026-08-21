@@ -1,8 +1,12 @@
 import { AgentSocketHandler } from "../agent-socket-handler";
 import { DockgeServer } from "../dockge-server";
-import { callbackError, callbackResult, checkLogin, DockgeSocket, ValidationError } from "../util-server";
+import { callbackError, callbackResult, checkLogin, DockgeSocket, errorMessage, ValidationError } from "../util-server";
 import { Stack } from "../stack";
 import { AgentSocket } from "../../common/agent-socket";
+import { log } from "../log";
+import { ImageUpdateChecker } from "../image-update";
+import { StackBackup } from "../stack-backup";
+import { DockerResources, PRUNE_KINDS, PruneKind, RESOURCE_KINDS, ResourceKind } from "../docker-resources";
 
 /**
  * Put the arguments of a save event in sequence. A client without override
@@ -418,6 +422,182 @@ export class DockerSocketHandler extends AgentSocketHandler {
                 callbackResult({
                     ok: true,
                     msg: "Service " + serviceName + " restarted"
+                }, callback);
+            } catch (e) {
+                callbackError(e, callback);
+            }
+        });
+
+        // The results of the image update check. This event only adds a
+        // function to the socket API.
+        agentSocket.on("getImageUpdates", async (callback) => {
+            try {
+                checkLogin(socket);
+                callbackResult({
+                    ok: true,
+                    imageUpdates: await ImageUpdateChecker.getAll(),
+                }, callback);
+            } catch (e) {
+                callbackError(e, callback);
+            }
+        });
+
+        // Start a check now. The answer comes at once, the check runs on.
+        agentSocket.on("checkImageUpdates", async (callback) => {
+            try {
+                checkLogin(socket);
+                const started = !server.imageUpdateChecker.isRunning();
+                server.imageUpdateChecker.checkAll().catch((e) => {
+                    log.warn("imageUpdate", "Check failed: " + errorMessage(e));
+                });
+                callbackResult({
+                    ok: true,
+                    started,
+                }, callback);
+            } catch (e) {
+                callbackError(e, callback);
+            }
+        });
+
+        // The backups of a stack
+        agentSocket.on("getStackBackups", async (stackName : unknown, callback) => {
+            try {
+                checkLogin(socket);
+                if (typeof(stackName) !== "string") {
+                    throw new ValidationError("Stack name must be a string");
+                }
+                const stack = await Stack.getStack(server, stackName, true);
+                callbackResult({
+                    ok: true,
+                    backups: await StackBackup.list(stack.name),
+                }, callback);
+            } catch (e) {
+                callbackError(e, callback);
+            }
+        });
+
+        // The content of one backup
+        agentSocket.on("getStackBackup", async (stackName : unknown, id : unknown, callback) => {
+            try {
+                checkLogin(socket);
+                if (typeof(stackName) !== "string" || typeof(id) !== "number") {
+                    throw new ValidationError("Stack name must be a string and id must be a number");
+                }
+                const stack = await Stack.getStack(server, stackName, true);
+                callbackResult({
+                    ok: true,
+                    backup: await StackBackup.get(stack.name, id),
+                }, callback);
+            } catch (e) {
+                callbackError(e, callback);
+            }
+        });
+
+        // Put a backup back. The files of the stack change, the
+        // containers do not. A deploy applies the files.
+        agentSocket.on("restoreStackBackup", async (stackName : unknown, id : unknown, callback) => {
+            try {
+                checkLogin(socket);
+                if (typeof(stackName) !== "string" || typeof(id) !== "number") {
+                    throw new ValidationError("Stack name must be a string and id must be a number");
+                }
+                const existing = await Stack.getStack(server, stackName);
+                if (!existing.isManagedByDockge) {
+                    throw new ValidationError("Stack is not managed by dockge-mod");
+                }
+                const files = await StackBackup.get(existing.name, id);
+                const stack = new Stack(server, existing.name, files.composeYAML, files.composeENV, files.composeOverrideYAML, false);
+                await stack.save(false, "restore");
+                server.sendStackList();
+                callbackResult({
+                    ok: true,
+                    msg: "Restored",
+                }, callback);
+            } catch (e) {
+                callbackError(e, callback);
+            }
+        });
+
+        // The images, the volumes, and the networks of the host
+        agentSocket.on("getDockerResources", async (kind : unknown, callback) => {
+            try {
+                checkLogin(socket);
+                if (typeof(kind) !== "string" || !(RESOURCE_KINDS as readonly string[]).includes(kind)) {
+                    throw new ValidationError("Unknown resource kind");
+                }
+                callbackResult({
+                    ok: true,
+                    resources: await DockerResources.list(kind as ResourceKind),
+                }, callback);
+            } catch (e) {
+                callbackError(e, callback);
+            }
+        });
+
+        agentSocket.on("removeDockerResource", async (kind : unknown, name : unknown, callback) => {
+            try {
+                checkLogin(socket);
+                if (typeof(kind) !== "string" || !(RESOURCE_KINDS as readonly string[]).includes(kind)) {
+                    throw new ValidationError("Unknown resource kind");
+                }
+                if (typeof(name) !== "string") {
+                    throw new ValidationError("Name must be a string");
+                }
+                const output = await DockerResources.remove(kind as ResourceKind, name);
+                callbackResult({
+                    ok: true,
+                    output,
+                }, callback);
+            } catch (e) {
+                callbackError(e, callback);
+            }
+        });
+
+        agentSocket.on("pruneDockerResources", async (kind : unknown, callback) => {
+            try {
+                checkLogin(socket);
+                if (typeof(kind) !== "string" || !(PRUNE_KINDS as readonly string[]).includes(kind)) {
+                    throw new ValidationError("Unknown prune kind");
+                }
+                const output = await DockerResources.prune(kind as PruneKind);
+                callbackResult({
+                    ok: true,
+                    output,
+                }, callback);
+            } catch (e) {
+                callbackError(e, callback);
+            }
+        });
+
+        // The log of one service. The answer holds the terminal name,
+        // and the client joins that terminal.
+        agentSocket.on("serviceLogs", async (stackName : unknown, serviceName : unknown, callback) => {
+            try {
+                checkLogin(socket);
+                if (typeof(stackName) !== "string" || typeof(serviceName) !== "string") {
+                    throw new ValidationError("Stack name and service name must be strings");
+                }
+                const stack = await Stack.getStack(server, stackName);
+                const terminalName = stack.joinServiceLogs(socket, serviceName);
+                callbackResult({
+                    ok: true,
+                    terminalName,
+                }, callback);
+            } catch (e) {
+                callbackError(e, callback);
+            }
+        });
+
+        agentSocket.on("leaveServiceLogs", async (stackName : unknown, serviceName : unknown, callback) => {
+            try {
+                checkLogin(socket);
+                if (typeof(stackName) !== "string" || typeof(serviceName) !== "string") {
+                    throw new ValidationError("Stack name and service name must be strings");
+                }
+                const stack = await Stack.getStack(server, stackName, true);
+                stack.leaveServiceLogs(socket, serviceName);
+                callbackResult({
+                    ok: true,
                 }, callback);
             } catch (e) {
                 callbackError(e, callback);

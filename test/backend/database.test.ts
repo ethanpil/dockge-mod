@@ -57,7 +57,14 @@ describe("Database", () => {
         const added = rows
             .map((row : { name : string }) => row.name)
             .filter((name : string) => !upstream.includes(name) && !name.startsWith("sqlite_"));
-        expect(added).toEqual([ "mod_knex_migrations", "mod_knex_migrations_lock", "mod_setting" ]);
+        expect(added).toEqual([
+            "mod_image_update",
+            "mod_knex_migrations",
+            "mod_knex_migrations_lock",
+            "mod_notification",
+            "mod_setting",
+            "mod_stack_backup",
+        ]);
     });
 
     it("moves the legacy template file to the table", async () => {

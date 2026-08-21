@@ -33,11 +33,11 @@ describe("parseContainerChange", () => {
     });
 
     it("gives the compose project", () => {
-        expect(parseContainerChange(line("start", "demo"))).toEqual({ project: "demo" });
+        expect(parseContainerChange(line("start", "demo"))).toMatchObject({ project: "demo" });
     });
 
     it("gives null as the project for a container without a project", () => {
-        expect(parseContainerChange(line("start"))).toEqual({ project: null });
+        expect(parseContainerChange(line("start"))).toMatchObject({ project: null });
     });
 
     it("ignores a different type", () => {

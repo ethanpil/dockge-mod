@@ -37,7 +37,9 @@ import { AgentSocketHandler } from "./agent-socket-handler";
 import { AgentSocket } from "../common/agent-socket";
 import { ManageAgentSocketHandler } from "./socket-handlers/manage-agent-socket-handler";
 import { Terminal } from "./terminal";
-import { DockerEvents } from "./docker-events";
+import { ContainerChange, DockerEvents } from "./docker-events";
+import { ImageUpdateChecker } from "./image-update";
+import { Notifier } from "./notification";
 import { CachedCall } from "./utils/cached-call";
 
 export class DockgeServer {
@@ -95,6 +97,15 @@ export class DockgeServer {
 
     /** The watcher on `docker events` */
     private dockerEvents? : DockerEvents;
+
+    /** The check for new image versions */
+    imageUpdateChecker = new ImageUpdateChecker(this);
+
+    /**
+     * The containers that got a stop signal, with the time. A die after
+     * a stop is not a crash, thus it sends no notification.
+     */
+    private stoppedContainers : Map<string, number> = new Map();
 
     jwtSecret : string = "";
 
@@ -434,8 +445,12 @@ export class DockgeServer {
             // A change of a container sends a new stack list at once, and
             // it removes the cached status. The polls of the clients then
             // see the change on their next request.
-            this.dockerEvents = new DockerEvents((projects, other) => this.onDockerChange(projects, other));
+            this.dockerEvents = new DockerEvents((projects, other, changes) => this.onDockerChange(projects, other, changes));
             this.dockerEvents.start();
+
+            this.imageUpdateChecker.start().catch((e) => {
+                log.warn("imageUpdate", "Cannot start the check: " + errorMessage(e));
+            });
         });
 
         gracefulShutdown(this.httpServer, {
@@ -670,12 +685,38 @@ export class DockgeServer {
      * @param projects The compose projects that changed
      * @param other True when a container without a project changed
      */
-    onDockerChange(projects : Set<string>, other : boolean) {
+    onDockerChange(projects : Set<string>, other : boolean, changes : ContainerChange[]) {
         Stack.invalidateCaches(other ? undefined : projects);
         this.dockerStatsCache.invalidate();
+        this.notifyChanges(changes);
         this.sendStackList(true).catch((e) => {
             log.warn("server", "Cannot send the stack list: " + errorMessage(e));
         });
+    }
+
+    /**
+     * Send a notification for a container that stopped with an error or
+     * became unhealthy. A container that got a stop signal in the last
+     * minute did not crash.
+     * @param changes The changes of the period
+     */
+    notifyChanges(changes : ContainerChange[]) {
+        const now = Date.now();
+        for (const [ name, time ] of this.stoppedContainers) {
+            if (now - time > 60 * 1000) {
+                this.stoppedContainers.delete(name);
+            }
+        }
+
+        for (const change of changes) {
+            if (change.action === "kill" || change.action === "stop") {
+                this.stoppedContainers.set(change.name, now);
+            } else if (change.action === "die" && change.exitCode !== null && change.exitCode !== 0 && !this.stoppedContainers.has(change.name)) {
+                Notifier.send("container_exited", "Container exited", "The container " + change.name + " exited with code " + change.exitCode + ".", "exit:" + change.name).catch(() => undefined);
+            } else if (change.action === "health_status: unhealthy") {
+                Notifier.send("container_unhealthy", "Container unhealthy", "The container " + change.name + " is unhealthy.", "health:" + change.name).catch(() => undefined);
+            }
+        }
     }
 
     async getDockerNetworkList() : Promise<string[]> {
@@ -810,6 +851,7 @@ export class DockgeServer {
         // TODO: Close all terminals?
 
         this.dockerEvents?.stop();
+        this.imageUpdateChecker.stop();
         await Database.close();
         Settings.stopCacheCleaner();
     }

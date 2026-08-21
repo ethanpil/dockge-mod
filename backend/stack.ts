@@ -13,7 +13,8 @@ import {
     COMBINED_TERMINAL_ROWS,
     CREATED_FILE,
     CREATED_STACK,
-    EXITED, getCombinedTerminalName,
+    envsubstYAML,
+    EXITED, getCombinedTerminalName, getServiceLogsTerminalName,
     getComposeTerminalName, getContainerExecTerminalName,
     PROGRESS_TERMINAL_ROWS,
     RUNNING, TERMINAL_ROWS,
@@ -23,6 +24,9 @@ import { InteractiveTerminal, Terminal } from "./terminal";
 import childProcessAsync from "promisify-child-process";
 import { Settings } from "./settings";
 import { CachedCall } from "./utils/cached-call";
+import dotenv from "dotenv";
+import { StackBackup } from "./stack-backup";
+import { ImageUpdateChecker } from "./image-update";
 
 export class Stack {
 
@@ -208,6 +212,53 @@ export class Stack {
             isManagedByDockge: this.isManagedByDockge,
             composeFileName: this._composeFileName,
             endpoint,
+            // The count of images with a new version. This field only
+            // adds data. A client without the feature ignores it.
+            imageUpdates: this.images.filter((image) => ImageUpdateChecker.available.has(image)).length,
+        };
+    }
+
+    protected _images? : string[];
+
+    /**
+     * The images of the services of this stack. A variable in an image
+     * name gets its value from the .env file. A compose file with an
+     * error gives an empty list.
+     */
+    get images() : string[] {
+        if (this._images === undefined) {
+            this._images = [];
+            try {
+                const env = dotenv.parse(this.composeENV);
+                const doc = yaml.parse(envsubstYAML(this.composeYAML, env));
+                const services = doc?.services;
+                if (services && typeof services === "object") {
+                    for (const service of Object.values(services) as { image? : unknown }[]) {
+                        if (service && typeof service.image === "string" && service.image.trim() !== "") {
+                            this._images.push(service.image.trim());
+                        }
+                    }
+                }
+            } catch (e) {
+                log.debug("stack", "Cannot read the images of " + this.name + ": " + errorMessage(e));
+            }
+        }
+        return this._images;
+    }
+
+    /**
+     * The content of the files on the disk, for a backup.
+     * @returns The files, or null when the stack has no directory
+     */
+    protected async currentFiles() : Promise<{ composeYAML : string, composeENV : string, composeOverrideYAML : string | null } | null> {
+        if (!await fileExists(this.path)) {
+            return null;
+        }
+        const current = new Stack(this.server, this.name);
+        return {
+            composeYAML: current.composeYAML,
+            composeENV: current.composeENV,
+            composeOverrideYAML: current.composeOverrideYAML,
         };
     }
 
@@ -350,8 +401,9 @@ export class Stack {
     /**
      * Save the stack to the disk
      * @param isAdd
+     * @param reason Why the files change, for the backup
      */
-    async save(isAdd : boolean) {
+    async save(isAdd : boolean, reason = "save") {
         this.validate();
 
         let dir = this.path;
@@ -367,6 +419,12 @@ export class Stack {
         } else {
             if (!await fileExists(dir)) {
                 throw new ValidationError("Stack not found");
+            }
+
+            // A copy of the files from before the change
+            const current = await this.currentFiles();
+            if (current) {
+                await StackBackup.create(this.name, reason, current);
             }
         }
 
@@ -548,6 +606,8 @@ export class Stack {
             recursive: true,
             force: true
         });
+
+        await StackBackup.removeAll(this.name);
 
         return exitCode;
     }
@@ -826,6 +886,12 @@ export class Stack {
     }
 
     async update(socket: DockgeSocket) {
+        // A copy of the files from before the update
+        const current = await this.currentFiles();
+        if (current) {
+            await StackBackup.create(this.name, "update", current);
+        }
+
         const terminalName = getComposeTerminalName(socket.endpoint, this.name);
         let exitCode = await Terminal.exec(this.server, socket, terminalName, "docker", this.getComposeOptions("pull"), this.path);
         Stack.invalidateCaches([ this.name ]);
@@ -845,6 +911,39 @@ export class Stack {
             throw new Error("Failed to restart, please check the terminal output for more information.");
         }
         return exitCode;
+    }
+
+    /**
+     * Join the log of one service. The terminal runs docker compose logs
+     * for that service only.
+     * @param socket The client
+     * @param serviceName The service
+     * @returns The terminal name, for the client
+     */
+    joinServiceLogs(socket: DockgeSocket, serviceName : string) : string {
+        checkServiceName(serviceName);
+        const terminalName = getServiceLogsTerminalName(socket.endpoint, this.name, serviceName);
+        const existing = Terminal.getTerminal(terminalName);
+        const terminal = Terminal.getOrCreateTerminal(this.server, terminalName, "docker", this.getComposeOptions("logs", "-f", "--tail", "200", serviceName), this.path);
+        terminal.enableKeepAlive = true;
+        if (!existing) {
+            terminal.rows = COMBINED_TERMINAL_ROWS;
+            terminal.cols = COMBINED_TERMINAL_COLS;
+        }
+        terminal.join(socket);
+        terminal.start();
+        return terminalName;
+    }
+
+    /**
+     * Leave the log of one service.
+     * @param socket The client
+     * @param serviceName The service
+     */
+    leaveServiceLogs(socket: DockgeSocket, serviceName : string) {
+        checkServiceName(serviceName);
+        const terminal = Terminal.getTerminal(getServiceLogsTerminalName(socket.endpoint, this.name, serviceName));
+        terminal?.leave(socket);
     }
 
     async joinCombinedTerminal(socket: DockgeSocket) {

@@ -273,6 +273,17 @@ export function getCombinedTerminalName(endpoint : string, stack : string) {
     return "combined-" + endpoint + "-" + stack;
 }
 
+/**
+ * The terminal with the log of one service of a stack.
+ * @param endpoint The agent endpoint, or an empty text
+ * @param stack The stack name
+ * @param service The service name
+ * @returns The terminal name
+ */
+export function getServiceLogsTerminalName(endpoint : string, stack : string, service : string) {
+    return "service-logs-" + endpoint + "-" + stack + "-" + service;
+}
+
 export function getContainerTerminalName(endpoint : string, container : string) {
     return "container-" + endpoint + "-" + container;
 }

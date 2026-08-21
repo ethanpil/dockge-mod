@@ -26,6 +26,7 @@ import path from "path";
 import childProcessAsync from "promisify-child-process";
 import { defaultComposeOverrideTemplate } from "../../common/util-common";
 import { ModSetting } from "../mod-setting";
+import { checkNotification, Notifier } from "../notification";
 
 /**
  * One item of the health report. `ok` says if the check passed. `info`
@@ -459,6 +460,61 @@ export class MainSocketHandler extends SocketHandler {
         });
 
         // composerize
+        // The notification targets. These events only add functions to
+        // the socket API.
+        socket.on("getNotifications", async (callback) => {
+            try {
+                checkLogin(socket);
+                callbackResult({
+                    ok: true,
+                    notifications: await Notifier.list(),
+                }, callback);
+            } catch (e) {
+                callbackError(e, callback);
+            }
+        });
+
+        socket.on("saveNotification", async (data : unknown, callback) => {
+            try {
+                checkLogin(socket);
+                const id = await Notifier.save(checkNotification(data));
+                callbackResult({
+                    ok: true,
+                    id,
+                }, callback);
+            } catch (e) {
+                callbackError(e, callback);
+            }
+        });
+
+        socket.on("deleteNotification", async (id : unknown, callback) => {
+            try {
+                checkLogin(socket);
+                if (typeof id !== "number") {
+                    throw new ValidationError("The id must be a number");
+                }
+                await Notifier.remove(id);
+                callbackResult({
+                    ok: true,
+                }, callback);
+            } catch (e) {
+                callbackError(e, callback);
+            }
+        });
+
+        // Send a test message to one target, without a save
+        socket.on("testNotification", async (data : unknown, callback) => {
+            try {
+                checkLogin(socket);
+                await Notifier.sendTo(checkNotification(data), "test", "dockge-mod test", "This is a test notification from dockge-mod.");
+                callbackResult({
+                    ok: true,
+                }, callback);
+            } catch (e) {
+                callbackError(e, callback);
+            }
+        });
+
         socket.on("composerize", async (dockerRunCommand : unknown, callback) => {
             try {
                 checkLogin(socket);
