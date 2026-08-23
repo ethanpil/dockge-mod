@@ -276,11 +276,13 @@
     "pruneVolumesNote": "A volume with a name always stays. Only a volume that docker named itself can go away.",
     "pruneNetworksNote": "A network that a compose file declares as external does not come back. Docker compose makes its own networks again at the next deploy.",
     "pruneNothingToRemove": "There is nothing to remove.",
-    "pruneWillRemove": "These {n} items will be removed:",
-    "pruneKept": "{n} are kept because a stack uses them.",
-    "pruneRemoved": "Removed {n} items.",
-    "pruneFailed": "{n} items did not go away.",
+    "pruneWillRemove": "Items to remove: {n}",
+    "pruneKept": "Items kept: {n}. A container uses them, a stack of this server needs them, or a user named them.",
+    "pruneRemoved": "Items removed: {n}",
+    "pruneFailed": "Items that stay after an error: {n}",
     "inUse": "In use",
     "inUseYes": "In use",
-    "inUseNo": "Not used"
+    "inUseNo": "Not used",
+    "pruneSkipped": "Items that a new plan kept: {n}",
+    "inUseUnknown": "Unknown"
 }

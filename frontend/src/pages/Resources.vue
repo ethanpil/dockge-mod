@@ -46,8 +46,8 @@
                                 <td>{{ img.Size }}</td>
                                 <td>{{ img.CreatedSince }}</td>
                                 <td>
-                                    <span class="badge use-badge" :class="img.inUse ? 'bg-success' : 'bg-secondary'">
-                                        {{ img.inUse ? $t("inUseYes") : $t("inUseNo") }}
+                                    <span class="badge use-badge" :class="useClass(img.inUse)">
+                                        {{ useText(img.inUse) }}
                                     </span>
                                 </td>
                                 <td class="text-end">
@@ -91,14 +91,14 @@
                                 <td>{{ vol.Name }}</td>
                                 <td>{{ vol.Driver }}</td>
                                 <td>
-                                    <span class="badge use-badge" :class="vol.inUse ? 'bg-success' : 'bg-secondary'">
-                                        {{ vol.inUse ? $t("inUseYes") : $t("inUseNo") }}
+                                    <span class="badge use-badge" :class="useClass(vol.inUse)">
+                                        {{ useText(vol.inUse) }}
                                     </span>
                                 </td>
                                 <td class="text-end">
                                     <!-- Docker refuses to remove a volume that
                                          a container uses -->
-                                    <button v-if="!vol.inUse" class="btn btn-outline-danger btn-sm" type="button" :disabled="busy.volumes" @click="ask('remove', 'volumes', vol.Name)">
+                                    <button v-if="vol.inUse === false" class="btn btn-outline-danger btn-sm" type="button" :disabled="busy.volumes" @click="ask('remove', 'volumes', vol.Name)">
                                         {{ $t("remove") }}
                                     </button>
                                 </td>
@@ -140,15 +140,15 @@
                                 <td>{{ net.Driver }}</td>
                                 <td>{{ net.Scope }}</td>
                                 <td>
-                                    <span class="badge use-badge" :class="net.inUse ? 'bg-success' : 'bg-secondary'">
-                                        {{ net.inUse ? $t("inUseYes") : $t("inUseNo") }}
+                                    <span class="badge use-badge" :class="useClass(net.inUse)">
+                                        {{ useText(net.inUse) }}
                                     </span>
                                 </td>
                                 <td class="text-end">
                                     <!-- Docker refuses to remove a network of a
                                          container, and the networks of docker
                                          itself -->
-                                    <button v-if="!isDefaultNetwork(net.Name) && !net.inUse" class="btn btn-outline-danger btn-sm" type="button" :disabled="busy.networks" @click="ask('remove', 'networks', net.Name)">
+                                    <button v-if="!isDefaultNetwork(net.Name) && net.inUse === false" class="btn btn-outline-danger btn-sm" type="button" :disabled="busy.networks" @click="ask('remove', 'networks', net.Name)">
                                         {{ $t("remove") }}
                                     </button>
                                 </td>
@@ -205,16 +205,20 @@
                 </div>
             </div>
 
-            <Confirm ref="confirm" btn-style="btn-danger" :yes-text="$t('yes')" :no-text="$t('cancel')" @yes="run">
+            <Confirm
+                ref="confirm" btn-style="btn-danger" :busy="confirmBusy" no-on-dismiss
+                :yes-text="$t('yes')" :no-text="$t('cancel')" @yes="run" @no="dialogOpen = false"
+            >
                 <span v-if="pending && pending.action === 'remove'">{{ $t("removeResourceMsg", [ pending.name ]) }}</span>
                 <template v-else-if="pending">
-                    <p>{{ $t("pruneWillRemove", { n: pending.candidates.length }) }}</p>
-                    <ul class="plan-list">
+                    <p id="plan-title">{{ $t("pruneWillRemove", { n: pending.candidates.length }) }}</p>
+                    <!-- The list can scroll. A keyboard needs the focus in it. -->
+                    <ul class="plan-list" tabindex="0" role="group" aria-labelledby="plan-title">
                         <!-- Two rows of docker images can hold the same ID,
                              thus the position gives the key -->
                         <li v-for="(item, index) in pending.candidates" :key="index">
                             {{ item.name }}
-                            <span v-if="item.detail" class="note">{{ item.detail }}</span>
+                            <span v-if="item.detail" class="note">({{ item.detail }})</span>
                         </li>
                     </ul>
                     <p v-if="pending.kept > 0" class="note mb-0">{{ $t("pruneKept", { n: pending.kept }) }}</p>
@@ -255,6 +259,11 @@ export default {
             checking: false,
             // The action that waits for the answer of the confirm dialog
             pending: null,
+            // True while the dialog is on screen. A plan that arrives late
+            // must not change the question that the user reads.
+            dialogOpen: false,
+            // True while the action of the dialog runs
+            confirmBusy: false,
         };
     },
 
@@ -284,6 +293,9 @@ export default {
             // The check of the host before this one is not the check of
             // this host, thus the button becomes usable again
             this.checking = false;
+            // The plan belongs to the host before this one. A removal
+            // must not go to a different host.
+            this.closeDialog();
             this.loadAll();
         },
 
@@ -444,7 +456,7 @@ export default {
             this.pending = { action,
                 kind,
                 name };
-            this.$refs.confirm.show();
+            this.showDialog();
         },
 
         /**
@@ -455,9 +467,16 @@ export default {
          */
         askPrune(kind) {
             const listKind = this.listKindOf(kind);
+            const endpoint = this.endpoint;
             this.busy[listKind] = true;
             this.request("getPrunePlan", [ kind ], (res) => {
                 this.busy[listKind] = false;
+                // The user went to a different host, or a dialog is
+                // already on screen. A new question here would change
+                // the text above the buttons that the user reads.
+                if (this.endpoint !== endpoint || this.dialogOpen) {
+                    return;
+                }
                 if (!res.ok) {
                     this.$root.toastRes(res);
                     return;
@@ -475,8 +494,32 @@ export default {
                     kind,
                     candidates: res.candidates,
                     kept: res.kept };
-                this.$refs.confirm.show();
+                this.showDialog();
             });
+        },
+
+        /**
+         * Show the confirm dialog for the action in pending.
+         * @returns {void}
+         */
+        showDialog() {
+            this.dialogOpen = true;
+            this.confirmBusy = false;
+            this.$refs.confirm.show();
+        },
+
+        /**
+         * Close the dialog and forget its action. A change of the host
+         * needs this, because the plan belongs to the host before it.
+         * @returns {void}
+         */
+        closeDialog() {
+            if (this.dialogOpen) {
+                this.$refs.confirm?.hide();
+            }
+            this.dialogOpen = false;
+            this.confirmBusy = false;
+            this.pending = null;
         },
 
         /**
@@ -487,21 +530,34 @@ export default {
          * @returns {void}
          */
         run() {
-            const { action, kind, name } = this.pending;
+            // The buttons stay on screen while the dialog closes. A
+            // second press must not send the action again.
+            if (this.confirmBusy || !this.pending) {
+                return;
+            }
+            this.confirmBusy = true;
+            this.dialogOpen = false;
+
+            const { action, kind, name, candidates } = this.pending;
             const listKind = this.listKindOf(kind);
             this.busy[listKind] = true;
 
             if (action === "remove") {
                 this.request("removeDockerResource", [ kind, name ], (res) => {
                     this.busy[listKind] = false;
+                    this.confirmBusy = false;
                     this.$root.toastRes(res);
                     this.load(listKind);
                 });
                 return;
             }
 
-            this.request("pruneDockerResources", [ kind ], (res) => {
+            // The server removes only the items of this list. An item
+            // that became busy after the plan stays for the next time.
+            const accepted = candidates.map((item) => item.id);
+            this.request("pruneDockerResources", [ kind, accepted ], (res) => {
                 this.busy[listKind] = false;
+                this.confirmBusy = false;
                 if (res.ok) {
                     this.reportPrune(res);
                 } else {
@@ -534,6 +590,41 @@ export default {
                     msgi18n: true,
                 });
             }
+            // A container can take an item between the plan and the
+            // removal. The server keeps such an item.
+            if (res.skipped > 0) {
+                this.$root.toastRes({
+                    ok: true,
+                    msg: { key: "pruneSkipped",
+                        values: { n: res.skipped } },
+                    msgi18n: true,
+                });
+            }
+        },
+
+        /**
+         * The colour of the badge that shows if a container uses a row.
+         * @param {boolean|undefined} inUse the field of the row
+         * @returns {string} the class of the badge
+         */
+        useClass(inUse) {
+            if (inUse === undefined) {
+                return "bg-warning";
+            }
+            return inUse ? "bg-success" : "bg-secondary";
+        },
+
+        /**
+         * The text of that badge. An older agent sends no answer for
+         * this field, and the page must not say that the row is free.
+         * @param {boolean|undefined} inUse the field of the row
+         * @returns {string} the text of the badge
+         */
+        useText(inUse) {
+            if (inUse === undefined) {
+                return this.$t("inUseUnknown");
+            }
+            return inUse ? this.$t("inUseYes") : this.$t("inUseNo");
         },
 
         /**
