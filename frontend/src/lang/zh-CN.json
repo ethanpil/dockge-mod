@@ -280,11 +280,13 @@
     "pruneVolumesNote": "有名称的数据卷始终保留。只有 docker 自己命名的数据卷才会被移除。",
     "pruneNetworksNote": "compose 文件中声明为 external 的网络不会重新创建。Docker compose 自己创建的网络会在下次部署时重新创建。",
     "pruneNothingToRemove": "没有可移除的内容。",
-    "pruneWillRemove": "将移除这 {n} 项：",
-    "pruneKept": "有 {n} 项被保留，因为有堆栈正在使用。",
-    "pruneRemoved": "已移除 {n} 项。",
-    "pruneFailed": "有 {n} 项未能移除。",
+    "pruneWillRemove": "待移除项目：{n}",
+    "pruneKept": "保留项目：{n}。有容器正在使用、本服务器的堆栈需要，或者用户为其命名。",
+    "pruneRemoved": "已移除项目：{n}",
+    "pruneFailed": "出错后仍保留的项目：{n}",
     "inUse": "使用中",
     "inUseYes": "使用中",
-    "inUseNo": "未使用"
+    "inUseNo": "未使用",
+    "pruneSkipped": "新计划保留的项目：{n}",
+    "inUseUnknown": "未知"
 }

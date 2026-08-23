@@ -280,11 +280,13 @@
     "pruneVolumesNote": "A saját névvel rendelkező kötet mindig megmarad. Csak az a kötet távolítható el, amelyet a Docker maga nevezett el.",
     "pruneNetworksNote": "Azt a hálózatot, amelyet egy compose fájl external-ként deklarál, a rendszer nem hozza létre újra. A Docker Compose a saját hálózatait a következő telepítéskor újra létrehozza.",
     "pruneNothingToRemove": "Nincs mit eltávolítani.",
-    "pruneWillRemove": "Ez a(z) {n} elem el lesz távolítva:",
-    "pruneKept": "{n} megmarad, mert egy stack használja őket.",
-    "pruneRemoved": "{n} elem eltávolítva.",
-    "pruneFailed": "{n} elemet nem sikerült eltávolítani.",
+    "pruneWillRemove": "Eltávolítandó elemek: {n}",
+    "pruneKept": "Megtartott elemek: {n}. Egy konténer használja őket, a kiszolgáló egyik stackjének szüksége van rájuk, vagy egy felhasználó nevet adott nekik.",
+    "pruneRemoved": "Eltávolított elemek: {n}",
+    "pruneFailed": "Hiba után megmaradt elemek: {n}",
     "inUse": "Használatban",
     "inUseYes": "Használatban",
-    "inUseNo": "Nincs használatban"
+    "inUseNo": "Nincs használatban",
+    "pruneSkipped": "Egy új terv által megtartott elemek: {n}",
+    "inUseUnknown": "Ismeretlen"
 }

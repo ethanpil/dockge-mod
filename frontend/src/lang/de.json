@@ -280,11 +280,13 @@
     "pruneVolumesNote": "Ein Volume mit einem eigenen Namen bleibt immer erhalten. Nur ein Volume, das Docker selbst benannt hat, kann entfernt werden.",
     "pruneNetworksNote": "Ein Netzwerk, das eine Compose-Datei als external deklariert, wird nicht neu erstellt. Docker Compose erstellt seine eigenen Netzwerke beim nächsten Deploy neu.",
     "pruneNothingToRemove": "Es gibt nichts zu entfernen.",
-    "pruneWillRemove": "Diese {n} Einträge werden entfernt:",
-    "pruneKept": "{n} bleiben erhalten, weil ein Stack sie nutzt.",
-    "pruneRemoved": "{n} Einträge entfernt.",
-    "pruneFailed": "{n} Einträge wurden nicht entfernt.",
+    "pruneWillRemove": "Zu entfernende Einträge: {n}",
+    "pruneKept": "Erhaltene Einträge: {n}. Ein Container nutzt sie, ein Stack dieses Servers braucht sie, oder ein Benutzer hat sie benannt.",
+    "pruneRemoved": "Entfernte Einträge: {n}",
+    "pruneFailed": "Einträge, die nach einem Fehler bleiben: {n}",
     "inUse": "Verwendet",
     "inUseYes": "Verwendet",
-    "inUseNo": "Nicht verwendet"
+    "inUseNo": "Nicht verwendet",
+    "pruneSkipped": "Einträge, die ein neuer Plan behalten hat: {n}",
+    "inUseUnknown": "Unbekannt"
 }

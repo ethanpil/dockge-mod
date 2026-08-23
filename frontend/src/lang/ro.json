@@ -280,11 +280,13 @@
     "pruneVolumesNote": "Un volum cu nume rămâne întotdeauna. Numai un volum pe care docker l-a denumit singur poate fi eliminat.",
     "pruneNetworksNote": "O rețea pe care un fișier compose o declară ca external nu revine. Docker compose își creează din nou propriile rețele la următoarea lansare.",
     "pruneNothingToRemove": "Nu este nimic de eliminat.",
-    "pruneWillRemove": "Aceste {n} elemente vor fi eliminate:",
-    "pruneKept": "{n} sunt păstrate deoarece o stivă le folosește.",
-    "pruneRemoved": "S-au eliminat {n} elemente.",
-    "pruneFailed": "{n} elemente nu au fost eliminate.",
+    "pruneWillRemove": "Elemente de eliminat: {n}",
+    "pruneKept": "Elemente păstrate: {n}. Un container le folosește, o stivă de pe acest server are nevoie de ele sau un utilizator le-a dat un nume.",
+    "pruneRemoved": "Elemente eliminate: {n}",
+    "pruneFailed": "Elemente rămase după o eroare: {n}",
     "inUse": "În uz",
     "inUseYes": "În uz",
-    "inUseNo": "Neutilizat"
+    "inUseNo": "Neutilizat",
+    "pruneSkipped": "Elemente păstrate de un plan nou: {n}",
+    "inUseUnknown": "Necunoscut"
 }

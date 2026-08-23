@@ -276,11 +276,13 @@
     "pruneVolumesNote": "Et volum med et navn blir alltid værende. Bare et volum som docker selv har navngitt kan fjernes.",
     "pruneNetworksNote": "Et nettverk som en compose-fil erklærer som external kommer ikke tilbake. Docker compose lager sine egne nettverk på nytt ved neste utplassering.",
     "pruneNothingToRemove": "Det er ingenting å fjerne.",
-    "pruneWillRemove": "Disse {n} elementene blir fjernet:",
-    "pruneKept": "{n} beholdes fordi en stack bruker dem.",
-    "pruneRemoved": "Fjernet {n} elementer.",
-    "pruneFailed": "{n} elementer ble ikke fjernet.",
+    "pruneWillRemove": "Elementer som skal fjernes: {n}",
+    "pruneKept": "Elementer som beholdes: {n}. En container bruker dem, en stack på denne serveren trenger dem, eller en bruker har gitt dem navn.",
+    "pruneRemoved": "Elementer som ble fjernet: {n}",
+    "pruneFailed": "Elementer som ble igjen etter en feil: {n}",
     "inUse": "I bruk",
     "inUseYes": "I bruk",
-    "inUseNo": "Ikke i bruk"
+    "inUseNo": "Ikke i bruk",
+    "pruneSkipped": "Elementer som en ny plan beholdt: {n}",
+    "inUseUnknown": "Ukjent"
 }

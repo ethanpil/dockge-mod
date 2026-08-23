@@ -280,11 +280,13 @@
     "pruneVolumesNote": "Volume có tên luôn được giữ lại. Chỉ volume do chính docker đặt tên mới có thể bị gỡ bỏ.",
     "pruneNetworksNote": "Mạng mà một tệp compose khai báo là external sẽ không được tạo lại. Docker compose sẽ tạo lại các mạng của chính nó ở lần triển khai tiếp theo.",
     "pruneNothingToRemove": "Không có gì để gỡ bỏ.",
-    "pruneWillRemove": "{n} mục sau sẽ bị gỡ bỏ:",
-    "pruneKept": "{n} mục được giữ lại vì có stack đang dùng.",
-    "pruneRemoved": "Đã gỡ bỏ {n} mục.",
-    "pruneFailed": "{n} mục không gỡ bỏ được.",
+    "pruneWillRemove": "Số mục sẽ gỡ bỏ: {n}",
+    "pruneKept": "Số mục được giữ lại: {n}. Có container đang dùng, có stack của máy chủ này cần đến, hoặc người dùng đã đặt tên cho chúng.",
+    "pruneRemoved": "Số mục đã gỡ bỏ: {n}",
+    "pruneFailed": "Số mục còn lại sau khi có lỗi: {n}",
     "inUse": "Đang dùng",
     "inUseYes": "Đang dùng",
-    "inUseNo": "Không dùng"
+    "inUseNo": "Không dùng",
+    "pruneSkipped": "Số mục được kế hoạch mới giữ lại: {n}",
+    "inUseUnknown": "Không rõ"
 }

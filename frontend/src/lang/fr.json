@@ -280,11 +280,13 @@
     "pruneVolumesNote": "Un volume qui porte son propre nom est toujours conservé. Seul un volume que Docker a nommé lui-même peut être retiré.",
     "pruneNetworksNote": "Un réseau qu'un fichier compose déclare comme external n'est pas recréé. Docker Compose recrée ses propres réseaux au prochain déploiement.",
     "pruneNothingToRemove": "Il n'y a rien à retirer.",
-    "pruneWillRemove": "Ces {n} éléments vont être retirés :",
-    "pruneKept": "{n} sont conservés car une pile les utilise.",
-    "pruneRemoved": "{n} éléments retirés.",
-    "pruneFailed": "{n} éléments n'ont pas été retirés.",
+    "pruneWillRemove": "Éléments à retirer : {n}",
+    "pruneKept": "Éléments conservés : {n}. Un conteneur les utilise, une pile de ce serveur en a besoin, ou un utilisateur les a nommés.",
+    "pruneRemoved": "Éléments retirés : {n}",
+    "pruneFailed": "Éléments qui restent après une erreur : {n}",
     "inUse": "Utilisé",
     "inUseYes": "Utilisé",
-    "inUseNo": "Non utilisé"
+    "inUseNo": "Non utilisé",
+    "pruneSkipped": "Éléments qu'un nouveau plan a conservés : {n}",
+    "inUseUnknown": "Inconnu"
 }

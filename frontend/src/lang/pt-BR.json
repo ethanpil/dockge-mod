@@ -280,11 +280,13 @@
     "pruneVolumesNote": "Um volume com nome sempre permanece. Só um volume que o docker nomeou sozinho pode ser removido.",
     "pruneNetworksNote": "Uma rede que um arquivo compose declara como external não volta. O Docker compose cria novamente as próprias redes no próximo deploy.",
     "pruneNothingToRemove": "Não há nada para remover.",
-    "pruneWillRemove": "Estes {n} itens serão removidos:",
-    "pruneKept": "{n} são mantidos porque uma stack os usa.",
-    "pruneRemoved": "Removidos {n} itens.",
-    "pruneFailed": "{n} itens não foram removidos.",
+    "pruneWillRemove": "Itens a serem removidos: {n}",
+    "pruneKept": "Itens mantidos: {n}. Um contêiner os usa, uma stack deste servidor precisa deles ou um usuário deu um nome a eles.",
+    "pruneRemoved": "Itens removidos: {n}",
+    "pruneFailed": "Itens que permanecem após um erro: {n}",
     "inUse": "Em uso",
     "inUseYes": "Em uso",
-    "inUseNo": "Não usado"
+    "inUseNo": "Não usado",
+    "pruneSkipped": "Itens que um novo plano manteve: {n}",
+    "inUseUnknown": "Desconhecido"
 }

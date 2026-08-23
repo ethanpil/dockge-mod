@@ -280,11 +280,13 @@
     "pruneVolumesNote": "Een volume met een naam blijft altijd bestaan. Alleen een volume dat docker zelf een naam gaf kan verdwijnen.",
     "pruneNetworksNote": "Een netwerk dat een compose-bestand als external opgeeft komt niet terug. Docker compose maakt zijn eigen netwerken opnieuw aan bij het volgende opzetten.",
     "pruneNothingToRemove": "Er is niets te verwijderen.",
-    "pruneWillRemove": "Deze {n} items worden verwijderd:",
-    "pruneKept": "{n} blijven behouden omdat een stack ze gebruikt.",
-    "pruneRemoved": "{n} items verwijderd.",
-    "pruneFailed": "{n} items zijn niet verwijderd.",
+    "pruneWillRemove": "Te verwijderen items: {n}",
+    "pruneKept": "Behouden items: {n}. Een container gebruikt ze, een stack van deze server heeft ze nodig, of een gebruiker heeft ze een naam gegeven.",
+    "pruneRemoved": "Verwijderde items: {n}",
+    "pruneFailed": "Items die na een fout blijven staan: {n}",
     "inUse": "In gebruik",
     "inUseYes": "In gebruik",
-    "inUseNo": "Niet gebruikt"
+    "inUseNo": "Niet gebruikt",
+    "pruneSkipped": "Items die een nieuw plan heeft behouden: {n}",
+    "inUseUnknown": "Onbekend"
 }

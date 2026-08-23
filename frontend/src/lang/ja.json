@@ -280,11 +280,13 @@
     "pruneVolumesNote": "名前を持つボリュームは必ず残ります。削除できるのは Docker 自身が名前を付けたボリュームだけです。",
     "pruneNetworksNote": "compose ファイルで external と宣言されたネットワークは、作り直されません。Docker Compose 自身のネットワークは次回のデプロイで作り直されます。",
     "pruneNothingToRemove": "削除するものはありません。",
-    "pruneWillRemove": "次の {n} 件を削除します:",
-    "pruneKept": "{n} 件はスタックが使用しているため残します。",
-    "pruneRemoved": "{n} 件を削除しました。",
-    "pruneFailed": "{n} 件は削除できませんでした。",
+    "pruneWillRemove": "削除する項目: {n} 件",
+    "pruneKept": "残す項目: {n} 件。コンテナが使用している、このサーバーのスタックが必要としている、またはユーザーが名前を付けたためです。",
+    "pruneRemoved": "削除した項目: {n} 件",
+    "pruneFailed": "エラーのあとに残った項目: {n} 件",
     "inUse": "使用中",
     "inUseYes": "使用中",
-    "inUseNo": "未使用"
+    "inUseNo": "未使用",
+    "pruneSkipped": "新しい判定で残した項目: {n} 件",
+    "inUseUnknown": "不明"
 }

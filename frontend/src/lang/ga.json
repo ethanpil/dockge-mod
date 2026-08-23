@@ -280,11 +280,13 @@
     "pruneVolumesNote": "Fanann imleabhar a bhfuil a ainm féin air i gcónaí. Ní féidir ach imleabhar ar thug Docker féin ainm air a bhaint.",
     "pruneNetworksNote": "Líonra a dhearbhaíonn comhad compose mar external, ní chruthaítear arís é. Cruthaíonn Docker Compose a líonraí féin arís ag an gcéad imlonnú eile.",
     "pruneNothingToRemove": "Níl aon rud le baint.",
-    "pruneWillRemove": "Bainfear na {n} mír seo:",
-    "pruneKept": "Coinnítear {n} mír mar go n-úsáideann staca iad.",
-    "pruneRemoved": "Baineadh {n} mír.",
-    "pruneFailed": "Níor baineadh {n} mír.",
+    "pruneWillRemove": "Míreanna le baint: {n}",
+    "pruneKept": "Míreanna a coinníodh: {n}. Úsáideann coimeádán iad, teastaíonn siad ó staca ar an bhfreastalaí seo, nó thug úsáideoir ainm orthu.",
+    "pruneRemoved": "Míreanna a baineadh: {n}",
+    "pruneFailed": "Míreanna a fhanann tar éis earráide: {n}",
     "inUse": "In úsáid",
     "inUseYes": "In úsáid",
-    "inUseNo": "Gan úsáid"
+    "inUseNo": "Gan úsáid",
+    "pruneSkipped": "Míreanna a choinnigh plean nua: {n}",
+    "inUseUnknown": "Anaithnid"
 }

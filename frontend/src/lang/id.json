@@ -280,11 +280,13 @@
     "pruneVolumesNote": "Volume yang punya nama sendiri selalu dipertahankan. Hanya volume yang dinamai sendiri oleh Docker yang dapat dihapus.",
     "pruneNetworksNote": "Jaringan yang dideklarasikan sebagai external di berkas compose tidak dibuat ulang. Docker Compose membuat ulang jaringan miliknya sendiri pada penerapan berikutnya.",
     "pruneNothingToRemove": "Tidak ada yang perlu dihapus.",
-    "pruneWillRemove": "{n} item berikut akan dihapus:",
-    "pruneKept": "{n} dipertahankan karena dipakai oleh sebuah tumpukan.",
-    "pruneRemoved": "{n} item dihapus.",
-    "pruneFailed": "{n} item gagal dihapus.",
+    "pruneWillRemove": "Item yang akan dihapus: {n}",
+    "pruneKept": "Item yang dipertahankan: {n}. Sebuah kontainer memakainya, sebuah tumpukan di server ini membutuhkannya, atau pengguna memberinya nama.",
+    "pruneRemoved": "Item yang dihapus: {n}",
+    "pruneFailed": "Item yang tersisa setelah terjadi galat: {n}",
     "inUse": "Dipakai",
     "inUseYes": "Dipakai",
-    "inUseNo": "Tidak dipakai"
+    "inUseNo": "Tidak dipakai",
+    "pruneSkipped": "Item yang dipertahankan oleh rencana baru: {n}",
+    "inUseUnknown": "Tidak diketahui"
 }

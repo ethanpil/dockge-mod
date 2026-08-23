@@ -280,11 +280,13 @@
     "pruneVolumesNote": "Wolumen z nazwą zawsze pozostaje. Usunąć można tylko wolumen, który docker nazwał sam.",
     "pruneNetworksNote": "Sieć, którą plik compose deklaruje jako external, nie wróci. Docker compose tworzy własne sieci ponownie przy następnym wdrożeniu.",
     "pruneNothingToRemove": "Nie ma nic do usunięcia.",
-    "pruneWillRemove": "Te elementy ({n}) zostaną usunięte:",
-    "pruneKept": "Pozostawiono {n}, ponieważ używa ich stos.",
-    "pruneRemoved": "Liczba usuniętych elementów: {n}.",
-    "pruneFailed": "Liczba elementów, których nie udało się usunąć: {n}.",
+    "pruneWillRemove": "Elementy do usunięcia: {n}",
+    "pruneKept": "Zachowane elementy: {n}. Używa ich kontener, potrzebuje ich stos na tym serwerze albo użytkownik nadał im nazwę.",
+    "pruneRemoved": "Usunięte elementy: {n}",
+    "pruneFailed": "Elementy pozostałe po błędzie: {n}",
     "inUse": "W użyciu",
     "inUseYes": "W użyciu",
-    "inUseNo": "Nieużywane"
+    "inUseNo": "Nieużywane",
+    "pruneSkipped": "Elementy zachowane przez nowy plan: {n}",
+    "inUseUnknown": "Nieznane"
 }

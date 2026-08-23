@@ -280,11 +280,13 @@
     "pruneVolumesNote": "En volym med ett namn finns alltid kvar. Endast en volym som docker själv har namngett kan tas bort.",
     "pruneNetworksNote": "Ett nätverk som en compose-fil anger som external kommer inte tillbaka. Docker compose skapar sina egna nätverk igen vid nästa distribution.",
     "pruneNothingToRemove": "Det finns inget att ta bort.",
-    "pruneWillRemove": "Dessa {n} objekt tas bort:",
-    "pruneKept": "{n} behålls eftersom en stack använder dem.",
-    "pruneRemoved": "Tog bort {n} objekt.",
-    "pruneFailed": "{n} objekt togs inte bort.",
+    "pruneWillRemove": "Objekt som tas bort: {n}",
+    "pruneKept": "Objekt som behålls: {n}. En container använder dem, en stack på den här servern behöver dem, eller så har en användare namngett dem.",
+    "pruneRemoved": "Borttagna objekt: {n}",
+    "pruneFailed": "Objekt som är kvar efter ett fel: {n}",
     "inUse": "Används",
     "inUseYes": "Används",
-    "inUseNo": "Används inte"
+    "inUseNo": "Används inte",
+    "pruneSkipped": "Objekt som en ny plan behöll: {n}",
+    "inUseUnknown": "Okänt"
 }

@@ -280,11 +280,13 @@
     "pruneVolumesNote": "Svazek s vlastním názvem vždy zůstane. Odstranit lze pouze svazek, který si Docker pojmenoval sám.",
     "pruneNetworksNote": "Síť, kterou soubor compose deklaruje jako external, se znovu nevytvoří. Vlastní sítě Docker Compose se při dalším nasazení vytvoří znovu.",
     "pruneNothingToRemove": "Není co odstranit.",
-    "pruneWillRemove": "Budou odstraněny tyto položky ({n}):",
-    "pruneKept": "Zachováno, protože je používá stack: {n}.",
-    "pruneRemoved": "Odstraněno položek: {n}.",
-    "pruneFailed": "Nepodařilo se odstranit položek: {n}.",
+    "pruneWillRemove": "Položek k odstranění: {n}",
+    "pruneKept": "Zachovaných položek: {n}. Používá je kontejner, potřebuje je stack tohoto serveru, nebo jim uživatel dal název.",
+    "pruneRemoved": "Odstraněných položek: {n}",
+    "pruneFailed": "Položek, které zůstaly po chybě: {n}",
     "inUse": "Používá se",
     "inUseYes": "Používá se",
-    "inUseNo": "Nepoužívá se"
+    "inUseNo": "Nepoužívá se",
+    "pruneSkipped": "Položek, které zachoval nový plán: {n}",
+    "inUseUnknown": "Neznámé"
 }

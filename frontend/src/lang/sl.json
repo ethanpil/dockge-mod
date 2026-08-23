@@ -280,11 +280,13 @@
     "pruneVolumesNote": "Nosilec z imenom vedno ostane. Odstraniti je mogoče samo nosilec, ki ga je docker poimenoval sam.",
     "pruneNetworksNote": "Omrežje, ki ga datoteka compose navede kot external, se ne ustvari znova. Docker compose svoja lastna omrežja znova ustvari ob naslednji razporeditvi.",
     "pruneNothingToRemove": "Ni ničesar za odstraniti.",
-    "pruneWillRemove": "Odstranjeni bodo naslednji elementi ({n}):",
-    "pruneKept": "Ohranjenih: {n}, ker jih uporablja stack.",
-    "pruneRemoved": "Odstranjenih elementov: {n}.",
-    "pruneFailed": "Ni bilo mogoče odstraniti elementov: {n}.",
+    "pruneWillRemove": "Elementov za odstranitev: {n}",
+    "pruneKept": "Ohranjenih elementov: {n}. Uporablja jih kontejner, potrebuje jih stack tega strežnika ali pa jim je uporabnik dal ime.",
+    "pruneRemoved": "Odstranjenih elementov: {n}",
+    "pruneFailed": "Elementov, ki ostanejo po napaki: {n}",
     "inUse": "V uporabi",
     "inUseYes": "V uporabi",
-    "inUseNo": "Ni v uporabi"
+    "inUseNo": "Ni v uporabi",
+    "pruneSkipped": "Elementov, ki jih je ohranil nov načrt: {n}",
+    "inUseUnknown": "Neznano"
 }

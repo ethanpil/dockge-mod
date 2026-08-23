@@ -280,11 +280,13 @@
     "pruneVolumesNote": "Un volum amb nom propi es manté sempre. Només es pot eliminar un volum que Docker ha anomenat ell mateix.",
     "pruneNetworksNote": "Una xarxa que un fitxer compose declara com a external no es torna a crear. Docker Compose torna a crear les seves pròpies xarxes en el desplegament següent.",
     "pruneNothingToRemove": "No hi ha res per eliminar.",
-    "pruneWillRemove": "S'eliminaran aquests {n} elements:",
-    "pruneKept": "{n} es mantenen perquè una pila els fa servir.",
-    "pruneRemoved": "S'han eliminat {n} elements.",
-    "pruneFailed": "{n} elements no s'han pogut eliminar.",
+    "pruneWillRemove": "Elements que s'eliminaran: {n}",
+    "pruneKept": "Elements conservats: {n}. Un contenidor els fa servir, una pila d'aquest servidor els necessita o un usuari els ha posat nom.",
+    "pruneRemoved": "Elements eliminats: {n}",
+    "pruneFailed": "Elements que resten després d'un error: {n}",
     "inUse": "En ús",
     "inUseYes": "En ús",
-    "inUseNo": "Sense ús"
+    "inUseNo": "Sense ús",
+    "pruneSkipped": "Elements que un pla nou ha conservat: {n}",
+    "inUseUnknown": "Desconegut"
 }

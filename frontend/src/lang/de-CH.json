@@ -280,11 +280,13 @@
     "pruneVolumesNote": "Es Volume mit emene eigene Name blibt immer. Nume es Volume, wo de Docker sälber benennt het, cha entfernt werde.",
     "pruneNetworksNote": "Es Netzwerk, wo e Compose-Datei als external deklariert, wird nöd neu erstellt. Docker Compose erstellt sini eigene Netzwerk bim nächste Deploy wieder.",
     "pruneNothingToRemove": "S'git nüt zum Entferne.",
-    "pruneWillRemove": "Die {n} Iiträg werded entfernt:",
-    "pruneKept": "{n} blibed, wil en Stack si bruucht.",
-    "pruneRemoved": "{n} Iiträg entfernt.",
-    "pruneFailed": "{n} Iiträg sind nöd entfernt worde.",
+    "pruneWillRemove": "Iiträg zum Entferne: {n}",
+    "pruneKept": "Iiträg wo blibed: {n}. En Container bruucht si, en Stack vo dem Server bruucht si, oder en Benutzer het ene en Name gee.",
+    "pruneRemoved": "Entfernti Iiträg: {n}",
+    "pruneFailed": "Iiträg wo nach eme Fehler blibed: {n}",
     "inUse": "Verwendet",
     "inUseYes": "Verwendet",
-    "inUseNo": "Nöd verwendet"
+    "inUseNo": "Nöd verwendet",
+    "pruneSkipped": "Iiträg wo en neue Plan bhalte het: {n}",
+    "inUseUnknown": "Unbekannt"
 }

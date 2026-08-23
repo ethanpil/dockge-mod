@@ -280,11 +280,13 @@
     "pruneVolumesNote": "Un volume con un nome proprio resta sempre. Si può rimuovere solo un volume che Docker ha nominato da sé.",
     "pruneNetworksNote": "Una rete che un file compose dichiara come external non viene ricreata. Docker Compose ricrea le proprie reti al rilascio successivo.",
     "pruneNothingToRemove": "Non c'è nulla da rimuovere.",
-    "pruneWillRemove": "Questi {n} elementi saranno rimossi:",
-    "pruneKept": "{n} sono mantenuti perché uno stack li usa.",
-    "pruneRemoved": "Rimossi {n} elementi.",
-    "pruneFailed": "{n} elementi non sono stati rimossi.",
+    "pruneWillRemove": "Elementi da rimuovere: {n}",
+    "pruneKept": "Elementi mantenuti: {n}. Un container li usa, uno stack di questo server ne ha bisogno oppure un utente li ha nominati.",
+    "pruneRemoved": "Elementi rimossi: {n}",
+    "pruneFailed": "Elementi che restano dopo un errore: {n}",
     "inUse": "In uso",
     "inUseYes": "In uso",
-    "inUseNo": "Non in uso"
+    "inUseNo": "Non in uso",
+    "pruneSkipped": "Elementi mantenuti da un nuovo piano: {n}",
+    "inUseUnknown": "Sconosciuto"
 }
