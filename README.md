@@ -276,7 +276,22 @@ A save and a git pull make a copy of the compose file, the `.env` file, and the 
 
 ### Manage the Images, the Volumes, and the Networks
 
-The **Resources** page lists the images, the volumes, and the networks of a host. You can remove one item, or prune the items that nothing uses. A prune of the volumes removes the data of the volumes that no container uses. Read the list before you confirm.
+The **Resources** page lists the images, the volumes, and the networks of a host. Each item shows if a container uses it. You can remove one item, or remove the items that nothing uses.
+
+dockge-mod does not use the prune command of docker. That command removes the network of a stack that you stopped, and it removes the images of a stack that is down. dockge-mod makes a list first, and it keeps:
+
+- Each resource of a container, also a container that is stopped.
+- Each resource of a stack of this server, also a stack that is not running.
+- Each image that a compose file of this server names.
+- Each volume that has a name. Only a volume that docker named itself can go away. The data of a database is in a volume with a name.
+- The `bridge`, `host`, and `none` networks of docker.
+
+The list of the items comes before the question, thus you see each name before you confirm. dockge-mod then removes the items one after the other, and it tells you which items did not go away.
+
+Two conditions stay with you:
+
+- An image of a different program on the same host, for example a stack that dockge-mod does not manage, is in the list. Read the names before you confirm.
+- A network that a compose file declares as `external` does not come back. Docker compose makes its own networks again at the next deploy.
 
 ### See the Log of One Service
 

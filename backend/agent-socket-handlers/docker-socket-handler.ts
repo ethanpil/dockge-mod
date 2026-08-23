@@ -6,7 +6,7 @@ import { AgentSocket } from "../../common/agent-socket";
 import { log } from "../log";
 import { ImageUpdateChecker } from "../image-update";
 import { StackBackup } from "../stack-backup";
-import { DockerResources, PRUNE_KINDS, RESOURCE_KINDS } from "../docker-resources";
+import { DockerResources, PRUNE_KINDS, ProtectedResources, RESOURCE_KINDS } from "../docker-resources";
 
 /**
  * Put the arguments of a save event in sequence. A client without override
@@ -50,6 +50,35 @@ function checkComposeStrings(name : unknown, composeYAML : unknown, composeENV :
     if (composeOverrideYAML !== undefined && composeOverrideYAML !== null && typeof(composeOverrideYAML) !== "string") {
         throw new ValidationError("Compose override YAML must be a string");
     }
+}
+
+/**
+ * The images, the volumes, and the networks that a prune must keep.
+ * A stack of this server keeps its resources, also when the stack is
+ * not running. Docker does not know which stacks this server manages,
+ * thus the prune of docker cannot keep them.
+ * @param server The server, for the list of the stacks
+ * @returns The compose projects and the images of the stacks
+ */
+async function protectedResources(server : DockgeServer) : Promise<ProtectedResources> {
+    const projects = new Set<string>();
+    const images = new Set<string>();
+
+    const stackList = await Stack.getStackList(server, true);
+    for (const stack of stackList.values()) {
+        if (!stack.isManagedByDockge) {
+            continue;
+        }
+        projects.add(stack.name);
+        for (const image of stack.images) {
+            images.add(image);
+        }
+    }
+
+    return {
+        projects,
+        images,
+    };
 }
 
 /**
@@ -549,7 +578,7 @@ export class DockerSocketHandler extends AgentSocketHandler {
                 }
                 callbackResult({
                     ok: true,
-                    resources: await DockerResources.list(kind),
+                    resources: await DockerResources.listWithUsage(kind),
                 }, callback);
             } catch (e) {
                 callbackError(e, callback);
@@ -575,16 +604,36 @@ export class DockerSocketHandler extends AgentSocketHandler {
             }
         });
 
+        // What a prune removes, and what it keeps. The user reads this
+        // list before the prune runs.
+        agentSocket.on("getPrunePlan", async (kind : unknown, callback) => {
+            try {
+                checkLogin(socket);
+                if (!isOneOf(PRUNE_KINDS, kind)) {
+                    throw new ValidationError("Unknown prune kind");
+                }
+                const plan = await DockerResources.planPrune(kind, await protectedResources(server));
+                callbackResult({
+                    ok: true,
+                    candidates: plan.candidates,
+                    kept: plan.kept,
+                }, callback);
+            } catch (e) {
+                callbackError(e, callback);
+            }
+        });
+
         agentSocket.on("pruneDockerResources", async (kind : unknown, callback) => {
             try {
                 checkLogin(socket);
                 if (!isOneOf(PRUNE_KINDS, kind)) {
                     throw new ValidationError("Unknown prune kind");
                 }
-                const output = await DockerResources.prune(kind);
+                const result = await DockerResources.prune(kind, await protectedResources(server));
                 callbackResult({
                     ok: true,
-                    output,
+                    removed: result.removed,
+                    failed: result.failed,
                 }, callback);
             } catch (e) {
                 callbackError(e, callback);
