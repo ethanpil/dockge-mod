@@ -6,7 +6,7 @@ import { AgentSocket } from "../../common/agent-socket";
 import { log } from "../log";
 import { ImageUpdateChecker } from "../image-update";
 import { StackBackup } from "../stack-backup";
-import { DockerResources, PRUNE_KINDS, ProtectedResources, RESOURCE_KINDS } from "../docker-resources";
+import { DockerResources, PRUNE_KINDS, ProtectedResources, refRepository, RESOURCE_KINDS } from "../docker-resources";
 
 /**
  * Put the arguments of a save event in sequence. A client without override
@@ -53,31 +53,54 @@ function checkComposeStrings(name : unknown, composeYAML : unknown, composeENV :
 }
 
 /**
- * The images, the volumes, and the networks that a prune must keep.
+ * The images, the volumes, and the networks that a removal must keep.
  * A stack of this server keeps its resources, also when the stack is
  * not running. Docker does not know which stacks this server manages,
  * thus the prune of docker cannot keep them.
+ *
+ * A compose file that this function cannot read stops the removal. A
+ * list that is not complete can let a resource of a stack go away.
  * @param server The server, for the list of the stacks
  * @returns The compose projects and the images of the stacks
  */
 async function protectedResources(server : DockgeServer) : Promise<ProtectedResources> {
     const projects = new Set<string>();
     const images = new Set<string>();
+    const repositories = new Set<string>();
 
     const stackList = await Stack.getStackList(server, true);
     for (const stack of stackList.values()) {
         if (!stack.isManagedByDockge) {
             continue;
         }
+
+        const info = stack.composeInfo;
+        if (!info.ok) {
+            throw new Error("Cannot read the compose file of the stack " + stack.name + ". Repair that file, then try again.");
+        }
+
         projects.add(stack.name);
-        for (const image of stack.images) {
+        for (const project of info.projectNames) {
+            projects.add(project);
+        }
+        for (const image of info.images) {
             images.add(image);
+            // The list of docker shows no tag for an image that a pull
+            // with a digest brought in. Such an image needs its
+            // repository for the comparison.
+            if (image.includes("@")) {
+                repositories.add(refRepository(image));
+            }
+        }
+        for (const image of info.buildImages) {
+            repositories.add(image);
         }
     }
 
     return {
         projects,
         images,
+        repositories,
     };
 }
 
@@ -623,17 +646,24 @@ export class DockerSocketHandler extends AgentSocketHandler {
             }
         });
 
-        agentSocket.on("pruneDockerResources", async (kind : unknown, callback) => {
+        // Remove the resources that the user accepted. The client sends
+        // the ids of the plan that it showed, thus a resource that
+        // became free after that moment stays.
+        agentSocket.on("pruneDockerResources", async (kind : unknown, accepted : unknown, callback) => {
             try {
                 checkLogin(socket);
                 if (!isOneOf(PRUNE_KINDS, kind)) {
                     throw new ValidationError("Unknown prune kind");
                 }
-                const result = await DockerResources.prune(kind, await protectedResources(server));
+                if (!Array.isArray(accepted) || accepted.some((id) => typeof id !== "string")) {
+                    throw new ValidationError("The accepted resources must be a list of names");
+                }
+                const result = await DockerResources.prune(kind, await protectedResources(server), accepted as string[]);
                 callbackResult({
                     ok: true,
                     removed: result.removed,
                     failed: result.failed,
+                    skipped: result.skipped,
                 }, callback);
             } catch (e) {
                 callbackError(e, callback);

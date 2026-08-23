@@ -64,6 +64,7 @@ describe("Database", () => {
             "mod_notification",
             "mod_setting",
             "mod_stack_backup",
+            "mod_volume_owner",
         ]);
     });
 

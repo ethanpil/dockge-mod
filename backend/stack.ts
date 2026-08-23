@@ -29,6 +29,21 @@ import { StackBackup, StackFiles } from "./stack-backup";
 import { ImageUpdateChecker } from "./image-update";
 import { parseJSONLines } from "./docker-resources";
 
+/**
+ * What the compose file of a stack says about its images and about its
+ * project.
+ */
+export interface ComposeInfo {
+    /** False when the compose file has an error */
+    ok : boolean;
+    /** The images that the services name */
+    images : string[];
+    /** The names that the project of this stack can have */
+    projectNames : string[];
+    /** The names of the images that a build of this stack makes */
+    buildImages : string[];
+}
+
 export class Stack {
 
     name: string;
@@ -227,42 +242,87 @@ export class Stack {
         };
     }
 
-    protected _images? : string[];
+    protected _composeInfo? : ComposeInfo;
 
     /**
-     * The images of the services of this stack. A variable in an image
-     * name gets its value from the .env file. A compose file with an
-     * error gives an empty list.
+     * What the compose file of this stack says about its images and
+     * about its project. A variable gets its value from the .env file.
+     *
+     * A caller that removes resources must read the ok field. A compose
+     * file with an error gives empty lists, and such a list protects
+     * nothing.
      */
-    get images() : string[] {
-        if (this._images === undefined) {
-            this._images = [];
-            try {
-                // The same files as docker: global.env first, then the .env
-                // of the stack
-                let env : Record<string, string> = {};
-                const globalEnvPath = path.join(this.server.stacksDir, "global.env");
-                if (fs.existsSync(globalEnvPath)) {
-                    env = dotenv.parse(fs.readFileSync(globalEnvPath, "utf-8"));
-                }
-                env = {
-                    ...env,
-                    ...dotenv.parse(this.composeENV),
-                };
-                const doc = yaml.parse(envsubstYAML(this.composeYAML, env));
-                const services = doc?.services;
-                if (services && typeof services === "object") {
-                    for (const service of Object.values(services) as { image? : unknown }[]) {
-                        if (service && typeof service.image === "string" && service.image.trim() !== "") {
-                            this._images.push(service.image.trim());
+    get composeInfo() : ComposeInfo {
+        if (this._composeInfo !== undefined) {
+            return this._composeInfo;
+        }
+
+        const info : ComposeInfo = {
+            ok: false,
+            images: [],
+            projectNames: [],
+            buildImages: [],
+        };
+        this._composeInfo = info;
+
+        try {
+            // The same files as docker: global.env first, then the .env
+            // of the stack
+            let env : Record<string, string> = {};
+            const globalEnvPath = path.join(this.server.stacksDir, "global.env");
+            if (fs.existsSync(globalEnvPath)) {
+                env = dotenv.parse(fs.readFileSync(globalEnvPath, "utf-8"));
+            }
+            env = {
+                ...env,
+                ...dotenv.parse(this.composeENV),
+            };
+            const doc = yaml.parse(envsubstYAML(this.composeYAML, env));
+
+            // Docker makes the name of the project from the directory.
+            // The compose file and the .env file can give a different
+            // name, and docker puts each name in lower case.
+            const projects = new Set<string>([ this.name.toLowerCase() ]);
+            if (typeof doc?.name === "string" && doc.name.trim() !== "") {
+                projects.add(doc.name.trim().toLowerCase());
+            }
+            if (typeof env.COMPOSE_PROJECT_NAME === "string" && env.COMPOSE_PROJECT_NAME.trim() !== "") {
+                projects.add(env.COMPOSE_PROJECT_NAME.trim().toLowerCase());
+            }
+            info.projectNames = [ ...projects ];
+
+            const services = doc?.services;
+            if (services && typeof services === "object") {
+                for (const [ serviceName, service ] of Object.entries(services) as [ string, { image? : unknown, build? : unknown } | null ][]) {
+                    if (service && typeof service.image === "string" && service.image.trim() !== "") {
+                        info.images.push(service.image.trim());
+                        continue;
+                    }
+                    // A service with a build and without an image gets
+                    // the name "<project>-<service>" from docker
+                    if (service && service.build !== undefined && service.build !== null) {
+                        for (const project of info.projectNames) {
+                            info.buildImages.push(project + "-" + serviceName);
+                            info.buildImages.push(project + "_" + serviceName);
                         }
                     }
                 }
-            } catch (e) {
-                log.debug("stack", "Cannot read the images of " + this.name + ": " + errorMessage(e));
             }
+
+            info.ok = true;
+        } catch (e) {
+            log.debug("stack", "Cannot read the compose file of " + this.name + ": " + errorMessage(e));
         }
-        return this._images;
+
+        return info;
+    }
+
+    /**
+     * The images of the services of this stack. A compose file with an
+     * error gives an empty list.
+     */
+    get images() : string[] {
+        return this.composeInfo.images;
     }
 
     /**
