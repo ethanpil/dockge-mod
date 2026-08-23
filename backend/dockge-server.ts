@@ -40,7 +40,7 @@ import { Terminal } from "./terminal";
 import { ContainerChange, DockerEvents } from "./docker-events";
 import { ImageUpdateChecker } from "./image-update";
 import { Notifier } from "./notification";
-import { parseJSONLines } from "./docker-resources";
+import { DockerResources, parseJSONLines } from "./docker-resources";
 import { CachedCall } from "./utils/cached-call";
 
 export class DockgeServer {
@@ -455,6 +455,10 @@ export class DockgeServer {
             this.imageUpdateChecker.start().catch((e) => {
                 log.warn("imageUpdate", "Cannot start the check: " + errorMessage(e));
             });
+
+            // The containers that run now can hold volumes that docker
+            // named itself. The watcher gives no event for them.
+            DockerResources.syncVolumeOwners().catch(() => undefined);
         });
 
         gracefulShutdown(this.httpServer, {
@@ -713,6 +717,14 @@ export class DockgeServer {
         this.sendStackList(true).catch((e) => {
             log.warn("server", "Cannot send the stack list: " + errorMessage(e));
         });
+
+        // A new container can hold a volume that docker named itself.
+        // The server must write the project of that volume now, because
+        // after a down of the stack no container holds the volume and
+        // nothing says which stack made it.
+        if (changes.some((change) => change.action === "create" || change.action === "start")) {
+            DockerResources.syncVolumeOwners().catch(() => undefined);
+        }
     }
 
     /**

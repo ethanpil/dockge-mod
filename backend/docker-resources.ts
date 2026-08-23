@@ -608,6 +608,44 @@ export class DockerResources {
     }
 
     /**
+     * Read the containers and write the project of each volume. The
+     * server calls this after a change of a container, thus the record
+     * of a volume exists before the stack of that volume goes down.
+     *
+     * A problem here is not an error for the caller. The next call
+     * writes the records again.
+     */
+    static async syncVolumeOwners() : Promise<void> {
+        try {
+            const scan = await DockerResources.scanContainers();
+            await DockerResources.recordVolumeOwners(scan.owners);
+        } catch (e) {
+            log.warn("dockerResources", "Cannot read the projects of the volumes: " + errorMessage(e));
+        }
+    }
+
+    /**
+     * Remove the records of the volumes that are not on the host. A
+     * stack that goes up with a new name leaves a record of the volume
+     * that went away with the stack before it.
+     * @param rows The volumes of docker
+     */
+    static async forgetGoneVolumes(rows : Record<string, unknown>[]) : Promise<void> {
+        try {
+            const present = new Set(rows.map((row) => String(row.Name ?? "")));
+            const known = await R.knex("mod_volume_owner").select("volume");
+            const gone = known
+                .map((row : { volume : string }) => String(row.volume))
+                .filter((volume : string) => !present.has(volume));
+            if (gone.length > 0) {
+                await R.knex("mod_volume_owner").whereIn("volume", gone).delete();
+            }
+        } catch (e) {
+            log.warn("dockerResources", "Cannot clean the projects of the volumes: " + errorMessage(e));
+        }
+    }
+
+    /**
      * The project of each volume, from the table and from the containers
      * that are there now.
      * @param fromContainers The projects that the container read found
@@ -651,8 +689,10 @@ export class DockerResources {
         await DockerResources.recordVolumeOwners(scan.owners);
 
         if (kind === "volumes") {
+            const rows = await DockerResources.list("volumes");
+            await DockerResources.forgetGoneVolumes(rows);
             const owners = await DockerResources.volumeOwners(scan.owners);
-            return selectVolumeCandidates(await DockerResources.list("volumes"), scan.used, resources.projects, owners);
+            return selectVolumeCandidates(rows, scan.used, resources.projects, owners);
         }
         if (kind === "networks") {
             return selectNetworkCandidates(await DockerResources.list("networks"), scan.used, resources.projects);
