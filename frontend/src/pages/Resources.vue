@@ -18,10 +18,10 @@
                         <font-awesome-icon :icon="busy.images ? 'spinner' : 'rotate'" :spin="busy.images" />
                     </button>
                     <button class="btn btn-normal btn-sm" type="button" :disabled="busy.images" @click="ask('prune', 'images')">
-                        {{ $t("pruneDangling") }}
+                        {{ $t("pruneDanglingImages") }}
                     </button>
                     <button class="btn btn-outline-danger btn-sm" type="button" :disabled="busy.images" @click="ask('prune', 'images-all')">
-                        {{ $t("pruneUnused") }}
+                        {{ $t("pruneUnusedImages") }}
                     </button>
                 </div>
                 <div class="table-responsive">
@@ -32,18 +32,24 @@
                                 <th>{{ $t("imageId") }}</th>
                                 <th>{{ $t("size") }}</th>
                                 <th>{{ $t("created") }}</th>
+                                <th>{{ $t("inUse") }}</th>
                                 <th></th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr v-if="resources.images.length === 0">
-                                <td colspan="5" class="note">{{ $t("noResources") }}</td>
+                                <td colspan="6" class="note">{{ $t("noResources") }}</td>
                             </tr>
                             <tr v-for="img in resources.images" :key="img.ID + img.Repository + img.Tag">
                                 <td>{{ img.Repository }}:{{ img.Tag }}</td>
                                 <td><code>{{ shortId(img.ID) }}</code></td>
                                 <td>{{ img.Size }}</td>
                                 <td>{{ img.CreatedSince }}</td>
+                                <td>
+                                    <span class="badge use-badge" :class="img.inUse ? 'bg-success' : 'bg-secondary'">
+                                        {{ img.inUse ? $t("inUseYes") : $t("inUseNo") }}
+                                    </span>
+                                </td>
                                 <td class="text-end">
                                     <button class="btn btn-outline-danger btn-sm" type="button" :disabled="busy.images" @click="ask('remove', 'images', imageName(img))">
                                         {{ $t("remove") }}
@@ -63,27 +69,36 @@
                         <font-awesome-icon :icon="busy.volumes ? 'spinner' : 'rotate'" :spin="busy.volumes" />
                     </button>
                     <button class="btn btn-outline-danger btn-sm" type="button" :disabled="busy.volumes" @click="ask('prune', 'volumes')">
-                        {{ $t("pruneUnused") }}
+                        {{ $t("pruneAnonymousVolumes") }}
                     </button>
                 </div>
+                <div class="note mb-2">{{ $t("pruneVolumesNote") }}</div>
                 <div class="table-responsive">
                     <table class="table table-sm mb-0">
                         <thead>
                             <tr>
                                 <th>{{ $t("name") }}</th>
                                 <th>{{ $t("driver") }}</th>
+                                <th>{{ $t("inUse") }}</th>
                                 <th></th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr v-if="resources.volumes.length === 0">
-                                <td colspan="3" class="note">{{ $t("noResources") }}</td>
+                                <td colspan="4" class="note">{{ $t("noResources") }}</td>
                             </tr>
                             <tr v-for="vol in resources.volumes" :key="vol.Name">
                                 <td>{{ vol.Name }}</td>
                                 <td>{{ vol.Driver }}</td>
+                                <td>
+                                    <span class="badge use-badge" :class="vol.inUse ? 'bg-success' : 'bg-secondary'">
+                                        {{ vol.inUse ? $t("inUseYes") : $t("inUseNo") }}
+                                    </span>
+                                </td>
                                 <td class="text-end">
-                                    <button class="btn btn-outline-danger btn-sm" type="button" :disabled="busy.volumes" @click="ask('remove', 'volumes', vol.Name)">
+                                    <!-- Docker refuses to remove a volume that
+                                         a container uses -->
+                                    <button v-if="!vol.inUse" class="btn btn-outline-danger btn-sm" type="button" :disabled="busy.volumes" @click="ask('remove', 'volumes', vol.Name)">
                                         {{ $t("remove") }}
                                     </button>
                                 </td>
@@ -101,9 +116,10 @@
                         <font-awesome-icon :icon="busy.networks ? 'spinner' : 'rotate'" :spin="busy.networks" />
                     </button>
                     <button class="btn btn-outline-danger btn-sm" type="button" :disabled="busy.networks" @click="ask('prune', 'networks')">
-                        {{ $t("pruneUnused") }}
+                        {{ $t("pruneUnusedNetworks") }}
                     </button>
                 </div>
+                <div class="note mb-2">{{ $t("pruneNetworksNote") }}</div>
                 <div class="table-responsive">
                     <table class="table table-sm mb-0">
                         <thead>
@@ -111,19 +127,28 @@
                                 <th>{{ $t("name") }}</th>
                                 <th>{{ $t("driver") }}</th>
                                 <th>{{ $t("scope") }}</th>
+                                <th>{{ $t("inUse") }}</th>
                                 <th></th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr v-if="resources.networks.length === 0">
-                                <td colspan="4" class="note">{{ $t("noResources") }}</td>
+                                <td colspan="5" class="note">{{ $t("noResources") }}</td>
                             </tr>
                             <tr v-for="net in resources.networks" :key="net.ID">
                                 <td>{{ net.Name }}</td>
                                 <td>{{ net.Driver }}</td>
                                 <td>{{ net.Scope }}</td>
+                                <td>
+                                    <span class="badge use-badge" :class="net.inUse ? 'bg-success' : 'bg-secondary'">
+                                        {{ net.inUse ? $t("inUseYes") : $t("inUseNo") }}
+                                    </span>
+                                </td>
                                 <td class="text-end">
-                                    <button v-if="!isDefaultNetwork(net.Name)" class="btn btn-outline-danger btn-sm" type="button" :disabled="busy.networks" @click="ask('remove', 'networks', net.Name)">
+                                    <!-- Docker refuses to remove a network of a
+                                         container, and the networks of docker
+                                         itself -->
+                                    <button v-if="!isDefaultNetwork(net.Name) && !net.inUse" class="btn btn-outline-danger btn-sm" type="button" :disabled="busy.networks" @click="ask('remove', 'networks', net.Name)">
                                         {{ $t("remove") }}
                                     </button>
                                 </td>
@@ -182,7 +207,18 @@
 
             <Confirm ref="confirm" btn-style="btn-danger" :yes-text="$t('yes')" :no-text="$t('cancel')" @yes="run">
                 <span v-if="pending && pending.action === 'remove'">{{ $t("removeResourceMsg", [ pending.name ]) }}</span>
-                <span v-else>{{ $t("pruneResourceMsg") }}</span>
+                <template v-else-if="pending">
+                    <p>{{ $t("pruneWillRemove", { n: pending.candidates.length }) }}</p>
+                    <ul class="plan-list">
+                        <!-- Two rows of docker images can hold the same ID,
+                             thus the position gives the key -->
+                        <li v-for="(item, index) in pending.candidates" :key="index">
+                            {{ item.name }}
+                            <span v-if="item.detail" class="note">{{ item.detail }}</span>
+                        </li>
+                    </ul>
+                    <p v-if="pending.kept > 0" class="note mb-0">{{ $t("pruneKept", { n: pending.kept }) }}</p>
+                </template>
             </Confirm>
         </div>
     </transition>
@@ -401,6 +437,10 @@ export default {
          * @returns {void}
          */
         ask(action, kind, name) {
+            if (action === "prune") {
+                this.askPrune(kind);
+                return;
+            }
             this.pending = { action,
                 kind,
                 name };
@@ -408,23 +448,102 @@ export default {
         },
 
         /**
+         * Get the plan of a prune, then show it in the confirm dialog. The
+         * user reads the full list of the items before the prune runs.
+         * @param {string} kind images, images-all, volumes, or networks
+         * @returns {void}
+         */
+        askPrune(kind) {
+            const listKind = this.listKindOf(kind);
+            this.busy[listKind] = true;
+            this.request("getPrunePlan", [ kind ], (res) => {
+                this.busy[listKind] = false;
+                if (!res.ok) {
+                    this.$root.toastRes(res);
+                    return;
+                }
+                // An empty plan needs no question
+                if (res.candidates.length === 0) {
+                    this.$root.toastRes({
+                        ok: true,
+                        msg: "pruneNothingToRemove",
+                        msgi18n: true,
+                    });
+                    return;
+                }
+                this.pending = { action: "prune",
+                    kind,
+                    candidates: res.candidates,
+                    kept: res.kept };
+                this.$refs.confirm.show();
+            });
+        },
+
+        /**
          * Run the action that the user confirmed, then load the list again.
+         *
+         * The data of the dialog stays. The dialog is still on screen while
+         * it closes, and it must keep its text to the end of the animation.
          * @returns {void}
          */
         run() {
             const { action, kind, name } = this.pending;
-            this.pending = null;
-            // The prune kind "images-all" belongs to the images list
-            const listKind = kind === "images-all" ? "images" : kind;
+            const listKind = this.listKindOf(kind);
             this.busy[listKind] = true;
 
-            const args = action === "remove" ? [ kind, name ] : [ kind ];
-            const event = action === "remove" ? "removeDockerResource" : "pruneDockerResources";
-            this.request(event, args, (res) => {
+            if (action === "remove") {
+                this.request("removeDockerResource", [ kind, name ], (res) => {
+                    this.busy[listKind] = false;
+                    this.$root.toastRes(res);
+                    this.load(listKind);
+                });
+                return;
+            }
+
+            this.request("pruneDockerResources", [ kind ], (res) => {
                 this.busy[listKind] = false;
-                this.$root.toastRes(res);
+                if (res.ok) {
+                    this.reportPrune(res);
+                } else {
+                    this.$root.toastRes(res);
+                }
                 this.load(listKind);
             });
+        },
+
+        /**
+         * Tell the user what the prune removed, and what stayed after an
+         * error.
+         * @param {object} res the answer of pruneDockerResources
+         * @returns {void}
+         */
+        reportPrune(res) {
+            const removed = res.removed ? res.removed.length : 0;
+            const failed = res.failed ? res.failed.length : 0;
+            this.$root.toastRes({
+                ok: true,
+                msg: { key: "pruneRemoved",
+                    values: { n: removed } },
+                msgi18n: true,
+            });
+            if (failed > 0) {
+                this.$root.toastRes({
+                    ok: false,
+                    msg: { key: "pruneFailed",
+                        values: { n: failed } },
+                    msgi18n: true,
+                });
+            }
+        },
+
+        /**
+         * The list that an action changes.
+         * @param {string} kind a resource kind, or a prune kind
+         * @returns {string} images, volumes, or networks
+         */
+        listKindOf(kind) {
+            // The prune kind "images-all" belongs to the images list
+            return kind === "images-all" ? "images" : kind;
         },
 
         /**
@@ -492,6 +611,7 @@ export default {
 .section-head {
     display: flex;
     align-items: center;
+    flex-wrap: wrap;
     gap: 0.5rem;
     margin-bottom: 0.5rem;
 }
@@ -509,5 +629,19 @@ export default {
 
 td, th {
     overflow-wrap: anywhere;
+}
+
+/* A long plan must not make the dialog longer than the screen */
+.plan-list {
+    max-height: 40vh;
+    overflow-y: auto;
+    padding-left: 1.2rem;
+    margin-bottom: 0.5rem;
+    overflow-wrap: anywhere;
+}
+
+.use-badge {
+    font-weight: 500;
+    white-space: nowrap;
 }
 </style>
