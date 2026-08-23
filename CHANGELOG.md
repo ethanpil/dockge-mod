@@ -6,6 +6,45 @@ The base is dockge commit [f809ae1](https://github.com/louislam/dockge/commit/f8
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). This project has no releases, so each entry is a commit. The newest entry comes first. A commit that changes only this file or the project rules has no entry.
 
+## [f88127a](../../commit/f88127a) - 2026-08-23
+
+### Fixed
+
+- The server writes the stack of a volume at its start, and after each create or start event of the watcher. A record that only a visit to the **Resources** page writes comes too late, because a user can bring a stack down and then remove the unused volumes.
+- A removal of the unused volumes deletes the records of the volumes that are not on the host. The table stays small.
+
+## [75a360b](../../commit/75a360b) - 2026-08-23
+
+### Fixed
+
+- The **Resources** page sends the names of the plan with the removal. The server takes only the resources that the user read.
+- A change of the host closes the dialog. A removal could go to a host that is not the host of the plan.
+- A plan that arrives late does not change a dialog that is on screen. The user could read one question and confirm a different one.
+- The buttons of the dialog close while the action runs. A second press sent the action two times.
+- A row with no answer for the in-use field shows Unknown, and it gets no remove button. An older agent sends no answer for that field, and the page said Not used.
+- The message about the resources that stay gives the three reasons. It gave one reason for each of them.
+
+### Added
+
+- A message that tells how many resources a new plan kept.
+- The list of the plan takes the focus of a keyboard, and it has a label. The list can scroll.
+
+## [66ee451](../../commit/66ee451) - 2026-08-23
+
+### Fixed
+
+- A removal of the unused volumes keeps the volumes of a stack that is down. Docker names a volume itself when a compose file gives no name for it, and it puts only the anonymous label on such a volume. After a down of the stack no container held the volume, and nothing said which stack made it. The removal could take the data of that stack.
+- A removal keeps an image that a pull with a digest brought in. Docker shows the repository of such an image and no tag, and it does not call the image dangling. The removal took it.
+- A removal keeps the repository of an image that a compose file names with a digest, and of an image that a compose file builds. Such a name has no tag for a comparison.
+- A removal stops when it cannot read the compose file of a stack, and when docker does not answer for each container. The list of the resources to keep is not complete then.
+- A removal knows the project of a stack from the compose file and from `COMPOSE_PROJECT_NAME`. It used only the name of the directory.
+- The read of the containers makes one more try. Docker exits with an error when a container goes away during that read.
+- The labels of a volume and of a network come from an inspect. A label value with a comma could move a project label.
+
+### Added
+
+- The `mod_volume_owner` table. It holds the stack of each volume that docker named itself. The server writes a record while a container of the stack exists, thus a removal knows the stack after a down of that stack.
+
 ## [16c5508](../../commit/16c5508) - 2026-08-23
 
 ### Added
@@ -20,7 +59,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Thi
 
 ## [736afc7](../../commit/736afc7) - 2026-08-23
 
-### Security
+### Fixed
 
 - A removal of the unused resources does not use the prune command of docker. That command removes the network of a stack that you stopped, and the images of a stack that is down. It also gives no list before it removes.
 - A removal keeps each resource of a container, also a container that is stopped. The prune of docker removes the network of a container that is stopped.

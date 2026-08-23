@@ -282,16 +282,20 @@ dockge-mod does not use the prune command of docker. That command removes the ne
 
 - Each resource of a container, also a container that is stopped.
 - Each resource of a stack of this server, also a stack that is not running.
-- Each image that a compose file of this server names.
+- Each image that a compose file of this server names. This includes an image that a compose file names with a digest, and an image that a compose file builds.
 - Each volume that has a name. Only a volume that docker named itself can go away. The data of a database is in a volume with a name.
+- Each volume that a stack of this server made, also after a `down` of that stack. dockge-mod writes the stack of a volume while a container of that stack exists, thus it knows the stack later. See [The Database](#the-database).
 - The `bridge`, `host`, and `none` networks of docker.
 
-The list of the items comes before the question, thus you see each name before you confirm. dockge-mod then removes the items one after the other, and it tells you which items did not go away.
+The list of the items comes before the question, thus you see each name before you confirm. dockge-mod then makes the list again and removes only the items that are still in it. An item that a container took in the time between the two lists stays. dockge-mod removes the items one after the other, and it tells you which items did not go away.
 
 Two conditions stay with you:
 
 - An image of a different program on the same host, for example a stack that dockge-mod does not manage, is in the list. Read the names before you confirm.
 - A network that a compose file declares as `external` does not come back. Docker compose makes its own networks again at the next deploy.
+- dockge-mod knows the stack of a volume only from a container that it saw. A stack that went down while Dockge was in control, and that did not start again in dockge-mod, has no record. Start such a stack one time before you remove the unused volumes.
+
+dockge-mod stops the removal when it cannot read the compose file of a stack, and when docker does not answer for each container. It cannot keep the resources of a stack that it cannot read.
 
 ### See the Log of One Service
 
