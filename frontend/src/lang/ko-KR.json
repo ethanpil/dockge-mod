@@ -272,5 +272,19 @@
     "checkProgress": "{m}개 중 {n}개 확인함",
     "nextCheck": "다음 확인: {t}",
     "checkUpdatesForStack": "이 스택의 이미지 확인",
-    "checkedImageCount": "이미지 {n}개 확인함"
+    "checkedImageCount": "이미지 {n}개 확인함",
+    "pruneDanglingImages": "태그 없는 이미지 제거",
+    "pruneUnusedImages": "컨테이너와 스택이 사용하지 않는 이미지 제거",
+    "pruneAnonymousVolumes": "Docker가 이름을 지정한 볼륨 제거",
+    "pruneUnusedNetworks": "아무것도 사용하지 않는 네트워크 제거",
+    "pruneVolumesNote": "고유한 이름이 있는 볼륨은 항상 남습니다. Docker가 스스로 이름을 지정한 볼륨만 제거할 수 있습니다.",
+    "pruneNetworksNote": "compose 파일에서 external로 선언한 네트워크는 다시 만들어지지 않습니다. Docker Compose가 직접 만든 네트워크는 다음 배포 때 다시 만들어집니다.",
+    "pruneNothingToRemove": "제거할 항목이 없습니다.",
+    "pruneWillRemove": "다음 {n}개 항목을 제거합니다:",
+    "pruneKept": "{n}개는 스택이 사용하고 있으므로 유지됩니다.",
+    "pruneRemoved": "{n}개 항목을 제거했습니다.",
+    "pruneFailed": "{n}개 항목을 제거하지 못했습니다.",
+    "inUse": "사용 중",
+    "inUseYes": "사용 중",
+    "inUseNo": "사용 안 함"
 }

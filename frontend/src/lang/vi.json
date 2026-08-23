@@ -272,5 +272,19 @@
     "checkProgress": "Đã kiểm tra {n} / {m}",
     "nextCheck": "Lần kiểm tra tiếp theo lúc {t}",
     "checkUpdatesForStack": "Kiểm tra image của stack này",
-    "checkedImageCount": "Đã kiểm tra {n} image"
+    "checkedImageCount": "Đã kiểm tra {n} image",
+    "pruneDanglingImages": "Gỡ bỏ các image không có tag",
+    "pruneUnusedImages": "Gỡ bỏ các image mà không container và không stack nào dùng",
+    "pruneAnonymousVolumes": "Gỡ bỏ các volume do docker tự đặt tên",
+    "pruneUnusedNetworks": "Gỡ bỏ các mạng mà không có gì dùng",
+    "pruneVolumesNote": "Volume có tên luôn được giữ lại. Chỉ volume do chính docker đặt tên mới có thể bị gỡ bỏ.",
+    "pruneNetworksNote": "Mạng mà một tệp compose khai báo là external sẽ không được tạo lại. Docker compose sẽ tạo lại các mạng của chính nó ở lần triển khai tiếp theo.",
+    "pruneNothingToRemove": "Không có gì để gỡ bỏ.",
+    "pruneWillRemove": "{n} mục sau sẽ bị gỡ bỏ:",
+    "pruneKept": "{n} mục được giữ lại vì có stack đang dùng.",
+    "pruneRemoved": "Đã gỡ bỏ {n} mục.",
+    "pruneFailed": "{n} mục không gỡ bỏ được.",
+    "inUse": "Đang dùng",
+    "inUseYes": "Đang dùng",
+    "inUseNo": "Không dùng"
 }

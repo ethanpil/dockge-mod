@@ -272,5 +272,19 @@
     "checkProgress": "已检查 {n} / {m}",
     "nextCheck": "下次检查时间：{t}",
     "checkUpdatesForStack": "检查此堆栈的镜像",
-    "checkedImageCount": "已检查 {n} 个镜像"
+    "checkedImageCount": "已检查 {n} 个镜像",
+    "pruneDanglingImages": "移除没有标签的镜像",
+    "pruneUnusedImages": "移除没有容器和堆栈使用的镜像",
+    "pruneAnonymousVolumes": "移除由 docker 命名的数据卷",
+    "pruneUnusedNetworks": "移除没有任何东西使用的网络",
+    "pruneVolumesNote": "有名称的数据卷始终保留。只有 docker 自己命名的数据卷才会被移除。",
+    "pruneNetworksNote": "compose 文件中声明为 external 的网络不会重新创建。Docker compose 自己创建的网络会在下次部署时重新创建。",
+    "pruneNothingToRemove": "没有可移除的内容。",
+    "pruneWillRemove": "将移除这 {n} 项：",
+    "pruneKept": "有 {n} 项被保留，因为有堆栈正在使用。",
+    "pruneRemoved": "已移除 {n} 项。",
+    "pruneFailed": "有 {n} 项未能移除。",
+    "inUse": "使用中",
+    "inUseYes": "使用中",
+    "inUseNo": "未使用"
 }

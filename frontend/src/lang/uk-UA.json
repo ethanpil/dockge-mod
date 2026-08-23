@@ -272,5 +272,19 @@
     "checkProgress": "Перевірено {n} з {m}",
     "nextCheck": "Наступна перевірка о {t}",
     "checkUpdatesForStack": "Перевірити образи цього стека",
-    "checkedImageCount": "Перевірено образів: {n}"
+    "checkedImageCount": "Перевірено образів: {n}",
+    "pruneDanglingImages": "Видалити образи без тегу",
+    "pruneUnusedImages": "Видалити образи, які не використовує жоден контейнер і жоден стек",
+    "pruneAnonymousVolumes": "Видалити сховища, яким ім'я дав docker",
+    "pruneUnusedNetworks": "Видалити мережі, які ніщо не використовує",
+    "pruneVolumesNote": "Сховище з іменем залишається завжди. Видалити можна тільки сховище, якому docker дав ім'я сам.",
+    "pruneNetworksNote": "Мережа, яку файл compose оголошує як external, не буде створена знову. Docker compose створює власні мережі знову під час наступного розгортання.",
+    "pruneNothingToRemove": "Немає чого видаляти.",
+    "pruneWillRemove": "Будуть видалені такі елементи ({n}):",
+    "pruneKept": "Збережено: {n} — їх використовує стек.",
+    "pruneRemoved": "Видалено елементів: {n}.",
+    "pruneFailed": "Не вдалося видалити елементів: {n}.",
+    "inUse": "Використовується",
+    "inUseYes": "Використовується",
+    "inUseNo": "Не використовується"
 }

@@ -272,5 +272,19 @@
     "checkProgress": "{n} vo {m} prüeft",
     "nextCheck": "Nächschti Prüefig am {t}",
     "checkUpdatesForStack": "Images vo dem Stack prüefe",
-    "checkedImageCount": "{n} Images prüeft"
+    "checkedImageCount": "{n} Images prüeft",
+    "pruneDanglingImages": "Images ohni Tag entferne",
+    "pruneUnusedImages": "Images entferne, wo kei Container und kei Stack bruucht",
+    "pruneAnonymousVolumes": "Volumes entferne, wo de Docker benennt het",
+    "pruneUnusedNetworks": "Netzwerk entferne, wo nüt bruucht",
+    "pruneVolumesNote": "Es Volume mit emene eigene Name blibt immer. Nume es Volume, wo de Docker sälber benennt het, cha entfernt werde.",
+    "pruneNetworksNote": "Es Netzwerk, wo e Compose-Datei als external deklariert, wird nöd neu erstellt. Docker Compose erstellt sini eigene Netzwerk bim nächste Deploy wieder.",
+    "pruneNothingToRemove": "S'git nüt zum Entferne.",
+    "pruneWillRemove": "Die {n} Iiträg werded entfernt:",
+    "pruneKept": "{n} blibed, wil en Stack si bruucht.",
+    "pruneRemoved": "{n} Iiträg entfernt.",
+    "pruneFailed": "{n} Iiträg sind nöd entfernt worde.",
+    "inUse": "Verwendet",
+    "inUseYes": "Verwendet",
+    "inUseNo": "Nöd verwendet"
 }

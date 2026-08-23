@@ -272,5 +272,19 @@
     "checkProgress": "{n} sur {m} vérifiées",
     "nextCheck": "Prochaine vérification à {t}",
     "checkUpdatesForStack": "Vérifier les images de cette pile",
-    "checkedImageCount": "{n} images vérifiées"
+    "checkedImageCount": "{n} images vérifiées",
+    "pruneDanglingImages": "Retirer les images sans tag",
+    "pruneUnusedImages": "Retirer les images qu'aucun conteneur et aucune pile n'utilise",
+    "pruneAnonymousVolumes": "Retirer les volumes nommés par Docker",
+    "pruneUnusedNetworks": "Retirer les réseaux que rien n'utilise",
+    "pruneVolumesNote": "Un volume qui porte son propre nom est toujours conservé. Seul un volume que Docker a nommé lui-même peut être retiré.",
+    "pruneNetworksNote": "Un réseau qu'un fichier compose déclare comme external n'est pas recréé. Docker Compose recrée ses propres réseaux au prochain déploiement.",
+    "pruneNothingToRemove": "Il n'y a rien à retirer.",
+    "pruneWillRemove": "Ces {n} éléments vont être retirés :",
+    "pruneKept": "{n} sont conservés car une pile les utilise.",
+    "pruneRemoved": "{n} éléments retirés.",
+    "pruneFailed": "{n} éléments n'ont pas été retirés.",
+    "inUse": "Utilisé",
+    "inUseYes": "Utilisé",
+    "inUseNo": "Non utilisé"
 }

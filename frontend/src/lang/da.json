@@ -272,5 +272,19 @@
     "checkProgress": "Tjekket {n} af {m}",
     "nextCheck": "Næste tjek kl. {t}",
     "checkUpdatesForStack": "Tjek denne stacks images",
-    "checkedImageCount": "Tjekket {n} images"
+    "checkedImageCount": "Tjekket {n} images",
+    "pruneDanglingImages": "Fjern images uden tag",
+    "pruneUnusedImages": "Fjern images, som ingen container og ingen stack bruger",
+    "pruneAnonymousVolumes": "Fjern volumes, som Docker har navngivet",
+    "pruneUnusedNetworks": "Fjern netværk, som intet bruger",
+    "pruneVolumesNote": "Et volume med sit eget navn bliver altid. Kun et volume, som Docker selv har navngivet, kan fjernes.",
+    "pruneNetworksNote": "Et netværk, som en compose-fil erklærer som external, bliver ikke oprettet igen. Docker Compose opretter sine egne netværk igen ved næste udrulning.",
+    "pruneNothingToRemove": "Der er intet at fjerne.",
+    "pruneWillRemove": "Disse {n} elementer bliver fjernet:",
+    "pruneKept": "{n} beholdes, fordi en stack bruger dem.",
+    "pruneRemoved": "Fjernede {n} elementer.",
+    "pruneFailed": "{n} elementer blev ikke fjernet.",
+    "inUse": "I brug",
+    "inUseYes": "I brug",
+    "inUseNo": "Ikke i brug"
 }

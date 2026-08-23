@@ -272,5 +272,19 @@
     "checkProgress": "Verificadas {n} de {m}",
     "nextCheck": "Próxima verificação às {t}",
     "checkUpdatesForStack": "Verificar as imagens desta stack",
-    "checkedImageCount": "{n} imagens verificadas"
+    "checkedImageCount": "{n} imagens verificadas",
+    "pruneDanglingImages": "Remover as imagens sem tag",
+    "pruneUnusedImages": "Remover as imagens que nenhum contêiner e nenhuma stack usa",
+    "pruneAnonymousVolumes": "Remover os volumes que o docker nomeou",
+    "pruneUnusedNetworks": "Remover as redes que nada usa",
+    "pruneVolumesNote": "Um volume com nome sempre permanece. Só um volume que o docker nomeou sozinho pode ser removido.",
+    "pruneNetworksNote": "Uma rede que um arquivo compose declara como external não volta. O Docker compose cria novamente as próprias redes no próximo deploy.",
+    "pruneNothingToRemove": "Não há nada para remover.",
+    "pruneWillRemove": "Estes {n} itens serão removidos:",
+    "pruneKept": "{n} são mantidos porque uma stack os usa.",
+    "pruneRemoved": "Removidos {n} itens.",
+    "pruneFailed": "{n} itens não foram removidos.",
+    "inUse": "Em uso",
+    "inUseYes": "Em uso",
+    "inUseNo": "Não usado"
 }

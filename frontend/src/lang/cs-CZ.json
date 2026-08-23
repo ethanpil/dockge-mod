@@ -272,5 +272,19 @@
     "checkProgress": "Zkontrolováno {n} z {m}",
     "nextCheck": "Další kontrola v {t}",
     "checkUpdatesForStack": "Zkontrolovat image tohoto stacku",
-    "checkedImageCount": "Zkontrolováno {n} image"
+    "checkedImageCount": "Zkontrolováno {n} image",
+    "pruneDanglingImages": "Odstranit image bez tagu",
+    "pruneUnusedImages": "Odstranit image, které nepoužívá žádný kontejner ani žádný stack",
+    "pruneAnonymousVolumes": "Odstranit svazky pojmenované Dockerem",
+    "pruneUnusedNetworks": "Odstranit sítě, které nic nepoužívá",
+    "pruneVolumesNote": "Svazek s vlastním názvem vždy zůstane. Odstranit lze pouze svazek, který si Docker pojmenoval sám.",
+    "pruneNetworksNote": "Síť, kterou soubor compose deklaruje jako external, se znovu nevytvoří. Vlastní sítě Docker Compose se při dalším nasazení vytvoří znovu.",
+    "pruneNothingToRemove": "Není co odstranit.",
+    "pruneWillRemove": "Budou odstraněny tyto položky ({n}):",
+    "pruneKept": "Zachováno, protože je používá stack: {n}.",
+    "pruneRemoved": "Odstraněno položek: {n}.",
+    "pruneFailed": "Nepodařilo se odstranit položek: {n}.",
+    "inUse": "Používá se",
+    "inUseYes": "Používá se",
+    "inUseNo": "Nepoužívá se"
 }

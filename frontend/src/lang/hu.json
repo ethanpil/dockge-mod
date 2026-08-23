@@ -272,5 +272,19 @@
     "checkProgress": "{n} / {m} ellenőrizve",
     "nextCheck": "Következő ellenőrzés: {t}",
     "checkUpdatesForStack": "A stack image-einek ellenőrzése",
-    "checkedImageCount": "{n} image ellenőrizve"
+    "checkedImageCount": "{n} image ellenőrizve",
+    "pruneDanglingImages": "Tag nélküli image-ek eltávolítása",
+    "pruneUnusedImages": "Olyan image-ek eltávolítása, amelyeket egyetlen konténer és egyetlen stack sem használ",
+    "pruneAnonymousVolumes": "A Docker által elnevezett kötetek eltávolítása",
+    "pruneUnusedNetworks": "Olyan hálózatok eltávolítása, amelyeket semmi sem használ",
+    "pruneVolumesNote": "A saját névvel rendelkező kötet mindig megmarad. Csak az a kötet távolítható el, amelyet a Docker maga nevezett el.",
+    "pruneNetworksNote": "Azt a hálózatot, amelyet egy compose fájl external-ként deklarál, a rendszer nem hozza létre újra. A Docker Compose a saját hálózatait a következő telepítéskor újra létrehozza.",
+    "pruneNothingToRemove": "Nincs mit eltávolítani.",
+    "pruneWillRemove": "Ez a(z) {n} elem el lesz távolítva:",
+    "pruneKept": "{n} megmarad, mert egy stack használja őket.",
+    "pruneRemoved": "{n} elem eltávolítva.",
+    "pruneFailed": "{n} elemet nem sikerült eltávolítani.",
+    "inUse": "Használatban",
+    "inUseYes": "Használatban",
+    "inUseNo": "Nincs használatban"
 }

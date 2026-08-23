@@ -272,5 +272,19 @@
     "checkProgress": "{n} van {m} gecontroleerd",
     "nextCheck": "Volgende controle om {t}",
     "checkUpdatesForStack": "Controleer de images van deze stack",
-    "checkedImageCount": "{n} images gecontroleerd"
+    "checkedImageCount": "{n} images gecontroleerd",
+    "pruneDanglingImages": "Images zonder tag verwijderen",
+    "pruneUnusedImages": "Images verwijderen die geen container en geen stack gebruikt",
+    "pruneAnonymousVolumes": "Volumes verwijderen die docker een naam gaf",
+    "pruneUnusedNetworks": "Netwerken verwijderen die niets gebruikt",
+    "pruneVolumesNote": "Een volume met een naam blijft altijd bestaan. Alleen een volume dat docker zelf een naam gaf kan verdwijnen.",
+    "pruneNetworksNote": "Een netwerk dat een compose-bestand als external opgeeft komt niet terug. Docker compose maakt zijn eigen netwerken opnieuw aan bij het volgende opzetten.",
+    "pruneNothingToRemove": "Er is niets te verwijderen.",
+    "pruneWillRemove": "Deze {n} items worden verwijderd:",
+    "pruneKept": "{n} blijven behouden omdat een stack ze gebruikt.",
+    "pruneRemoved": "{n} items verwijderd.",
+    "pruneFailed": "{n} items zijn niet verwijderd.",
+    "inUse": "In gebruik",
+    "inUseYes": "In gebruik",
+    "inUseNo": "Niet gebruikt"
 }

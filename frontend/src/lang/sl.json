@@ -272,5 +272,19 @@
     "checkProgress": "Preverjeno {n} od {m}",
     "nextCheck": "Naslednje preverjanje ob {t}",
     "checkUpdatesForStack": "Preveri slike tega Stack-a",
-    "checkedImageCount": "Preverjenih slik: {n}"
+    "checkedImageCount": "Preverjenih slik: {n}",
+    "pruneDanglingImages": "Odstrani slike brez oznake",
+    "pruneUnusedImages": "Odstrani slike, ki jih ne uporablja noben kontejner in noben stack",
+    "pruneAnonymousVolumes": "Odstrani nosilce, ki jih je poimenoval docker",
+    "pruneUnusedNetworks": "Odstrani omrežja, ki jih nič ne uporablja",
+    "pruneVolumesNote": "Nosilec z imenom vedno ostane. Odstraniti je mogoče samo nosilec, ki ga je docker poimenoval sam.",
+    "pruneNetworksNote": "Omrežje, ki ga datoteka compose navede kot external, se ne ustvari znova. Docker compose svoja lastna omrežja znova ustvari ob naslednji razporeditvi.",
+    "pruneNothingToRemove": "Ni ničesar za odstraniti.",
+    "pruneWillRemove": "Odstranjeni bodo naslednji elementi ({n}):",
+    "pruneKept": "Ohranjenih: {n}, ker jih uporablja stack.",
+    "pruneRemoved": "Odstranjenih elementov: {n}.",
+    "pruneFailed": "Ni bilo mogoče odstraniti elementov: {n}.",
+    "inUse": "V uporabi",
+    "inUseYes": "V uporabi",
+    "inUseNo": "Ni v uporabi"
 }

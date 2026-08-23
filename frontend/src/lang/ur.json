@@ -272,5 +272,19 @@
     "checkProgress": "{m} میں سے {n} چیک ہو گئیں",
     "nextCheck": "اگلا چیک {t} پر",
     "checkUpdatesForStack": "اس اسٹیک کی تصاویر چیک کریں",
-    "checkedImageCount": "{n} تصاویر چیک ہوئیں"
+    "checkedImageCount": "{n} تصاویر چیک ہوئیں",
+    "pruneDanglingImages": "بغیر ٹیگ والی تصاویر ہٹائیں",
+    "pruneUnusedImages": "وہ تصاویر ہٹائیں جو کوئی کنٹینر اور کوئی اسٹیک استعمال نہیں کرتا",
+    "pruneAnonymousVolumes": "وہ والیومز ہٹائیں جن کا نام docker نے رکھا",
+    "pruneUnusedNetworks": "وہ نیٹ ورکس ہٹائیں جنہیں کوئی چیز استعمال نہیں کرتی",
+    "pruneVolumesNote": "نام والا والیوم ہمیشہ برقرار رہتا ہے۔ صرف وہ والیوم ہٹایا جا سکتا ہے جس کا نام docker نے خود رکھا ہو۔",
+    "pruneNetworksNote": "جس نیٹ ورک کو compose فائل external کے طور پر ظاہر کرتی ہے وہ دوبارہ نہیں بنتا۔ Docker compose اپنے نیٹ ورکس اگلی تعیناتی پر دوبارہ بناتا ہے۔",
+    "pruneNothingToRemove": "ہٹانے کے لیے کچھ نہیں ہے۔",
+    "pruneWillRemove": "یہ {n} اشیاء ہٹائی جائیں گی:",
+    "pruneKept": "{n} برقرار رکھی گئی ہیں کیونکہ ایک اسٹیک انہیں استعمال کرتا ہے۔",
+    "pruneRemoved": "{n} اشیاء ہٹا دی گئیں۔",
+    "pruneFailed": "{n} اشیاء نہیں ہٹائی جا سکیں۔",
+    "inUse": "زیرِ استعمال",
+    "inUseYes": "زیرِ استعمال",
+    "inUseNo": "غیر استعمال شدہ"
 }

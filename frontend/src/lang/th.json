@@ -272,5 +272,19 @@
     "checkProgress": "ตรวจสอบแล้ว {n} จาก {m}",
     "nextCheck": "ตรวจสอบครั้งถัดไปเวลา {t}",
     "checkUpdatesForStack": "ตรวจสอบ image ของ stack นี้",
-    "checkedImageCount": "ตรวจสอบแล้ว {n} image"
+    "checkedImageCount": "ตรวจสอบแล้ว {n} image",
+    "pruneDanglingImages": "ลบ Image ที่ไม่มี tag",
+    "pruneUnusedImages": "ลบ Image ที่ไม่มี Container และ stack ใดใช้งาน",
+    "pruneAnonymousVolumes": "ลบ Volume ที่ docker ตั้งชื่อให้",
+    "pruneUnusedNetworks": "ลบเครือข่ายที่ไม่มีสิ่งใดใช้งาน",
+    "pruneVolumesNote": "Volume ที่มีชื่อจะยังคงอยู่เสมอ เฉพาะ Volume ที่ docker ตั้งชื่อเองเท่านั้นที่จะถูกลบได้",
+    "pruneNetworksNote": "เครือข่ายที่ไฟล์ compose ประกาศเป็น external จะไม่ถูกสร้างขึ้นใหม่ ส่วน Docker compose จะสร้างเครือข่ายของตัวเองขึ้นใหม่ในการปรับใช้ครั้งถัดไป",
+    "pruneNothingToRemove": "ไม่มีสิ่งใดให้ลบ",
+    "pruneWillRemove": "รายการ {n} รายการนี้จะถูกลบ:",
+    "pruneKept": "เก็บไว้ {n} รายการ เพราะมี stack ใช้งานอยู่",
+    "pruneRemoved": "ลบไปแล้ว {n} รายการ",
+    "pruneFailed": "{n} รายการลบไม่สำเร็จ",
+    "inUse": "ใช้งานอยู่",
+    "inUseYes": "ใช้งานอยู่",
+    "inUseNo": "ไม่ได้ใช้งาน"
 }

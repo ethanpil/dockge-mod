@@ -272,5 +272,19 @@
     "checkProgress": "Seiceáladh {n} as {m}",
     "nextCheck": "An chéad seiceáil eile ag {t}",
     "checkUpdatesForStack": "Seiceáil íomhánna an staca seo",
-    "checkedImageCount": "Seiceáladh {n} íomhá"
+    "checkedImageCount": "Seiceáladh {n} íomhá",
+    "pruneDanglingImages": "Bain na híomhánna gan chlib",
+    "pruneUnusedImages": "Bain na híomhánna nach n-úsáideann coimeádán ná staca ar bith",
+    "pruneAnonymousVolumes": "Bain na himleabhair ar thug Docker ainm orthu",
+    "pruneUnusedNetworks": "Bain na líonraí nach n-úsáideann aon rud",
+    "pruneVolumesNote": "Fanann imleabhar a bhfuil a ainm féin air i gcónaí. Ní féidir ach imleabhar ar thug Docker féin ainm air a bhaint.",
+    "pruneNetworksNote": "Líonra a dhearbhaíonn comhad compose mar external, ní chruthaítear arís é. Cruthaíonn Docker Compose a líonraí féin arís ag an gcéad imlonnú eile.",
+    "pruneNothingToRemove": "Níl aon rud le baint.",
+    "pruneWillRemove": "Bainfear na {n} mír seo:",
+    "pruneKept": "Coinnítear {n} mír mar go n-úsáideann staca iad.",
+    "pruneRemoved": "Baineadh {n} mír.",
+    "pruneFailed": "Níor baineadh {n} mír.",
+    "inUse": "In úsáid",
+    "inUseYes": "In úsáid",
+    "inUseNo": "Gan úsáid"
 }

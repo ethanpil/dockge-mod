@@ -272,5 +272,19 @@
     "checkProgress": "Проверено {n} из {m}",
     "nextCheck": "Следующая проверка в {t}",
     "checkUpdatesForStack": "Проверить образы этого стека",
-    "checkedImageCount": "Проверено образов: {n}"
+    "checkedImageCount": "Проверено образов: {n}",
+    "pruneDanglingImages": "Удалить образы без тега",
+    "pruneUnusedImages": "Удалить образы, которые не использует ни один контейнер и ни один стек",
+    "pruneAnonymousVolumes": "Удалить тома, которым имя дал docker",
+    "pruneUnusedNetworks": "Удалить сети, которые ничто не использует",
+    "pruneVolumesNote": "Том с именем остаётся всегда. Удалить можно только том, которому docker дал имя сам.",
+    "pruneNetworksNote": "Сеть, которую compose-файл объявляет как external, не будет создана заново. Docker compose снова создаёт свои собственные сети при следующем развёртывании.",
+    "pruneNothingToRemove": "Удалять нечего.",
+    "pruneWillRemove": "Будут удалены следующие элементы ({n}):",
+    "pruneKept": "Сохранено: {n} — их использует стек.",
+    "pruneRemoved": "Удалено элементов: {n}.",
+    "pruneFailed": "Не удалось удалить элементов: {n}.",
+    "inUse": "Используется",
+    "inUseYes": "Используется",
+    "inUseNo": "Не используется"
 }

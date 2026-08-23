@@ -272,5 +272,19 @@
     "checkProgress": "Comprovades {n} de {m}",
     "nextCheck": "Propera comprovació a les {t}",
     "checkUpdatesForStack": "Comprova les imatges d'aquesta pila",
-    "checkedImageCount": "{n} imatges comprovades"
+    "checkedImageCount": "{n} imatges comprovades",
+    "pruneDanglingImages": "Elimina les imatges sense etiqueta",
+    "pruneUnusedImages": "Elimina les imatges que cap contenidor ni cap pila no fa servir",
+    "pruneAnonymousVolumes": "Elimina els volums que ha anomenat Docker",
+    "pruneUnusedNetworks": "Elimina les xarxes que no fa servir res",
+    "pruneVolumesNote": "Un volum amb nom propi es manté sempre. Només es pot eliminar un volum que Docker ha anomenat ell mateix.",
+    "pruneNetworksNote": "Una xarxa que un fitxer compose declara com a external no es torna a crear. Docker Compose torna a crear les seves pròpies xarxes en el desplegament següent.",
+    "pruneNothingToRemove": "No hi ha res per eliminar.",
+    "pruneWillRemove": "S'eliminaran aquests {n} elements:",
+    "pruneKept": "{n} es mantenen perquè una pila els fa servir.",
+    "pruneRemoved": "S'han eliminat {n} elements.",
+    "pruneFailed": "{n} elements no s'han pogut eliminar.",
+    "inUse": "En ús",
+    "inUseYes": "En ús",
+    "inUseNo": "Sense ús"
 }

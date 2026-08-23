@@ -272,5 +272,19 @@
     "checkProgress": "Проверени {n} от {m}",
     "nextCheck": "Следваща проверка в {t}",
     "checkUpdatesForStack": "Провери образите на този стек",
-    "checkedImageCount": "Проверени са {n} образа"
+    "checkedImageCount": "Проверени са {n} образа",
+    "pruneDanglingImages": "Премахни образите без етикет",
+    "pruneUnusedImages": "Премахни образите, които не се използват от контейнер или стак",
+    "pruneAnonymousVolumes": "Премахни томовете, именувани от Docker",
+    "pruneUnusedNetworks": "Премахни мрежите, които нищо не използва",
+    "pruneVolumesNote": "Том със собствено име винаги остава. Може да бъде премахнат само том, който Docker сам е именувал.",
+    "pruneNetworksNote": "Мрежа, която compose файл декларира като external, не се създава отново. Собствените мрежи на Docker Compose се създават отново при следващото разполагане.",
+    "pruneNothingToRemove": "Няма нищо за премахване.",
+    "pruneWillRemove": "Ще бъдат премахнати следните елементи ({n}):",
+    "pruneKept": "Запазени, защото се използват от стак: {n}.",
+    "pruneRemoved": "Премахнати елементи: {n}.",
+    "pruneFailed": "Не бяха премахнати елементи: {n}.",
+    "inUse": "Използва се",
+    "inUseYes": "Използва се",
+    "inUseNo": "Не се използва"
 }

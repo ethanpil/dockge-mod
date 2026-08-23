@@ -272,5 +272,19 @@
     "checkProgress": "Diperiksa {n} dari {m}",
     "nextCheck": "Pemeriksaan berikutnya pukul {t}",
     "checkUpdatesForStack": "Periksa image stack ini",
-    "checkedImageCount": "Diperiksa {n} image"
+    "checkedImageCount": "Diperiksa {n} image",
+    "pruneDanglingImages": "Hapus image tanpa tag",
+    "pruneUnusedImages": "Hapus image yang tidak dipakai kontainer maupun tumpukan",
+    "pruneAnonymousVolumes": "Hapus volume yang dinamai oleh Docker",
+    "pruneUnusedNetworks": "Hapus jaringan yang tidak dipakai apa pun",
+    "pruneVolumesNote": "Volume yang punya nama sendiri selalu dipertahankan. Hanya volume yang dinamai sendiri oleh Docker yang dapat dihapus.",
+    "pruneNetworksNote": "Jaringan yang dideklarasikan sebagai external di berkas compose tidak dibuat ulang. Docker Compose membuat ulang jaringan miliknya sendiri pada penerapan berikutnya.",
+    "pruneNothingToRemove": "Tidak ada yang perlu dihapus.",
+    "pruneWillRemove": "{n} item berikut akan dihapus:",
+    "pruneKept": "{n} dipertahankan karena dipakai oleh sebuah tumpukan.",
+    "pruneRemoved": "{n} item dihapus.",
+    "pruneFailed": "{n} item gagal dihapus.",
+    "inUse": "Dipakai",
+    "inUseYes": "Dipakai",
+    "inUseNo": "Tidak dipakai"
 }

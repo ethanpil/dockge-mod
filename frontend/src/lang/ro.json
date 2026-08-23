@@ -272,5 +272,19 @@
     "checkProgress": "Verificate {n} din {m}",
     "nextCheck": "Următoarea verificare la {t}",
     "checkUpdatesForStack": "Verifică imaginile acestei stive",
-    "checkedImageCount": "{n} imagini verificate"
+    "checkedImageCount": "{n} imagini verificate",
+    "pruneDanglingImages": "Elimină imaginile fără etichetă",
+    "pruneUnusedImages": "Elimină imaginile pe care nu le folosește niciun container și nicio stivă",
+    "pruneAnonymousVolumes": "Elimină volumele denumite de docker",
+    "pruneUnusedNetworks": "Elimină rețelele pe care nu le folosește nimic",
+    "pruneVolumesNote": "Un volum cu nume rămâne întotdeauna. Numai un volum pe care docker l-a denumit singur poate fi eliminat.",
+    "pruneNetworksNote": "O rețea pe care un fișier compose o declară ca external nu revine. Docker compose își creează din nou propriile rețele la următoarea lansare.",
+    "pruneNothingToRemove": "Nu este nimic de eliminat.",
+    "pruneWillRemove": "Aceste {n} elemente vor fi eliminate:",
+    "pruneKept": "{n} sunt păstrate deoarece o stivă le folosește.",
+    "pruneRemoved": "S-au eliminat {n} elemente.",
+    "pruneFailed": "{n} elemente nu au fost eliminate.",
+    "inUse": "În uz",
+    "inUseYes": "În uz",
+    "inUseNo": "Neutilizat"
 }

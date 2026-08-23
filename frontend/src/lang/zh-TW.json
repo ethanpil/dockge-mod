@@ -272,5 +272,19 @@
     "checkProgress": "已檢查 {n} / {m}",
     "nextCheck": "下次檢查時間：{t}",
     "checkUpdatesForStack": "檢查此堆疊的映像",
-    "checkedImageCount": "已檢查 {n} 個映像"
+    "checkedImageCount": "已檢查 {n} 個映像",
+    "pruneDanglingImages": "移除沒有標籤的映像",
+    "pruneUnusedImages": "移除沒有容器和堆疊使用的映像",
+    "pruneAnonymousVolumes": "移除由 docker 命名的資料卷",
+    "pruneUnusedNetworks": "移除沒有任何項目使用的網路",
+    "pruneVolumesNote": "有名稱的資料卷一律會保留。只有 docker 自行命名的資料卷才會被移除。",
+    "pruneNetworksNote": "compose 檔案中宣告為 external 的網路不會重新建立。Docker compose 自己的網路會在下次部署時重新建立。",
+    "pruneNothingToRemove": "沒有可移除的項目。",
+    "pruneWillRemove": "將移除這 {n} 個項目：",
+    "pruneKept": "有 {n} 個項目保留，因為有堆疊正在使用。",
+    "pruneRemoved": "已移除 {n} 個項目。",
+    "pruneFailed": "有 {n} 個項目未能移除。",
+    "inUse": "使用中",
+    "inUseYes": "使用中",
+    "inUseNo": "未使用"
 }

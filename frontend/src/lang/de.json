@@ -272,5 +272,19 @@
     "checkProgress": "{n} von {m} geprüft",
     "nextCheck": "Nächste Prüfung um {t}",
     "checkUpdatesForStack": "Images dieses Stacks prüfen",
-    "checkedImageCount": "{n} Images geprüft"
+    "checkedImageCount": "{n} Images geprüft",
+    "pruneDanglingImages": "Images ohne Tag entfernen",
+    "pruneUnusedImages": "Images entfernen, die kein Container und kein Stack nutzt",
+    "pruneAnonymousVolumes": "Volumes entfernen, die Docker benannt hat",
+    "pruneUnusedNetworks": "Netzwerke entfernen, die nichts nutzt",
+    "pruneVolumesNote": "Ein Volume mit einem eigenen Namen bleibt immer erhalten. Nur ein Volume, das Docker selbst benannt hat, kann entfernt werden.",
+    "pruneNetworksNote": "Ein Netzwerk, das eine Compose-Datei als external deklariert, wird nicht neu erstellt. Docker Compose erstellt seine eigenen Netzwerke beim nächsten Deploy neu.",
+    "pruneNothingToRemove": "Es gibt nichts zu entfernen.",
+    "pruneWillRemove": "Diese {n} Einträge werden entfernt:",
+    "pruneKept": "{n} bleiben erhalten, weil ein Stack sie nutzt.",
+    "pruneRemoved": "{n} Einträge entfernt.",
+    "pruneFailed": "{n} Einträge wurden nicht entfernt.",
+    "inUse": "Verwendet",
+    "inUseYes": "Verwendet",
+    "inUseNo": "Nicht verwendet"
 }

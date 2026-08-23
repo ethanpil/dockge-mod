@@ -272,5 +272,19 @@
     "checkProgress": "Праверана {n} з {m}",
     "nextCheck": "Наступная праверка ў {t}",
     "checkUpdatesForStack": "Праверыць вобразы гэтага стэка",
-    "checkedImageCount": "Праверана вобразаў: {n}"
+    "checkedImageCount": "Праверана вобразаў: {n}",
+    "pruneDanglingImages": "Выдаліць вобразы без тэга",
+    "pruneUnusedImages": "Выдаліць вобразы, якія не выкарыстоўвае ні адзін кантэйнер і ні адзін стэк",
+    "pruneAnonymousVolumes": "Выдаліць тамы, якія назваў Docker",
+    "pruneUnusedNetworks": "Выдаліць сеткі, якія нішто не выкарыстоўвае",
+    "pruneVolumesNote": "Том з уласнай назвай заўсёды застаецца. Выдаліць можна толькі том, які Docker назваў сам.",
+    "pruneNetworksNote": "Сетка, якую файл compose аб'яўляе як external, не ствараецца зноў. Уласныя сеткі Docker Compose ствараюцца зноў пры наступным разгортванні.",
+    "pruneNothingToRemove": "Няма чаго выдаляць.",
+    "pruneWillRemove": "Будуць выдалены наступныя элементы ({n}):",
+    "pruneKept": "Захавана, бо іх выкарыстоўвае стэк: {n}.",
+    "pruneRemoved": "Выдалена элементаў: {n}.",
+    "pruneFailed": "Не ўдалося выдаліць элементаў: {n}.",
+    "inUse": "Выкарыстоўваецца",
+    "inUseYes": "Выкарыстоўваецца",
+    "inUseNo": "Не выкарыстоўваецца"
 }

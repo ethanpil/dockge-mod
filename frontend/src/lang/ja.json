@@ -272,5 +272,19 @@
     "checkProgress": "{m} 件中 {n} 件を確認",
     "nextCheck": "次回の確認: {t}",
     "checkUpdatesForStack": "このスタックのイメージを確認",
-    "checkedImageCount": "{n} 件のイメージを確認しました"
+    "checkedImageCount": "{n} 件のイメージを確認しました",
+    "pruneDanglingImages": "タグのないイメージを削除",
+    "pruneUnusedImages": "コンテナもスタックも使っていないイメージを削除",
+    "pruneAnonymousVolumes": "Docker が名前を付けたボリュームを削除",
+    "pruneUnusedNetworks": "どこからも使われていないネットワークを削除",
+    "pruneVolumesNote": "名前を持つボリュームは必ず残ります。削除できるのは Docker 自身が名前を付けたボリュームだけです。",
+    "pruneNetworksNote": "compose ファイルで external と宣言されたネットワークは、作り直されません。Docker Compose 自身のネットワークは次回のデプロイで作り直されます。",
+    "pruneNothingToRemove": "削除するものはありません。",
+    "pruneWillRemove": "次の {n} 件を削除します:",
+    "pruneKept": "{n} 件はスタックが使用しているため残します。",
+    "pruneRemoved": "{n} 件を削除しました。",
+    "pruneFailed": "{n} 件は削除できませんでした。",
+    "inUse": "使用中",
+    "inUseYes": "使用中",
+    "inUseNo": "未使用"
 }

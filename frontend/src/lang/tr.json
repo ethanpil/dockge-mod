@@ -272,5 +272,19 @@
     "checkProgress": "{m} öğeden {n} tanesi kontrol edildi",
     "nextCheck": "Sonraki kontrol: {t}",
     "checkUpdatesForStack": "Bu yığının görüntülerini kontrol et",
-    "checkedImageCount": "{n} görüntü kontrol edildi"
+    "checkedImageCount": "{n} görüntü kontrol edildi",
+    "pruneDanglingImages": "Etiketi olmayan görüntüleri kaldır",
+    "pruneUnusedImages": "Hiçbir konteynerin ve yığının kullanmadığı görüntüleri kaldır",
+    "pruneAnonymousVolumes": "Docker'ın adlandırdığı disk bölümlerini kaldır",
+    "pruneUnusedNetworks": "Hiçbir şeyin kullanmadığı ağları kaldır",
+    "pruneVolumesNote": "Adı olan bir disk bölümü her zaman kalır. Yalnızca docker'ın kendi adlandırdığı bir disk bölümü kaldırılabilir.",
+    "pruneNetworksNote": "Bir compose dosyasının external olarak tanımladığı bir ağ geri gelmez. Docker compose kendi ağlarını bir sonraki dağıtımda yeniden oluşturur.",
+    "pruneNothingToRemove": "Kaldırılacak bir şey yok.",
+    "pruneWillRemove": "Bu {n} öğe kaldırılacak:",
+    "pruneKept": "Bir yığın kullandığı için {n} öğe korunuyor.",
+    "pruneRemoved": "{n} öğe kaldırıldı.",
+    "pruneFailed": "{n} öğe kaldırılamadı.",
+    "inUse": "Kullanımda",
+    "inUseYes": "Kullanımda",
+    "inUseNo": "Kullanılmıyor"
 }

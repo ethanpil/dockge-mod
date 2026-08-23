@@ -272,5 +272,19 @@
     "checkProgress": "Kontrollerade {n} av {m}",
     "nextCheck": "Nästa kontroll kl. {t}",
     "checkUpdatesForStack": "Kontrollera avbilderna i den här stacken",
-    "checkedImageCount": "Kontrollerade {n} avbilder"
+    "checkedImageCount": "Kontrollerade {n} avbilder",
+    "pruneDanglingImages": "Ta bort avbilder utan tagg",
+    "pruneUnusedImages": "Ta bort avbilder som ingen container och ingen stack använder",
+    "pruneAnonymousVolumes": "Ta bort volymer som docker har namngett",
+    "pruneUnusedNetworks": "Ta bort nätverk som inget använder",
+    "pruneVolumesNote": "En volym med ett namn finns alltid kvar. Endast en volym som docker själv har namngett kan tas bort.",
+    "pruneNetworksNote": "Ett nätverk som en compose-fil anger som external kommer inte tillbaka. Docker compose skapar sina egna nätverk igen vid nästa distribution.",
+    "pruneNothingToRemove": "Det finns inget att ta bort.",
+    "pruneWillRemove": "Dessa {n} objekt tas bort:",
+    "pruneKept": "{n} behålls eftersom en stack använder dem.",
+    "pruneRemoved": "Tog bort {n} objekt.",
+    "pruneFailed": "{n} objekt togs inte bort.",
+    "inUse": "Används",
+    "inUseYes": "Används",
+    "inUseNo": "Används inte"
 }

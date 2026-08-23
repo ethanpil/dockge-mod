@@ -272,5 +272,19 @@
     "checkProgress": "Sprawdzono {n} z {m}",
     "nextCheck": "Następne sprawdzenie o {t}",
     "checkUpdatesForStack": "Sprawdź obrazy tego stosu",
-    "checkedImageCount": "Sprawdzono obrazów: {n}"
+    "checkedImageCount": "Sprawdzono obrazów: {n}",
+    "pruneDanglingImages": "Usuń obrazy bez tagu",
+    "pruneUnusedImages": "Usuń obrazy, których nie używa żaden kontener ani stos",
+    "pruneAnonymousVolumes": "Usuń wolumeny nazwane przez dockera",
+    "pruneUnusedNetworks": "Usuń sieci, których nic nie używa",
+    "pruneVolumesNote": "Wolumen z nazwą zawsze pozostaje. Usunąć można tylko wolumen, który docker nazwał sam.",
+    "pruneNetworksNote": "Sieć, którą plik compose deklaruje jako external, nie wróci. Docker compose tworzy własne sieci ponownie przy następnym wdrożeniu.",
+    "pruneNothingToRemove": "Nie ma nic do usunięcia.",
+    "pruneWillRemove": "Te elementy ({n}) zostaną usunięte:",
+    "pruneKept": "Pozostawiono {n}, ponieważ używa ich stos.",
+    "pruneRemoved": "Liczba usuniętych elementów: {n}.",
+    "pruneFailed": "Liczba elementów, których nie udało się usunąć: {n}.",
+    "inUse": "W użyciu",
+    "inUseYes": "W użyciu",
+    "inUseNo": "Nieużywane"
 }
