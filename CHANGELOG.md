@@ -6,6 +6,27 @@ The base is dockge commit [f809ae1](https://github.com/louislam/dockge/commit/f8
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). This project has no releases, so each entry is a commit. The newest entry comes first. A commit that changes only this file or the project rules has no entry.
 
+## [16c5508](../../commit/16c5508) - 2026-08-23
+
+### Added
+
+- The **Resources** page shows the resources that a removal takes away, before it takes them away. The dialog holds the name of each resource and the count of the resources that stay.
+- Each table of the **Resources** page says if a container uses a resource. A resource in use has no remove button.
+- A note on the volumes says that a volume with a name stays. A note on the networks says that a network of an `external` declaration does not come back.
+
+### Changed
+
+- The buttons of the **Resources** page say what they remove.
+
+## [736afc7](../../commit/736afc7) - 2026-08-23
+
+### Security
+
+- A removal of the unused resources does not use the prune command of docker. That command removes the network of a stack that you stopped, and the images of a stack that is down. It also gives no list before it removes.
+- A removal keeps each resource of a container, also a container that is stopped. The prune of docker removes the network of a container that is stopped.
+- A removal keeps each resource of a stack of this server, each image that a compose file of this server names, each volume that has a name, and the `bridge`, `host`, and `none` networks.
+- A removal takes the resources away one after the other, thus one failure does not stop the others. The answer says which resources did not go away.
+
 ## [67efc59](../../commit/67efc59) - 2026-08-21
 
 ### Fixed
