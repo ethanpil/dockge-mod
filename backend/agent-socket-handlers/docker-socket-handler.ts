@@ -68,7 +68,10 @@ async function protectedResources(server : DockgeServer) : Promise<ProtectedReso
     const images = new Set<string>();
     const repositories = new Set<string>();
 
-    const stackList = await Stack.getStackList(server, true);
+    // The list comes from the disk, not from the cache. A compose file
+    // that changed outside of this server must not let a resource of a
+    // stack go away.
+    const stackList = await Stack.getStackList(server, false);
     for (const stack of stackList.values()) {
         if (!stack.isManagedByDockge) {
             continue;
