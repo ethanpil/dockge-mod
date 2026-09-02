@@ -4,7 +4,78 @@ This file lists the changes between dockge-mod and the [dockge](https://github.c
 
 The base is dockge commit [f809ae1](https://github.com/louislam/dockge/commit/f809ae192b571944ad773e9866d3e67064ae8043). dockge-mod is a drop-in replacement. The tables of Dockge, the environment variables, and the socket protocol stay the same. dockge-mod adds only tables with the `mod_` prefix, with their own migration ledger. Each new socket event and field only adds data.
 
-The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). This project has no releases, so each entry is a commit. The newest entry comes first. A commit that changes only this file or the project rules has no entry.
+The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Each entry is a commit. The newest entry comes first. A commit that changes only this file or the project rules has no entry. A release is a git tag on a commit, with the version of the image, for example `1.5.0-mod-a1b2c3d`. The [releases page](../../releases) lists them.
+
+## Differences from Dockge
+
+This section is a summary of the entries below, for a reader who wants to know what dockge-mod adds to Dockge. The README gives the use of each feature.
+
+### Added
+
+- An override file editor. Docker merges the override file with the compose file.
+- A git checkout as a stack, with the branch in the stack list and a **Pull & Redeploy** button.
+- An image update check. The server asks the registry every six hours, and a stack with a new image version shows a badge.
+- Notifications on a webhook, ntfy, or Apprise for a new image version, a container that exits with an error, and an unhealthy container.
+- Backups of the files of a stack. A save and a git pull keep a copy, and the user can restore one of the last 20 copies.
+- A **Resources** page with the images, the volumes, and the networks of a host. A removal of the unused items shows a plan first, and it keeps the resources of each stack of the server.
+- The log of one service, a **Validate** button for the editor content, and a **Merged config** view of `docker compose config`.
+- An `.env` editor with a field for each key and each value, and a **Global .env** page.
+- A **Health** page that shows the tools and the directories that the server needs.
+- The host statistics on the home page: the load, the memory, and the disk usage of docker.
+- A select mode with bulk actions, and a status filter for the stack list.
+- Panels with a height that the user can change.
+- A test suite, a CI workflow, and a publish workflow for a multi-arch image that holds the frontend build.
+
+### Changed
+
+- The interface has a new theme and a new layout for the stack page.
+- Each docker command has a time limit of 30 seconds, and each stack action has a time limit of five minutes.
+- The host console is one shell for each user.
+- The login limit counts for each address and for the server.
+- The image builds its own base layer, with git and the buildx plugin.
+
+### Fixed
+
+- A terminal exit runs one time. A late exit event could remove a newer terminal with the same name.
+- Many small repairs of the interface, the terminal, and the compose operations. The entries below give each one.
+
+### Security
+
+- A stack name cannot leave the stacks directory.
+- A service name or a shell name cannot add a flag to a docker command.
+- A user can attach only to the terminals that the user made.
+
+### Removed
+
+- The check for a new Dockge version on GitHub.
+
+## [903f4b9](../../commit/903f4b9) - 2026-09-01
+
+### Changed
+
+- The README gives the differences in behavior from Dockge: the `.env` file and the override file on a save, the secrets in the backups, the time limits, the timeout on a Dockge agent, and the work in the background. The feature list names the bulk actions and the status filter.
+
+## [a2e61c4](../../commit/a2e61c4) - 2026-09-01
+
+### Fixed
+
+- The read of a stack, a deploy, and a delete have a time limit. An agent that did not answer left the page empty, or the toolbar closed, for ever.
+- The status polls and the host statistics poll continue after an answer that does not come, and they start again after a new login. A lost answer stopped the poll before.
+- The message about a stack that dockge-mod does not manage shows only for a real answer. It showed after an error too.
+
+## [3ceb6bb](../../commit/3ceb6bb) - 2026-09-01
+
+### Removed
+
+- The hidden 2FA dialog. It had no server events, and a hard-coded value hid its button.
+- The mobile branches of the layout, the dashboard, and the settings page. The flag that they read was not defined, thus they never ran.
+- The dead blocks of the compose page.
+
+## [98af0da](../../commit/98af0da) - 2026-09-01
+
+### Fixed
+
+- The read of `docker system df` has the standard time limit of 30 seconds. A daemon that did not answer stopped the host statistics for ever.
 
 ## [f88127a](../../commit/f88127a) - 2026-08-23
 
