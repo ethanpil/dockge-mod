@@ -37,6 +37,18 @@ Three conditions apply after you go back:
 - The Dockge interface does not show the override file, but `docker compose` continues to merge it. Your stacks keep their behavior, but the interface shows only the base file.
 - Dockge does not write the `.env` file when you save a stack. Your `.env` files stay on the disk, but a change that you make in the Dockge editor does not go to the disk.
 
+### Differences in Behavior
+
+dockge-mod does some things differently from Dockge. The data stays compatible, but you must know these conditions:
+
+- A save writes the `.env` file when the file exists or the panel has text. Dockge does not touch the `.env` file. If you edit the `.env` file by hand and save the stack in the interface, the interface writes its content to the disk.
+- A save can remove the override file. An empty override editor removes the file on the next save. Dockge does not touch this file.
+- The backups of a stack hold the `.env` file with its secrets, in the database. The database file is more sensitive than the database file of Dockge. Keep it safe.
+- Each docker command has a time limit of 30 seconds. Dockge waits without a limit. A daemon that answers slowly, for example a host with many containers on a slow disk, can give a timeout in dockge-mod where Dockge waits.
+- A feature of dockge-mod on a Dockge agent gives a timeout, not a message that says the feature is not available. Dockge drops an event that it does not know without an answer. The **Resources** page, the backups, the image check, and the service logs wait 30 seconds and then show a timeout message for such an agent. Their buttons do not show for a Dockge agent when the interface can know that.
+- dockge-mod does more work in the background. It reads the events of docker all the time, it asks the registries for new image versions every six hours, and it reads the disk usage of docker every minute while the home page is open. A registry with a rate limit sees a HEAD request for each image at each check.
+- The host console is one shell for each user. In Dockge, all users share one shell.
+
 ## Features
 
 - Make, edit, start, stop, restart, and delete compose stacks.
@@ -53,6 +65,8 @@ Three conditions apply after you go back:
 - Go back to an earlier version of the files of a stack. A save and a git pull keep a copy.
 - List and prune the images, the volumes, and the networks of the host.
 - See the log of one service.
+- Select more than one stack, then start, stop, restart, or update the selection.
+- Filter the stack list by status and by name.
 - Use a git checkout as a stack, with an override file for the local changes.
 
 ## Compare
