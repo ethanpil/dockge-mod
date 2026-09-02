@@ -630,6 +630,9 @@ export default {
             newContainerName: "",
             stopServiceStatusTimeout: false,
             stopDockerStatsTimeout: false,
+            // The functions that stop a poll that waits for its answer
+            cancelServiceStatus: null,
+            cancelDockerStats: null,
             expandedPanel: null,
             editSnapshot: null,
             // Content of an override file that the user deleted. The save
@@ -909,6 +912,15 @@ export default {
          * @returns {void}
          */
         "$root.socketIO.loginCount"() {
+            // A poll that waited on the old socket gets no answer. The
+            // polls start again on the new socket.
+            if (!this.isAdd && !this.stopServiceStatusTimeout) {
+                this.requestServiceStatus();
+            }
+            if (!this.isAdd && !this.stopDockerStatsTimeout) {
+                this.requestDockerStats();
+            }
+
             if (this.expandedPanel === "serviceLogs" && this.serviceLogName) {
                 this.$root.emitAgent(this.endpoint, "serviceLogs", this.stack.name, this.serviceLogName, (res) => {
                     if (!res.ok) {
@@ -1085,7 +1097,15 @@ export default {
                 return;
             }
 
-            this.$root.emitAgent(this.endpoint, "serviceStatusList", this.stack.name, (res) => {
+            // One poll at a time. A second chain sends two requests for
+            // each interval.
+            this.cancelServiceStatus?.();
+            clearTimeout(this.serviceStatusTimeout);
+
+            // An answer that does not come, for example after a loss of
+            // the connection, must not stop the poll for ever
+            this.cancelServiceStatus = this.$root.emitAgentWithTimeout(this.endpoint, "serviceStatusList", [ this.stack.name ], 30000, (res) => {
+                this.cancelServiceStatus = null;
                 if (res.ok) {
                     this.serviceStatusList = res.serviceStatusList;
                 }
@@ -1101,7 +1121,11 @@ export default {
                 return;
             }
 
-            this.$root.emitAgent(this.endpoint, "dockerStats", (res) => {
+            this.cancelDockerStats?.();
+            clearTimeout(this.dockerStatsTimeout);
+
+            this.cancelDockerStats = this.$root.emitAgentWithTimeout(this.endpoint, "dockerStats", [], 30000, (res) => {
+                this.cancelDockerStats = null;
                 if (res.ok) {
                     this.dockerStats = res.dockerStats;
                 }
@@ -1184,6 +1208,8 @@ export default {
             this.stopDockerStatsTimeout = true;
             clearTimeout(this.serviceStatusTimeout);
             clearTimeout(this.dockerStatsTimeout);
+            this.cancelServiceStatus?.();
+            this.cancelDockerStats?.();
 
             // Leave Combined Terminal
             console.debug("leaveCombinedTerminal", this.endpoint, this.stack.name);
@@ -1351,7 +1377,8 @@ export default {
          */
         loadStack(callback) {
             this.processing = true;
-            this.$root.emitAgent(this.endpoint, "getStack", this.stack.name, (res) => {
+
+            const onAnswer = (res) => {
                 this.processing = false;
                 if (res.ok) {
                     this.stack = res.stack;
@@ -1361,6 +1388,14 @@ export default {
                     callback?.();
                 } else {
                     this.$root.toastRes(res);
+                }
+            };
+
+            // An agent that does not answer left the page empty for ever.
+            // A late answer still fills the page.
+            this.$root.emitAgentWithTimeout(this.endpoint, "getStack", [ this.stack.name ], 30000, onAnswer, (res) => {
+                if (!this.pageGone) {
+                    onAnswer(res);
                 }
             });
         },
@@ -1401,7 +1436,7 @@ export default {
             // usable while the reply travels
             const sent = this.currentEditState();
 
-            this.$root.emitAgent(this.stack.endpoint, "deployStack", ...this.stackSaveArgs(sent), (res) => {
+            const onAnswer = (res) => {
                 this.processing = false;
                 this.$root.toastRes(res);
 
@@ -1409,6 +1444,15 @@ export default {
                     this.applySavedState(sent);
                     this.isEditMode = false;
                     this.$router.push(this.url);
+                }
+            };
+
+            // A deploy with a long pull takes minutes. An agent that does
+            // not answer must not close the toolbar for ever, and a late
+            // answer still applies.
+            this.$root.emitAgentWithTimeout(this.stack.endpoint, "deployStack", this.stackSaveArgs(sent), 300000, onAnswer, (res) => {
+                if (!this.pageGone) {
+                    onAnswer(res);
                 }
             });
         },
@@ -1589,10 +1633,22 @@ export default {
         },
 
         deleteDialog() {
-            this.$root.emitAgent(this.endpoint, "deleteStack", this.stack.name, (res) => {
+            this.processing = true;
+
+            // A delete runs a down, which can take minutes. The buttons
+            // close while it runs, and they open again when no answer
+            // comes.
+            const onAnswer = (res) => {
+                this.processing = false;
                 this.$root.toastRes(res);
                 if (res.ok) {
                     this.$router.push("/");
+                }
+            };
+
+            this.$root.emitAgentWithTimeout(this.endpoint, "deleteStack", [ this.stack.name ], 300000, onAnswer, (res) => {
+                if (!this.pageGone) {
+                    onAnswer(res);
                 }
             });
         },

@@ -270,13 +270,13 @@ export default {
         },
 
         /**
-         * Poll host statistics for the tiles. The event only exists on
-         * dockge-mod backends; an upstream agent never answers, the callback
-         * never fires and the extra tiles simply stay hidden.
+         * Poll host statistics for the tiles. The event goes to this
+         * server, which always has it. A time limit keeps the poll alive
+         * after a loss of the connection.
          * @returns {void}
          */
         requestHostStats() {
-            this.$root.emitAgent("", "hostStats", (res) => {
+            this.$root.emitAgentWithTimeout("", "hostStats", [], 30000, (res) => {
                 if (this.stopHostStats) {
                     return;
                 }
