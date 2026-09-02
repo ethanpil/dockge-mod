@@ -64,22 +64,6 @@
                 </form>
             </template>
 
-            <!-- TODO: Hidden for now -->
-            <div v-if="! settings.disableAuth && false" class="mt-5 mb-3">
-                <h5 class="my-3 settings-subheading">
-                    {{ $t("Two Factor Authentication") }}
-                </h5>
-                <div class="mb-3">
-                    <button
-                        class="btn btn-primary me-2"
-                        type="button"
-                        @click="$refs.TwoFADialog.show()"
-                    >
-                        {{ $t("2FA Settings") }}
-                    </button>
-                </div>
-            </div>
-
             <div class="my-3">
                 <!-- Advanced -->
                 <h5 class="my-3 settings-subheading">{{ $t("Advanced") }}</h5>
@@ -90,8 +74,6 @@
                 </div>
             </div>
         </div>
-
-        <TwoFADialog ref="TwoFADialog" />
 
         <Confirm ref="confirmDisableAuth" btn-style="btn-danger" :yes-text="$t('I understand, please disable')" :no-text="$t('Leave')" @yes="disableAuth">
             <i18n-t keypath="disableauth.message1" tag="p">
@@ -126,12 +108,10 @@
 
 <script>
 import Confirm from "../../components/Confirm.vue";
-import TwoFADialog from "../../components/TwoFADialog.vue";
 
 export default {
     components: {
         Confirm,
-        TwoFADialog
     },
 
     data() {

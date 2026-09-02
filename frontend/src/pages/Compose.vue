@@ -139,8 +139,6 @@
                         @service-logs="openServiceLogs"
                     />
 
-                    <button v-if="false && isEditMode && jsonConfig.services && Object.keys(jsonConfig.services).length > 0" class="btn btn-normal mb-3" @click="addContainer">{{ $t("addContainer") }}</button>
-
                     <!-- General -->
                     <div v-if="isEditMode" class="panel">
                         <div class="panel-head"><span class="panel-title">{{ $t("extra") }}</span></div>
@@ -423,13 +421,6 @@
                         />
                     </div>
 
-                    <!-- Volumes -->
-                    <div v-if="false">
-                        <h4 class="fs-5 mb-2">{{ $tc("volume", 2) }}</h4>
-                        <div class="shadow-box big-padding mb-3">
-                        </div>
-                    </div>
-
                     <!-- Networks -->
                     <div class="panel">
                         <div class="panel-head"><span class="panel-title">{{ $tc("network", 2) }}</span></div>
@@ -437,19 +428,10 @@
                             <NetworkInput />
                         </div>
                     </div>
-
-                    <!-- <div class="shadow-box big-padding mb-3">
-                        <div class="mb-3">
-                            <label for="name" class="form-label"> Search Templates</label>
-                            <input id="name" v-model="name" type="text" class="form-control" placeholder="Search..." required>
-                        </div>
-
-                        <prism-editor v-if="false" v-model="yamlConfig" class="yaml-editor" :highlight="highlighter" line-numbers @input="yamlCodeChange"></prism-editor>
-                    </div>-->
                 </div>
             </div>
 
-            <div v-if="!stack.isManagedByDockge && !processing">
+            <div v-if="stack.isManagedByDockge === false && !processing">
                 {{ $t("stackNotManagedByDockgeMsg") }}
             </div>
 

@@ -1,7 +1,7 @@
 <template>
     <div class="container-fluid">
         <div class="row">
-            <div v-if="!$root.isMobile" class="col-12 col-md-2 col-xl-2">
+            <div class="col-12 col-md-2 col-xl-2">
                 <div>
                     <router-link to="/compose" class="btn btn-primary btn-sm w-100 mb-2"><font-awesome-icon icon="plus" /> {{ $t("compose") }}</router-link>
                 </div>

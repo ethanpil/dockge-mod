@@ -6,7 +6,7 @@
 
         <div class="shadow-box shadow-box-settings">
             <div class="row">
-                <div v-if="showSubMenu" class="settings-menu col-lg-3 col-md-5">
+                <div class="settings-menu col-lg-3 col-md-5">
                     <router-link
                         v-for="(item, key) in subMenus"
                         :key="key"
@@ -16,14 +16,6 @@
                             {{ item.title }}
                         </div>
                     </router-link>
-
-                    <!-- Logout Button -->
-                    <a v-if="$root.isMobile && $root.loggedIn && $root.socket.token !== 'autoLogin'" class="logout" @click.prevent="$root.logout">
-                        <div class="menu-item">
-                            <font-awesome-icon icon="sign-out-alt" />
-                            {{ $t("Logout") }}
-                        </div>
-                    </a>
                 </div>
                 <div class="settings-content col-lg-9 col-md-7">
                     <div v-if="currentPage" class="settings-content-header">
@@ -75,14 +67,6 @@ export default {
             return pathEnd;
         },
 
-        showSubMenu() {
-            if (this.$root.isMobile) {
-                return !this.currentPage;
-            } else {
-                return true;
-            }
-        },
-
         subMenus() {
             return {
                 general: {
@@ -113,12 +97,6 @@ export default {
         },
     },
 
-    watch: {
-        "$root.isMobile"() {
-            this.loadGeneralPage();
-        }
-    },
-
     mounted() {
         this.loadSettings();
         this.loadGeneralPage();
@@ -127,11 +105,10 @@ export default {
     methods: {
 
         /**
-         * Load the general settings page
-         * For desktop only, on mobile do nothing
+         * Open the first settings page when the URL names no page
          */
         loadGeneralPage() {
-            if (!this.currentPage && !this.$root.isMobile) {
+            if (!this.currentPage) {
                 this.$router.push("/settings/appearance");
             }
         },
@@ -243,14 +220,6 @@ footer {
         padding: 0.25rem 1em 0.75rem;
         font-size: 1.25rem;
         font-weight: 600;
-
-        .mobile & {
-            padding: 15px 0 0 0;
-        }
     }
-}
-
-.logout {
-    color: var(--bs-danger) !important;
 }
 </style>

@@ -1,5 +1,5 @@
 <template>
-    <div :class="classes">
+    <div>
         <div v-if="! $root.socketIO.connected && ! $root.socketIO.firstConnect" class="lost-connection">
             <div class="container-fluid">
                 {{ $root.socketIO.connectionErrorMsg }}
@@ -10,7 +10,7 @@
         </div>
 
         <!-- Desktop header -->
-        <header v-if="! $root.isMobile" class="d-flex flex-wrap justify-content-center align-items-center py-2 mb-3 border-bottom">
+        <header class="d-flex flex-wrap justify-content-center align-items-center py-2 mb-3 border-bottom">
             <router-link to="/" class="d-flex align-items-center mb-2 mb-md-0 me-md-auto text-body text-decoration-none">
                 <object class="bi me-2 ms-4" width="32" height="32" data="/icon.svg" />
                 <span class="fs-5 title">dockge-mod</span>
@@ -114,12 +114,6 @@ export default {
     },
 
     computed: {
-
-        classes() {
-            return {
-                mobile: this.$root.isMobile,
-            };
-        },
 
     },
 
