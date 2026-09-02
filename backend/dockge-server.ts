@@ -842,9 +842,7 @@ export class DockgeServer {
         stats.cpus = os.cpus().length;
 
         try {
-            const res = await childProcessAsync.spawn("docker", [ "system", "df", "--format", "{{json .}}" ], {
-                encoding: "utf-8",
-            });
+            const res = await childProcessAsync.spawn("docker", [ "system", "df", "--format", "{{json .}}" ], DOCKER_SPAWN_OPTIONS);
             if (res.stdout) {
                 const rows = [];
                 for (const line of res.stdout.toString().split("\n")) {
