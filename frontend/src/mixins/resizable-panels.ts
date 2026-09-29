@@ -72,10 +72,14 @@ export default defineComponent({
                     panelHeights[key] = this.panelHeights[key];
                 }
             }
-            localStorage.setItem(STORAGE_KEY, JSON.stringify({
-                splitLeft: this.splitLeft,
-                panelHeights,
-            }));
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify({
+                    splitLeft: this.splitLeft,
+                    panelHeights,
+                }));
+            } catch (e) {
+                // Storage is full or blocked; the layout is not kept
+            }
         },
 
         /**

@@ -256,7 +256,6 @@
     "show": "Afficher",
     "restoreBackupMsg": "Cela écrit les fichiers de la sauvegarde sur le disque. Les conteneurs ne changent pas tant que vous ne déployez pas la pile. Restaurer cette sauvegarde ?",
     "backupReason_save": "Enregistrement",
-    "backupReason_update": "Mise à jour",
     "backupReason_restore": "Restauration",
     "noBackups": "Aucune sauvegarde",
     "backupRestored": "Sauvegarde restaurée. Déployez la pile pour l'appliquer.",

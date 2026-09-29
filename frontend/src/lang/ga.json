@@ -256,7 +256,6 @@
     "show": "Taispeáin",
     "restoreBackupMsg": "Scríobhann sé seo comhaid an chúltaca ar an diosca. Ní athraíonn na coimeádáin go dtí go ndeighleann tú an staca. An cúltaca seo a athchóiriú?",
     "backupReason_save": "Sábháil",
-    "backupReason_update": "Nuashonrú",
     "backupReason_restore": "Athchóiriú",
     "noBackups": "Gan cúltacaí",
     "backupRestored": "Cúltaca athchóirithe. Deighil an staca chun é a chur i bhfeidhm.",

@@ -256,7 +256,6 @@
     "show": "Hiển thị",
     "restoreBackupMsg": "Thao tác này ghi các tệp của bản sao lưu vào ổ đĩa. Các container không thay đổi cho đến khi bạn triển khai stack. Khôi phục bản sao lưu này?",
     "backupReason_save": "Lưu",
-    "backupReason_update": "Cập nhật",
     "backupReason_restore": "Khôi phục",
     "noBackups": "Không có bản sao lưu",
     "backupRestored": "Đã khôi phục bản sao lưu. Triển khai stack để áp dụng.",

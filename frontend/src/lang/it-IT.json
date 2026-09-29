@@ -250,7 +250,6 @@
     "show": "Mostra",
     "restoreBackupMsg": "Questa operazione scrive i file del backup sul disco. I container non cambiano finché non rilasci lo stack. Ripristinare questo backup?",
     "backupReason_save": "Salvataggio",
-    "backupReason_update": "Aggiornamento",
     "backupReason_restore": "Ripristino",
     "noBackups": "Nessun backup",
     "backupRestored": "Backup ripristinato. Rilascia lo stack per applicarlo.",

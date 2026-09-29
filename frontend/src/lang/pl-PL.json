@@ -256,7 +256,6 @@
     "show": "Pokaż",
     "restoreBackupMsg": "Spowoduje to zapisanie plików kopii zapasowej na dysku. Kontenery nie zmienią się, dopóki nie wdrożysz stosu. Przywrócić tę kopię zapasową?",
     "backupReason_save": "Zapis",
-    "backupReason_update": "Aktualizacja",
     "backupReason_restore": "Przywrócenie",
     "noBackups": "Brak kopii zapasowych",
     "backupRestored": "Kopia zapasowa przywrócona. Wdróż stos, aby ją zastosować.",

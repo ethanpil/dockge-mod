@@ -256,7 +256,6 @@
     "show": "Visa",
     "restoreBackupMsg": "Detta skriver säkerhetskopians filer till disken. Containrarna ändras inte förrän du distribuerar stacken. Återställ denna säkerhetskopia?",
     "backupReason_save": "Sparning",
-    "backupReason_update": "Uppdatering",
     "backupReason_restore": "Återställning",
     "noBackups": "Inga säkerhetskopior",
     "backupRestored": "Säkerhetskopia återställd. Distribuera stacken för att tillämpa den.",

@@ -256,7 +256,6 @@
     "show": "顯示",
     "restoreBackupMsg": "這將把備份中的檔案寫入磁碟。在您部署堆疊之前，容器不會改變。要還原此備份嗎？",
     "backupReason_save": "儲存",
-    "backupReason_update": "更新",
     "backupReason_restore": "還原",
     "noBackups": "沒有備份",
     "backupRestored": "備份已還原。部署堆疊以使其生效。",

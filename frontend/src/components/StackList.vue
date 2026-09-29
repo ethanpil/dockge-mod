@@ -85,9 +85,13 @@
             </div>
         </div>
 
-        <Confirm ref="confirmBulk" btn-style="btn-danger" :yes-text="pendingBulkLabel" :no-text="$t('cancel')" @yes="runBulk(pendingBulk)">
-            {{ $t("bulkConfirmMsg", { action: pendingBulkLabel, n: selectedStackCount }) }}
-        </Confirm>
+        <!-- The list box is sticky, which would put the dialog under the
+             backdrop of Bootstrap, so the dialog goes to the body -->
+        <Teleport to="body">
+            <Confirm ref="confirmBulk" btn-style="btn-danger" :yes-text="pendingBulkLabel" :no-text="$t('cancel')" @yes="runBulk(pendingBulk)">
+                {{ $t("bulkConfirmMsg", { action: pendingBulkLabel, n: selectedStackCount }) }}
+            </Confirm>
+        </Teleport>
     </div>
 </template>
 

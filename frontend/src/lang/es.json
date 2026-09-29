@@ -256,7 +256,6 @@
     "show": "Mostrar",
     "restoreBackupMsg": "Esto escribe los archivos de la copia de seguridad en el disco. Los contenedores no cambian hasta que despliegues la pila. ¿Restaurar esta copia de seguridad?",
     "backupReason_save": "Guardado",
-    "backupReason_update": "Actualización",
     "backupReason_restore": "Restauración",
     "noBackups": "Sin copias de seguridad",
     "backupRestored": "Copia de seguridad restaurada. Despliega la pila para aplicarla.",

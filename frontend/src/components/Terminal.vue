@@ -103,6 +103,11 @@ export default {
         };
     },
     computed: {
+        /** The link status of the agent of this terminal */
+        agentStatus() {
+            return this.$root.agentStatusList[this.endpoint];
+        },
+
         /** True for the modes that send what the user types to a shell */
         canInput() {
             return this.mode === "mainTerminal" || this.mode === "interactive";
@@ -111,7 +116,7 @@ export default {
     watch: {
         // Report the size again when the name arrives after the mount
         name() {
-            this.emitResize();
+            this.resendSize();
         },
         /**
          * A login after a reconnect gives a new socket. The server removed
@@ -123,6 +128,23 @@ export default {
             // terminal then shows the text one time only.
             this.terminal.reset();
             this.joinServerTerminal();
+            // The server dropped the size of the old socket
+            this.resendSize();
+        },
+
+        /**
+         * The link between this server and an agent came back. The agent
+         * dropped this client from its terminals, and closes a shell that
+         * has no client after 10 seconds, so join again now.
+         * @param {string} status the new status of the agent
+         * @param {string} old the status before
+         * @returns {void}
+         */
+        agentStatus(status, old) {
+            if (this.endpoint && status === "online" && old && old !== "online") {
+                this.joinServerTerminal();
+                this.resendSize();
+            }
         },
     },
     created() {
@@ -367,6 +389,17 @@ export default {
             // which makes output wrap mid-word on any wider viewport.
             this.emitResize();
         },
+        /**
+         * Send the size even when it did not change, for a new socket or a
+         * new terminal name that has no size on the server.
+         * @returns {void}
+         */
+        resendSize() {
+            this.lastSentRows = null;
+            this.lastSentCols = null;
+            this.emitResize();
+        },
+
         /**
          * Report the fitted size, skipping the send when it has not changed —
          * a window resize event fires on every mounted terminal, including

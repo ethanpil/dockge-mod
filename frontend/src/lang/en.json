@@ -252,7 +252,6 @@
     "show": "Show",
     "restoreBackupMsg": "This writes the files of the backup to the disk. The containers do not change until you deploy the stack. Restore this backup?",
     "backupReason_save": "Save",
-    "backupReason_update": "Update",
     "backupReason_restore": "Restore",
     "backupReason_pull": "Git pull",
     "checkInProgress": "A check is in progress.",

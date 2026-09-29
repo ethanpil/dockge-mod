@@ -250,7 +250,6 @@
     "show": "Tonen",
     "restoreBackupMsg": "Dit schrijft de bestanden van de back-up naar de schijf. De containers veranderen niet totdat je de stack opzet. Deze back-up herstellen?",
     "backupReason_save": "Opslaan",
-    "backupReason_update": "Update",
     "backupReason_restore": "Herstellen",
     "noBackups": "Geen back-ups",
     "backupRestored": "Back-up hersteld. Zet de stack op om deze toe te passen.",

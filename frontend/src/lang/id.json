@@ -256,7 +256,6 @@
     "show": "Tampilkan",
     "restoreBackupMsg": "Ini menulis berkas dari cadangan ke disk. Kontainer tidak berubah sampai Anda menerapkan stack. Pulihkan cadangan ini?",
     "backupReason_save": "Simpan",
-    "backupReason_update": "Pembaruan",
     "backupReason_restore": "Pulihkan",
     "noBackups": "Tidak ada cadangan",
     "backupRestored": "Cadangan dipulihkan. Terapkan stack untuk menggunakannya.",

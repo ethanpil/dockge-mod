@@ -256,7 +256,6 @@
     "show": "Megjelenítés",
     "restoreBackupMsg": "Ez a biztonsági mentés fájljait írja a lemezre. A konténerek nem változnak, amíg nem telepíti a stack-et. Visszaállítja ezt a biztonsági mentést?",
     "backupReason_save": "Mentés",
-    "backupReason_update": "Frissítés",
     "backupReason_restore": "Visszaállítás",
     "noBackups": "Nincsenek biztonsági mentések",
     "backupRestored": "Biztonsági mentés visszaállítva. Telepítse a stack-et az alkalmazásához.",

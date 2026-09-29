@@ -256,7 +256,6 @@
     "show": "Arată",
     "restoreBackupMsg": "Aceasta scrie fișierele copiei de rezervă pe disc. Containerele nu se schimbă până când lansați stiva. Restaurați această copie de rezervă?",
     "backupReason_save": "Salvare",
-    "backupReason_update": "Actualizare",
     "backupReason_restore": "Restaurare",
     "noBackups": "Fără copii de rezervă",
     "backupRestored": "Copie de rezervă restaurată. Lansați stiva pentru a o aplica.",

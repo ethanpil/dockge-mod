@@ -256,7 +256,6 @@
     "show": "Vis",
     "restoreBackupMsg": "Dette skriver sikkerhedskopiens filer til disken. Containerne ændres ikke, før du udruller stacken. Gendan denne sikkerhedskopi?",
     "backupReason_save": "Gem",
-    "backupReason_update": "Opdatering",
     "backupReason_restore": "Gendannelse",
     "noBackups": "Ingen sikkerhedskopier",
     "backupRestored": "Sikkerhedskopi gendannet. Udrul stacken for at anvende den.",

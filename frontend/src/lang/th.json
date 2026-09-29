@@ -256,7 +256,6 @@
     "show": "แสดง",
     "restoreBackupMsg": "การดำเนินการนี้จะเขียนไฟล์จากข้อมูลสำรองลงดิสก์ container จะไม่เปลี่ยนแปลงจนกว่าคุณจะปรับใช้ stack กู้คืนข้อมูลสำรองนี้หรือไม่",
     "backupReason_save": "บันทึก",
-    "backupReason_update": "อัปเดต",
     "backupReason_restore": "กู้คืน",
     "noBackups": "ไม่มีข้อมูลสำรอง",
     "backupRestored": "กู้คืนข้อมูลสำรองแล้ว ปรับใช้ stack เพื่อให้มีผล",

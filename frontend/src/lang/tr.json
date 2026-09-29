@@ -256,7 +256,6 @@
     "show": "Göster",
     "restoreBackupMsg": "Bu işlem yedeğin dosyalarını diske yazar. Yığını dağıtana kadar konteynerler değişmez. Bu yedek geri yüklensin mi?",
     "backupReason_save": "Kayıt",
-    "backupReason_update": "Güncelleme",
     "backupReason_restore": "Geri yükleme",
     "noBackups": "Yedek yok",
     "backupRestored": "Yedek geri yüklendi. Uygulamak için yığını dağıtın.",

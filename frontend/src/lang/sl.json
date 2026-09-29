@@ -256,7 +256,6 @@
     "show": "Prikaži",
     "restoreBackupMsg": "To zapiše datoteke varnostne kopije na disk. Kontejnerji se ne spremenijo, dokler Stack-a ne namestite. Obnovim to varnostno kopijo?",
     "backupReason_save": "Shranjevanje",
-    "backupReason_update": "Posodobitev",
     "backupReason_restore": "Obnovitev",
     "noBackups": "Ni varnostnih kopij",
     "backupRestored": "Varnostna kopija obnovljena. Namestite Stack, da jo uveljavite.",

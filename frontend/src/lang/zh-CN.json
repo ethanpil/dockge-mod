@@ -256,7 +256,6 @@
     "show": "显示",
     "restoreBackupMsg": "这将把备份中的文件写入磁盘。在你部署堆栈之前，容器不会改变。要恢复此备份吗？",
     "backupReason_save": "保存",
-    "backupReason_update": "更新",
     "backupReason_restore": "恢复",
     "noBackups": "没有备份",
     "backupRestored": "备份已恢复。部署堆栈以使其生效。",

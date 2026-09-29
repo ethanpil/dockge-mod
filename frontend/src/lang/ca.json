@@ -256,7 +256,6 @@
     "show": "Mostra",
     "restoreBackupMsg": "Això escriu els fitxers de la còpia de seguretat al disc. Els contenidors no canvien fins que desplegueu la pila. Voleu restaurar aquesta còpia de seguretat?",
     "backupReason_save": "Desament",
-    "backupReason_update": "Actualització",
     "backupReason_restore": "Restauració",
     "noBackups": "No hi ha còpies de seguretat",
     "backupRestored": "Còpia de seguretat restaurada. Desplegueu la pila per aplicar-la.",

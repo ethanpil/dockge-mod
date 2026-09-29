@@ -256,7 +256,6 @@
     "show": "Zobrazit",
     "restoreBackupMsg": "Tím se soubory zálohy zapíší na disk. Kontejnery se nezmění, dokud stack nenainstalujete. Obnovit tuto zálohu?",
     "backupReason_save": "Uložení",
-    "backupReason_update": "Aktualizace",
     "backupReason_restore": "Obnovení",
     "noBackups": "Žádné zálohy",
     "backupRestored": "Záloha obnovena. Nainstalujte stack, aby se použila.",

@@ -256,7 +256,6 @@
     "show": "Anzeigen",
     "restoreBackupMsg": "Dies schreibt die Dateien des Backups auf die Festplatte. Die Container ändern sich erst, wenn du den Stack deployst. Dieses Backup wiederherstellen?",
     "backupReason_save": "Speichern",
-    "backupReason_update": "Aktualisierung",
     "backupReason_restore": "Wiederherstellung",
     "noBackups": "Keine Backups",
     "backupRestored": "Backup wiederhergestellt. Deploye den Stack, um es anzuwenden.",

@@ -256,7 +256,6 @@
     "show": "Aazeige",
     "restoreBackupMsg": "Das schriibt d Dateie vom Backup uf d Festplatte. D Container ändered sich erscht, wenn du de Stack deploysch. Das Backup wiederherstelle?",
     "backupReason_save": "Speichere",
-    "backupReason_update": "Aktualisierig",
     "backupReason_restore": "Wiederherstellig",
     "noBackups": "Kei Backups",
     "backupRestored": "Backup wiederhergstellt. Deploy de Stack, zum es aawände.",

@@ -234,6 +234,9 @@ import dayjs from "dayjs";
 import Confirm from "../components/Confirm.vue";
 
 const KINDS = [ "images", "volumes", "networks" ];
+
+// A removal runs docker rm one item at a time, which can take minutes
+const REMOVE_TIMEOUT = 5 * 60 * 1000;
 const DEFAULT_NETWORKS = [ "bridge", "host", "none" ];
 
 export default {
@@ -347,9 +350,9 @@ export default {
          * @param {Function} cb gets the answer, or a timeout result
          * @returns {void}
          */
-        request(event, args, cb) {
+        request(event, args, cb, timeoutMs = 30000) {
             const endpoint = this.endpoint;
-            const cancel = this.$root.emitAgentWithTimeout(endpoint, event, args, 30000, (res) => {
+            const cancel = this.$root.emitAgentWithTimeout(endpoint, event, args, timeoutMs, (res) => {
                 this.cancels = this.cancels.filter((c) => c !== cancel);
                 if (endpoint !== this.endpoint) {
                     return;
@@ -548,7 +551,7 @@ export default {
                     this.confirmBusy = false;
                     this.$root.toastRes(res);
                     this.load(listKind);
-                });
+                }, REMOVE_TIMEOUT);
                 return;
             }
 
@@ -564,7 +567,7 @@ export default {
                     this.$root.toastRes(res);
                 }
                 this.load(listKind);
-            });
+            }, REMOVE_TIMEOUT);
         },
 
         /**

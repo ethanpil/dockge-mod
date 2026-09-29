@@ -256,7 +256,6 @@
     "show": "Mostrar",
     "restoreBackupMsg": "Isso grava os arquivos do backup no disco. Os contêineres não mudam até você fazer o deploy da stack. Restaurar este backup?",
     "backupReason_save": "Salvamento",
-    "backupReason_update": "Atualização",
     "backupReason_restore": "Restauração",
     "noBackups": "Sem backups",
     "backupRestored": "Backup restaurado. Faça o deploy da stack para aplicá-lo.",

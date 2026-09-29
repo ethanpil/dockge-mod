@@ -931,6 +931,13 @@ export default {
                 this.requestDockerStats();
             }
 
+            // The server joins the log terminal in getStack, and it may have
+            // closed the terminal while this client was away. Only the join
+            // matters here; the stack itself stays as the user left it.
+            if (!this.isAdd && this.stack.name) {
+                this.$root.emitAgent(this.endpoint, "getStack", this.stack.name, () => {});
+            }
+
             if (this.expandedPanel === "serviceLogs" && this.serviceLogName) {
                 this.$root.emitAgent(this.endpoint, "serviceLogs", this.stack.name, this.serviceLogName, (res) => {
                     if (!res.ok) {
@@ -1118,6 +1125,10 @@ export default {
                 this.cancelServiceStatus = null;
                 if (res.ok) {
                     this.serviceStatusList = res.containerList ?? containerListFromStatus(res.serviceStatusList);
+                } else if (!res.timeout) {
+                    // docker compose ps failed, for example on a compose file
+                    // that docker rejects. Old rows would look current.
+                    this.serviceStatusList = {};
                 }
                 if (!this.stopServiceStatusTimeout) {
                     this.startServiceStatusTimeout();

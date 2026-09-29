@@ -256,7 +256,6 @@
     "show": "Mostrar",
     "restoreBackupMsg": "Isto grava os ficheiros da cópia de segurança no disco. Os contêineres não mudam até implantar a pilha. Restaurar esta cópia de segurança?",
     "backupReason_save": "Gravação",
-    "backupReason_update": "Atualização",
     "backupReason_restore": "Restauro",
     "noBackups": "Sem cópias de segurança",
     "backupRestored": "Cópia de segurança restaurada. Implante a pilha para a aplicar.",

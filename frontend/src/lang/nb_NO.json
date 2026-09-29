@@ -168,7 +168,6 @@
     "show": "Vis",
     "restoreBackupMsg": "Dette skriver filene fra sikkerhetskopien til disken. Containerne endres ikke før du utplasserer stacken. Gjenopprette denne sikkerhetskopien?",
     "backupReason_save": "Lagring",
-    "backupReason_update": "Oppdatering",
     "backupReason_restore": "Gjenoppretting",
     "noBackups": "Ingen sikkerhetskopier",
     "backupRestored": "Sikkerhetskopi gjenopprettet. Utplasser stacken for å ta den i bruk.",

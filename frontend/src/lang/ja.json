@@ -256,7 +256,6 @@
     "show": "表示",
     "restoreBackupMsg": "バックアップのファイルをディスクに書き込みます。スタックをデプロイするまでコンテナは変わりません。このバックアップを復元しますか？",
     "backupReason_save": "保存",
-    "backupReason_update": "更新",
     "backupReason_restore": "復元",
     "noBackups": "バックアップなし",
     "backupRestored": "バックアップを復元しました。適用するにはスタックをデプロイしてください。",
