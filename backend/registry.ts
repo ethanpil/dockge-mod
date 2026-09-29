@@ -320,9 +320,13 @@ export function findCredential(config : DockerConfig, registry : string) : Crede
 export class RegistryError extends Error {
     readonly registryWide : boolean;
 
-    constructor(message : string, registryWide = false) {
+    /** True when the image was not tried because of an earlier registry-wide error */
+    readonly skipped : boolean;
+
+    constructor(message : string, registryWide = false, skipped = false) {
         super(message);
         this.registryWide = registryWide;
+        this.skipped = skipped;
     }
 }
 
@@ -374,14 +378,16 @@ export class RegistryClient {
         }
         const earlier = this.failedRegistries.get(ref.registry);
         if (earlier !== undefined) {
-            throw new RegistryError("Skipped after an earlier error: " + earlier);
+            throw new RegistryError("Skipped after an earlier error: " + earlier, false, true);
         }
 
         // The URL parser gives the host that the request goes to. The
         // credentials and the token use the same text, thus they cannot
         // go to a different host than the request.
         const url = new URL("https://" + ref.registry + "/v2/" + ref.repository + "/manifests/" + ref.tag);
-        if (url.host !== ref.registry.toLowerCase() || url.username !== "" || url.search !== "" || url.hash !== "") {
+        // The URL parser drops the default port, so registry:443 is registry
+        const expectedHost = ref.registry.toLowerCase().replace(/:443$/, "");
+        if (url.host !== expectedHost || url.username !== "" || url.search !== "" || url.hash !== "") {
             throw new Error("The registry name is not correct");
         }
 
@@ -406,22 +412,42 @@ export class RegistryClient {
 
         if (res.status === 401) {
             const challenge = parseAuthChallenge(res.headers.get("www-authenticate") ?? "");
-            const credential = await this.credential(ref.registry);
+            let credential = await this.credential(ref.registry);
 
+            // Credential helpers are not supported (their binaries are not in
+            // the image). A public image needs no credentials, so try
+            // anonymously, and report the helper only if that is refused.
+            const helper = credential.kind === "helper" ? credential.helper : null;
             if (credential.kind === "helper") {
-                throw new RegistryError("The credentials of " + ref.registry + " are in the credential helper " + credential.helper + ", which is not supported", true);
+                credential = { kind: "none" };
             }
+            const helperError = () => new RegistryError("The credentials of " + ref.registry + " are in the credential helper " + helper + ", which is not supported");
+
             if (challenge === null) {
                 throw new RegistryError(ref.registry + " gave no authentication challenge", true);
             }
 
             if (challenge.scheme === "bearer") {
-                const token = await this.bearerToken(ref, challenge, credential);
+                let token : string;
+                try {
+                    token = await this.bearerToken(ref, challenge, credential);
+                } catch (e) {
+                    if (helper !== null && e instanceof RegistryError && !e.registryWide) {
+                        throw helperError();
+                    }
+                    throw e;
+                }
                 res = await this.head(ref, url, "Bearer " + token);
             } else if (challenge.scheme === "basic" && credential.kind === "basic") {
                 res = await this.head(ref, url, "Basic " + basic(credential.username, credential.password));
+            } else if (helper !== null) {
+                throw helperError();
             } else {
                 throw new RegistryError(ref.registry + " needs the unsupported authentication scheme " + challenge.scheme, true);
+            }
+
+            if (helper !== null && [ 401, 403, 404 ].includes(res.status)) {
+                throw helperError();
             }
         }
 

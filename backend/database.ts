@@ -10,7 +10,6 @@ import Dialect from "knex/lib/dialects/sqlite3/index.js";
 
 import sqlite from "@louislam/sqlite3";
 import { sleep } from "../common/util-common";
-import { ModSetting } from "./mod-setting";
 
 interface DBConfig {
     type?: "sqlite" | "mysql";

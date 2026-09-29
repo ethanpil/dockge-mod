@@ -195,17 +195,38 @@ describe("RegistryClient", () => {
         expect(headers.Authorization).toBe("Basic " + Buffer.from("user:pass").toString("base64"));
     });
 
-    it("fails when a credential helper holds the credentials", async () => {
+    it("reads a public image anonymously when a credential helper holds the credentials", async () => {
         writeConfig({
             auths: { "ghcr.io": {} },
             credsStore: "pass",
         });
-        stubFetch([ challengeAnswer("https://ghcr.io/token") ]);
+        stubFetch([ challengeAnswer("https://ghcr.io/token"), tokenAnswer(), digestAnswer() ]);
+        const client = new RegistryClient();
+
+        expect(await client.getDigest("ghcr.io/o/a:v1")).toBe(DIGEST);
+        const tokenHeaders = calls[1].init.headers as Record<string, string>;
+        expect(tokenHeaders.Authorization).toBeUndefined();
+    });
+
+    it("names the credential helper when the anonymous read is refused", async () => {
+        writeConfig({
+            auths: { "ghcr.io": {} },
+            credsStore: "pass",
+        });
+        stubFetch([ challengeAnswer("https://ghcr.io/token"), tokenAnswer(), answer(401), digestAnswer() ]);
         const client = new RegistryClient();
 
         await expect(client.getDigest("ghcr.io/o/a:v1")).rejects.toThrow(/credential helper/);
-        // The client does not ask for a token that it cannot get
-        expect(calls).toHaveLength(1);
+        // A private image does not stop the public images of the registry
+        stubFetch([ digestAnswer() ]);
+        expect(await client.getDigest("ghcr.io/o/b:v1")).toBe(DIGEST);
+    });
+
+    it("accepts a registry name with the default port", async () => {
+        stubFetch([ digestAnswer() ]);
+        const client = new RegistryClient();
+        expect(await client.getDigest("registry.example.com:443/o/a:v1")).toBe(DIGEST);
+        expect(calls[0].url).toBe("https://registry.example.com/v2/o/a/manifests/v1");
     });
 
     it("fails for a status that hides a private image", async () => {

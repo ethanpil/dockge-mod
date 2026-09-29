@@ -5,7 +5,7 @@ import { DOCKER_SPAWN_OPTIONS, errorMessage, stderrOf } from "./util-server";
 import { DockgeServer } from "./dockge-server";
 import { Stack } from "./stack";
 import { Notifier } from "./notification";
-import { canonicalRef, DIGEST_REGEX, parseImageRef, RegistryClient } from "./registry";
+import { canonicalRef, DIGEST_REGEX, parseImageRef, RegistryClient, RegistryError } from "./registry";
 
 /**
  * One row of the mod_image_update table, for the interface.
@@ -156,18 +156,22 @@ export class ImageUpdateChecker {
     }
 
     /**
-     * After a pull, clear the update flag of each image whose local digest
-     * now matches the registry digest of the last check. This makes no
-     * registry request.
-     * @param images The images of the stack that was pulled
+     * Clear the update flag of each image whose local digest now matches the
+     * registry digest of the last check. This makes no registry request.
+     * It runs after a pull, and at the end of a check, because a pull can
+     * happen while a check runs.
+     * @param images The images to reconcile
      */
     static async afterPull(images : string[]) : Promise<void> {
-        const pending = images.filter((image) => ImageUpdateChecker.available.has(image));
+        const pending = [ ...new Set(images) ];
         if (pending.length === 0) {
             return;
         }
-        const local = await ImageUpdateChecker.readLocalDigests(pending);
-        const rows = await R.knex("mod_image_update").whereIn("image", pending).select("image", "remote_digest");
+        const rows = await R.knex("mod_image_update").whereIn("image", pending).whereNotNull("remote_digest").select("image", "remote_digest");
+        if (rows.length === 0) {
+            return;
+        }
+        const local = await ImageUpdateChecker.readLocalDigests(rows.map((row : { image : string }) => row.image));
         for (const row of rows as { image : string, remote_digest : string | null }[]) {
             const repoDigests = local.get(ImageUpdateChecker.key(row.image));
             if (row.remote_digest && repoDigests && repoDigests.length > 0 && digestsMatch(repoDigests, row.remote_digest)) {
@@ -178,6 +182,22 @@ export class ImageUpdateChecker {
                 ImageUpdateChecker.available.delete(row.image);
             }
         }
+    }
+
+    /**
+     * Reconcile the result of a check with pulls that happened during it,
+     * then send the notification for the images that still have an update.
+     * @param newUpdates Images that had no update before this check
+     */
+    private async finishCheck(newUpdates : string[]) {
+        await ImageUpdateChecker.afterPull([ ...ImageUpdateChecker.available ]).catch((e) => {
+            log.warn("imageUpdate", "Cannot reconcile the update state: " + errorMessage(e));
+        });
+        const still = newUpdates.filter((image) => ImageUpdateChecker.available.has(image));
+        if (still.length > 0) {
+            await Notifier.send("image_update", "New image versions", "A new version is available for: " + still.join(", "));
+        }
+        this.server.sendStackList(true);
     }
 
     async loadAvailable() {
@@ -321,12 +341,7 @@ export class ImageUpdateChecker {
                 next.add(image);
             }
             ImageUpdateChecker.available = next;
-
-            if (result.newUpdates.length > 0) {
-                await Notifier.send("image_update", "New image versions", "A new version is available for: " + result.newUpdates.join(", "));
-            }
-
-            this.server.sendStackList(true).catch(() => undefined);
+            await this.finishCheck(result.newUpdates);
             return {
                 started: true,
                 count: images.size,
@@ -374,7 +389,6 @@ export class ImageUpdateChecker {
             // list that goes out during the check shows the old result,
             // not a mix of both.
             const next = new Set<string>();
-            const newUpdates : string[] = [];
 
             // An image that this check leaves out keeps its last result
             for (const image of images) {
@@ -387,7 +401,6 @@ export class ImageUpdateChecker {
             for (const image of result.updated) {
                 next.add(image);
             }
-            newUpdates.push(...result.newUpdates);
 
             // Remove the rows of images that no stack uses now. A list
             // without images comes from a stacks directory that is not
@@ -396,13 +409,7 @@ export class ImageUpdateChecker {
                 await R.knex("mod_image_update").whereNotIn("image", [ ...images ]).del();
             }
             ImageUpdateChecker.available = next;
-
-            if (newUpdates.length > 0) {
-                await Notifier.send("image_update", "New image versions", "A new version is available for: " + newUpdates.join(", "));
-            }
-
-            // The stack list shows the count
-            this.server.sendStackList(true).catch(() => undefined);
+            await this.finishCheck(result.newUpdates);
             return true;
         } finally {
             this.running = false;
@@ -417,7 +424,9 @@ export class ImageUpdateChecker {
      */
     async collectImages() : Promise<Set<string>> {
         const images = new Set<string>();
-        const stackList = await Stack.getStackList(this.server, true);
+        // Not the cached list: its stacks keep the compose content they read
+        // first, so an edit outside dockge-mod would never be checked
+        const stackList = await Stack.getStackList(this.server);
         for (const stack of stackList.values()) {
             if (!stack.isManagedByDockge) {
                 continue;
@@ -524,9 +533,9 @@ export class ImageUpdateChecker {
             nextCheck: null,
         };
 
-        // True when the image is not on this host. Such an image has no
-        // problem with its registry, thus the wait does not grow.
-        let localMiss = false;
+        // True when the image is not on this host, or was skipped after an
+        // error of another image of its registry. The wait does not grow.
+        let keepSchedule = false;
 
         try {
             if (repoDigests === undefined) {
@@ -543,7 +552,7 @@ export class ImageUpdateChecker {
                 // and no message goes out at the next start.
                 result.error = "The image is not on this host";
                 result.updateAvailable = previous?.updateAvailable ?? false;
-                localMiss = true;
+                keepSchedule = true;
             } else if (repoDigests.length === 0) {
                 // A local build has no repo digest, and no registry version
                 result.error = "The image has no registry digest";
@@ -581,6 +590,7 @@ export class ImageUpdateChecker {
             // remove the badges and does not send the message again.
             result.error = (stderrOf(e) || errorMessage(e) || "Check failed").split("\n")[0].slice(0, 500);
             result.updateAvailable = previous?.updateAvailable ?? false;
+            keepSchedule = e instanceof RegistryError && e.skipped;
             log.debug("imageUpdate", image + ": " + result.error);
         }
 
@@ -588,8 +598,8 @@ export class ImageUpdateChecker {
             // The image has an answer, thus the usual time comes back
             result.failures = 0;
             result.nextCheck = null;
-        } else if (localMiss) {
-            // The image is not on this host. The count stays as it was.
+        } else if (keepSchedule) {
+            // The image was not tried. The count stays as it was.
             result.failures = previous?.failures ?? 0;
             result.nextCheck = previous?.nextCheck ?? null;
         } else {
@@ -600,16 +610,22 @@ export class ImageUpdateChecker {
             result.nextCheck = new Date(Date.now() + ImageUpdateChecker.backoff(result.failures)).toISOString();
         }
 
-        await R.knex("mod_image_update").insert({
-            image: result.image,
-            local_digest: result.localDigest,
-            remote_digest: result.remoteDigest,
-            update_available: result.updateAvailable,
-            checked_at: result.checkedAt,
-            error: result.error,
-            failures: result.failures,
-            next_check: result.nextCheck,
-        }).onConflict("image").merge();
+        // A failed write must not reject the worker: Promise.all would end the
+        // check while the other workers still run
+        try {
+            await R.knex("mod_image_update").insert({
+                image: result.image,
+                local_digest: result.localDigest,
+                remote_digest: result.remoteDigest,
+                update_available: result.updateAvailable,
+                checked_at: result.checkedAt,
+                error: result.error,
+                failures: result.failures,
+                next_check: result.nextCheck,
+            }).onConflict("image").merge();
+        } catch (e) {
+            log.warn("imageUpdate", "Cannot save the result of " + image + ": " + errorMessage(e));
+        }
 
         return result;
     }
