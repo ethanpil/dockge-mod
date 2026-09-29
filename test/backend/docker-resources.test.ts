@@ -125,6 +125,10 @@ describe("refRepository", () => {
         [ "ghcr.io/org/app:v1@sha256:" + "a".repeat(64), "ghcr.io/org/app" ],
         [ "localhost:5000/app", "localhost:5000/app" ],
         [ "localhost:5000/app:v1", "localhost:5000/app" ],
+        [ "docker.io/library/postgres@sha256:" + "a".repeat(64), "postgres" ],
+        [ "library/postgres@sha256:" + "a".repeat(64), "postgres" ],
+        [ "index.docker.io/grafana/grafana:11", "grafana/grafana" ],
+        [ "ghcr.io/library/app", "ghcr.io/library/app" ],
     ])("reads the repository of %j", (image, expected) => {
         expect(refRepository(image)).toBe(expected);
     });

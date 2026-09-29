@@ -6,7 +6,7 @@ import { AgentSocket } from "../../common/agent-socket";
 import { log } from "../log";
 import { ImageUpdateChecker } from "../image-update";
 import { StackBackup } from "../stack-backup";
-import { DockerResources, PRUNE_KINDS, ProtectedResources, refRepository, RESOURCE_KINDS } from "../docker-resources";
+import { DockerResources, normalizeRepository, PRUNE_KINDS, ProtectedResources, refRepository, RESOURCE_KINDS } from "../docker-resources";
 import { Terminal } from "../terminal";
 import { getComposeTerminalName } from "../../common/util-common";
 
@@ -98,7 +98,7 @@ async function protectedResources(server : DockgeServer) : Promise<ProtectedReso
             }
         }
         for (const image of info.buildImages) {
-            repositories.add(image);
+            repositories.add(normalizeRepository(image));
         }
     }
 

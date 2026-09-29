@@ -212,6 +212,27 @@ export function refRepository(image : string) : string {
     if (colon > rest.lastIndexOf("/")) {
         rest = rest.slice(0, colon);
     }
+    return normalizeRepository(rest);
+}
+
+/**
+ * The repository as `docker image ls` shows it: Docker Hub names lose the
+ * registry and the `library/` prefix, so `docker.io/library/postgres`
+ * becomes `postgres`.
+ * @param repository A repository name
+ * @returns The short name
+ */
+export function normalizeRepository(repository : string) : string {
+    let rest = repository.toLowerCase();
+    for (const prefix of [ "docker.io/", "index.docker.io/", "registry-1.docker.io/" ]) {
+        if (rest.startsWith(prefix)) {
+            rest = rest.slice(prefix.length);
+            break;
+        }
+    }
+    if (rest.startsWith("library/") && rest.indexOf("/", "library/".length) === -1) {
+        rest = rest.slice("library/".length);
+    }
     return rest;
 }
 
@@ -409,7 +430,7 @@ export function selectImageCandidates(rows : Record<string, unknown>[], used : R
         if (!keep && !dangling) {
             // A compose file can name this repository with a digest, or
             // it can build the image. Such a name has no tag.
-            keep = resources.repositories.has(repository);
+            keep = resources.repositories.has(normalizeRepository(repository));
         }
 
         if (!keep && !dangling && !noTag) {
