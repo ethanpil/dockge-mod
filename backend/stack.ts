@@ -110,7 +110,10 @@ export class Stack {
         if (process.platform === "win32") {
             dir = dir.replace(/\\/g, "/");
         }
-        return [ "-c", "safe.directory=" + dir ];
+        // safe.directory lets root run git in a checkout that another user
+        // owns. Turn off fsmonitor, so a hook in that checkout's config
+        // cannot run a command as root (the reason for safe.directory).
+        return [ "-c", "safe.directory=" + dir, "-c", "core.fsmonitor=false" ];
     }
 
     /**

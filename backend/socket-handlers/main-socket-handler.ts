@@ -4,7 +4,7 @@ import { SocketHandler } from "../socket-handler.js";
 import { DockgeServer } from "../dockge-server";
 import { log } from "../log";
 import { R } from "redbean-node";
-import { loginGlobalRateLimiter, loginRateLimiter, setupRateLimiter, twoFaRateLimiter } from "../rate-limiter";
+import { loginGlobalRateLimiter, loginRateLimiter, setupRateLimiter } from "../rate-limiter";
 import { generatePasswordHash, needRehashPassword, shake256, SHAKE256_LENGTH, verifyPassword } from "../password-hash";
 import { User } from "../models/user";
 import {
@@ -229,8 +229,9 @@ export class MainSocketHandler extends SocketHandler {
                 return;
             }
 
-            // Login Rate Limit, for all clients and for each client address
-            if (!await loginGlobalRateLimiter.pass(callback) || !await loginRateLimiter.pass(clientIP, callback)) {
+            // Per-address limit first: a refused attempt must not use a
+            // token of the global limit, or one address locks out all
+            if (!await loginRateLimiter.pass(clientIP, callback) || !await loginGlobalRateLimiter.pass(callback)) {
                 log.info("auth", `Too many failed requests for user ${data.username}. IP=${clientIP}`);
                 return;
             }
@@ -238,56 +239,25 @@ export class MainSocketHandler extends SocketHandler {
             const user = await this.login(data.username, data.password);
 
             if (user) {
-                if (user.twofa_status === 0) {
-                    server.afterLogin(socket, user);
-
-                    log.info("auth", `Successfully logged in user ${data.username}. IP=${clientIP}`);
-
+                // Neither Dockge nor dockge-mod has a way to set up 2FA. The
+                // old verify code referenced a library that is not installed.
+                if (user.twofa_status) {
+                    log.warn("auth", `2FA is set for user ${data.username}, which is not supported. IP=${clientIP}`);
                     callback({
-                        ok: true,
-                        token: User.createJWT(user, server.jwtSecret),
+                        ok: false,
+                        msg: "2FA is enabled for this user in the database, but it is not supported.",
                     });
+                    return;
                 }
 
-                if (user.twofa_status === 1 && !data.token) {
+                server.afterLogin(socket, user);
 
-                    log.info("auth", `2FA token required for user ${data.username}. IP=${clientIP}`);
+                log.info("auth", `Successfully logged in user ${data.username}. IP=${clientIP}`);
 
-                    callback({
-                        tokenRequired: true,
-                    });
-                }
-
-                // A user without 2FA must not reach the verify branch
-                if (user.twofa_status === 1 && data.token) {
-                    // @ts-ignore
-                    const verify = notp.totp.verify(data.token, user.twofa_secret, twoFAVerifyOptions);
-
-                    if (user.twofa_last_token !== data.token && verify) {
-                        server.afterLogin(socket, user);
-
-                        await R.exec("UPDATE `user` SET twofa_last_token = ? WHERE id = ? ", [
-                            data.token,
-                            socket.userID,
-                        ]);
-
-                        log.info("auth", `Successfully logged in user ${data.username}. IP=${clientIP}`);
-
-                        callback({
-                            ok: true,
-                            token: User.createJWT(user, server.jwtSecret),
-                        });
-                    } else {
-
-                        log.warn("auth", `Invalid token provided for user ${data.username}. IP=${clientIP}`);
-
-                        callback({
-                            ok: false,
-                            msg: "authInvalidToken",
-                            msgi18n: true,
-                        });
-                    }
-                }
+                callback({
+                    ok: true,
+                    token: User.createJWT(user, server.jwtSecret),
+                });
             } else {
 
                 log.warn("auth", `Incorrect username or password for user ${data.username}. IP=${clientIP}`);
