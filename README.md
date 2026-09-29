@@ -112,7 +112,7 @@ Change the image back. Nothing is lost, but:
 - **Backups contain secrets.** The backups keep copies of `.env` files in the database, so `dockge.db` is more sensitive than with Dockge.
 - **Time limits.** Docker queries (status, stats, inspect) time out after 30 seconds. A compose operation (up, pull, down) is stopped after 60 minutes. The interface stops waiting for an answer after 5 minutes, but the operation keeps running and its result still shows. Dockge has no limits.
 - **Dockge agents.** Features that only dockge-mod has (Resources page, backups, image checks, service logs, per-service start/stop) are hidden or time out after 30 seconds on a Dockge agent.
-- **Background work.** dockge-mod watches `docker events`, checks registries every six hours (one HEAD request per image, which does not count against the Docker Hub pull limit), and reads `docker system df` while the home page is open.
+- **Background work.** dockge-mod watches `docker events`, checks registries every six hours (one HEAD request per image, which does not count against the Docker Hub pull limit), and reads `docker system df` every 10 minutes while the home page is open.
 
 ## Usage notes
 
@@ -136,7 +136,7 @@ For a private repository over SSH, mount a key and a `known_hosts` file, for exa
 
 The server compares the local image digest with the registry every six hours. Stacks with newer images show a badge. **Update** pulls and recreates the stack and clears the badge. The **Resources** page shows the last check of each image and a **Check now** button.
 
-Private registries: mount your Docker credentials (`- /root/.docker:/root/.docker:ro`). Credentials stored in a credential helper (`credsStore` / `credHelpers`) are not supported, because the helper binaries are not in the image. For a registry with a private CA, mount the CA file and set `NODE_EXTRA_CA_CERTS` to its path.
+Private registries: mount your Docker credentials (`- /root/.docker:/root/.docker:ro`). Credentials stored in a credential helper (`credsStore` / `credHelpers`) are not supported, because the helper binaries are not in the image; public images of such a registry are still checked anonymously. For a registry with a private CA, mount the CA file and set `NODE_EXTRA_CA_CERTS` to its path.
 
 ### Notifications
 
@@ -232,6 +232,7 @@ Caddy and Traefik work without extra settings. If the log shows `Origin ... does
 
 - The container runs as root and has the Docker socket, which is root access to the host. Do not expose dockge-mod to the internet without a reverse proxy with TLS, and ideally an extra authentication layer.
 - There is one user account.
+- Anyone who can write to the stacks directory can get root on the host, for example with a privileged compose file or with the config of a git checkout that **Pull & Redeploy** runs. Only trusted users should have write access there.
 - `data/dockge.db` holds the password hash, the agent passwords, and the `.env` backups. Protect it and its backups.
 
 Report vulnerabilities as described in [SECURITY.md](SECURITY.md).

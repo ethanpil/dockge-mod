@@ -8,40 +8,46 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Eac
 
 ### Security
 
+- `git status` for the branch badge runs as the owner of the checkout, and **Pull & Redeploy** runs without repository hooks. Repository config (filter drivers, hooks) could run commands as root when a stack page was opened. ([b10d053])
 - One address could lock out every login. Each refused attempt used up the global login limit before the per-address limit was checked. ([3a8a440])
-- Git runs with `core.fsmonitor=false`. dockge-mod runs git as root in stack checkouts owned by other users, and an fsmonitor hook in such a checkout could run a command as root. ([3a8a440])
 - The SSL key passphrase is no longer written to the debug log. ([3a8a440])
 
 ### Fixed
 
-- **Add Agent failed on a database created by Dockge 1.5.0.** Upstream added an agent name column by editing an old migration, so that column does not exist on 1.5.0 databases. Agent names are now optional, and agents without a name show their host. ([21ff72a])
-- Container statuses were wrong between dockge-mod and Dockge 1.5.0 servers in both directions. The status answer uses the 1.5.0 format again, and the container details go in a new field. ([21ff72a])
-- The per-service start, stop, and restart actions are hidden for Dockge 1.5.0 agents, which do not have them. They locked the stack page for five minutes. ([21ff72a])
-- The image update check could use up the Docker Hub pull limit. After one registry timeout, every other Docker Hub image went to `docker buildx imagetools inspect`, which counts as a pull. The check now only uses HEAD requests, and stops asking a registry for the rest of the check after it answers HTTP 429 or cannot be reached. ([51973af])
+- Terminals keep their size after a reconnect, and the Logs panel keeps streaming. Shells on an agent survive a short drop of the link to the agent. ([9a9f155], [5f93947])
+- The bulk-action confirmation could not be clicked. ([9a9f155])
+- The container table showed old rows as current when `docker compose ps` failed. ([9a9f155])
+- Removing many unused resources reported a timeout while it still ran. ([9a9f155])
+- A request to an offline agent waited for the full time limit (5 minutes per stack in a bulk action) instead of failing at once. ([5f93947])
+- A container that crashed within a minute of a restart or a redeploy sent no alert. ([5f93947])
+- The memory and load tiles waited for `docker system df`, which now refreshes in the background every 10 minutes. ([5f93947])
+- Docker Hub images that a compose file names by digest (`docker.io/library/postgres@sha256:...`) were offered for removal after the stack went down. ([45e0a42])
+- Image update check ([e67d554]):
+  - A pull during a running check brought the update badge back.
+  - A `docker login` with a credential store made every Docker Hub image fail. Public images are now read anonymously.
+  - Images named with the default port (`registry:443/...`) always failed.
+  - Edits to compose files made outside dockge-mod were not checked.
+- The image update check could use up the Docker Hub pull limit. After one registry timeout, every other Docker Hub image went to `docker buildx imagetools inspect`, which counts as a pull. The check now only uses HEAD requests, and stops asking a registry for the rest of the check after HTTP 429 or a network error. ([51973af])
 - The update badge now clears when **Update** pulls the new image, instead of at the next six-hour check. ([4c4e9e5])
 - A stack stopped outside dockge-mod (for example with `docker compose down`) kept its old status in the list. ([4c4e9e5])
-- The Logs panel and a running deploy stopped streaming after a reconnect. ([4c4e9e5])
 - A deploy sent while another operation ran changed the files and then failed. It now fails before it saves. ([4c4e9e5])
 - Containers with their own stop signal, such as nginx and postgres, sent a false "container exited" alert when stopped. ([4c4e9e5])
-- The disk usage tile never showed on hosts where `docker system df` takes more than 30 seconds. ([4c4e9e5])
-- A late answer to a deploy, save, or delete no longer takes you back to a stack page you left. ([54725af])
-- Switching quickly between stacks left `docker compose logs -f` processes running on the server. ([54725af])
+- A late answer to a deploy, save, or delete no longer takes you back to a stack page you left. Switching quickly between stacks no longer leaves `docker compose logs -f` processes running. ([54725af])
 - The "Compose your first stack" link never showed in an empty stack list. ([54725af])
+- **Add Agent failed on a database created by Dockge 1.5.0.** Upstream added an agent name column by editing an old migration, so the column does not exist there. Agent names are now optional, and agents without a name show their host. ([21ff72a])
+- Container statuses were wrong between dockge-mod and Dockge 1.5.0 servers in both directions. The status answer uses the 1.5.0 format again, and the container details go in a new field. ([21ff72a])
+- The per-service start, stop, and restart actions are hidden for Dockge 1.5.0 agents, which do not have them. They locked the stack page for five minutes. ([21ff72a])
 - The healthcheck failed when `DOCKGE_HOSTNAME` is a wildcard or an IPv6 address. ([21ff72a])
-- A user with 2FA set in the database got no answer at login. 2FA cannot be set up in Dockge or dockge-mod, so the login now gives a clear error. ([3a8a440])
+- A user with 2FA set in the database got no login token. 2FA cannot be set up in Dockge or dockge-mod, so the login now gives a clear error. ([3a8a440])
 
 ### Changed
 
 - Discard asks first when there are unsaved changes. **Pull & Redeploy** and the bulk stop, restart, and update actions ask first. ([54725af])
 - The stack page shows a loading state and a Retry button. The Resources tables show "Loading" while they load. ([54725af])
-- The image contains only the files the server needs, and runs the `tsx` version from the lock file. ([79a6d8f])
-- The publish workflow runs the tests and starts the image before it pushes. ([79a6d8f])
 
 ### Removed
 
-- The `docker buildx imagetools` fallback of the image update check. Registries whose credentials are in a credential helper are not supported. ([51973af])
-- Per-user ownership of terminals. dockge-mod has one user. ([4c4e9e5])
-- `extra/templates`, which nothing used. ([79a6d8f])
+- The `docker buildx imagetools` fallback of the image update check. Private images whose credentials are in a credential helper are not supported. ([51973af])
 
 ## [1.5.0-mod-c056412] - 2026-09-01
 
@@ -86,9 +92,13 @@ First release. Differences from Dockge:
 
 [Unreleased]: https://github.com/ethanpil/dockge-mod/compare/1.5.0-mod-c056412...HEAD
 [1.5.0-mod-c056412]: https://github.com/ethanpil/dockge-mod/releases/tag/1.5.0-mod-c056412
-[21ff72a]: https://github.com/ethanpil/dockge-mod/commit/21ff72a
-[51973af]: https://github.com/ethanpil/dockge-mod/commit/51973af
-[3a8a440]: https://github.com/ethanpil/dockge-mod/commit/3a8a440
-[4c4e9e5]: https://github.com/ethanpil/dockge-mod/commit/4c4e9e5
+[9a9f155]: https://github.com/ethanpil/dockge-mod/commit/9a9f155
+[5f93947]: https://github.com/ethanpil/dockge-mod/commit/5f93947
+[45e0a42]: https://github.com/ethanpil/dockge-mod/commit/45e0a42
+[b10d053]: https://github.com/ethanpil/dockge-mod/commit/b10d053
+[e67d554]: https://github.com/ethanpil/dockge-mod/commit/e67d554
 [54725af]: https://github.com/ethanpil/dockge-mod/commit/54725af
-[79a6d8f]: https://github.com/ethanpil/dockge-mod/commit/79a6d8f
+[4c4e9e5]: https://github.com/ethanpil/dockge-mod/commit/4c4e9e5
+[3a8a440]: https://github.com/ethanpil/dockge-mod/commit/3a8a440
+[51973af]: https://github.com/ethanpil/dockge-mod/commit/51973af
+[21ff72a]: https://github.com/ethanpil/dockge-mod/commit/21ff72a
