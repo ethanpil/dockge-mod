@@ -1,35 +1,21 @@
-A primary goal of this project is to retain drop-in compatibility with the original dockge project so we should never make any changes that would break that promise. If I ask for a change that breaks that promise require double confirmation!
+A primary goal of this project is to keep drop-in compatibility with Dockge: the 1.5.0 release (what users run) and upstream master at the base commit. Never make a change that breaks that promise. If I ask for a change that breaks it, require double confirmation.
 
-When writing readme files, commit messages, changelogs, documentation and comments, use ONLY ASD-STE100 Simplified Technical English.
+- New state goes in `mod_*` tables through `backend/migrations-mod/` (ledger `mod_knex_migrations`). Never change Dockge tables, the Dockge migration ledger, or the argument order and answer shape of an existing socket event. New socket fields and events only add data.
+- `test/backend/database-dockge-150.test.ts` covers a database created by Dockge 1.5.0.
 
-When sending commits, always group logal work together in a commit and then push. Dont just sent it all in one big spaghetti commit.
+Write README files, commit messages, changelogs, documentation, and comments in plain, succinct, clear English.
 
+Group related work into one commit, then push. Do not make one large mixed commit.
 
-# changelog
+# Changelog
 
-Maintain the changelog as we progress over time. We use a Keep a Changelog format plus ASD-STE100 Simplified Technical English.
-
-## Changelog Guiding Principles
+Keep a Changelog format. Keep entries short, and reference the commit hash where it helps.
 
 - Changelogs are for humans, not machines.
-- There should be an entry for every single version.
-- The same types of changes should be grouped. (By version or commit has if the project has no versioning/releases)
+- Put new entries under `## [Unreleased]`. A release moves them to `## [<tag>] - YYYY-MM-DD`. The tag is the image version, `<package.json version>-mod-<short sha>`.
 - The latest changes come first.
-- The release date of each version/commit is displayed. Use YYYY-MM-DD format.
-- Use ASD-STE100 Simplified Technical English
-
-## Types of changes (groups)
-- `Added` for new features.
-- `Changed` for changes in existing functionality.
-- `Deprecated` for soon-to-be removed features.
-- `Removed` for now removed features.
-- `Fixed` for bug fixes.
-- `Security` for vulnerabilities.
-
-Usually the right type is clear. Three of them cause the most questions:
-
-- `Fixed`: the behavior was wrong, and is now correct.
-- `Changed`: the behavior worked as intended, and now works differently.
-- `Security`: the change addresses a vulnerability. It could fit under Fixed or Changed, but its urgency and audience are different.
-
-When you are unsure, ask whether the old behavior was a bug. If it was, use `Fixed`. If it was intentional and you are changing it, use `Changed`.
+- Group entries by type: `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, `Security`.
+  - `Fixed`: the behavior was wrong and is now correct.
+  - `Changed`: the behavior worked as intended and now works differently.
+  - `Security`: the change addresses a vulnerability.
+- Only list changes that a user of a release can see. A fix to a feature that was never released is not an entry.

@@ -1,0 +1,39 @@
+name: Bug report
+description: Something does not work as expected
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what happened instead.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: dockge-mod version
+      description: Settings > About, or the image tag.
+      placeholder: 1.5.0-mod-a1b2c3d
+    validations:
+      required: true
+  - type: input
+    id: docker
+    attributes:
+      label: Docker version
+      description: Output of `docker version --format '{{.Server.Version}}'`, and Podman if you use it.
+  - type: dropdown
+    id: agents
+    attributes:
+      label: Agents
+      options:
+        - No agents
+        - dockge-mod agents
+        - Dockge agents
+        - dockge-mod as an agent of a Dockge server
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: Output of `docker compose logs dockge-mod` around the problem. Remove secrets.
+      render: text

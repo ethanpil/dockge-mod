@@ -1,388 +1,253 @@
 # dockge-mod
 
-dockge-mod is a drop-in replacement for [Dockge](https://github.com/louislam/dockge) by Louis Lam. This fork changes the interface and adds new features. You can put it in an existing Dockge installation, and you can go back to Dockge later.
+A drop-in replacement for [Dockge](https://github.com/louislam/dockge) by Louis Lam, with a reworked interface and new features. It uses the same data directory, database, stacks directory, and environment variables, so you can switch an existing Dockge installation to dockge-mod and back without a migration.
 
-dockge is a self-hosted manager for Docker Compose stacks. dockge keeps your compose files on your disk and does not move them into a database, unlike other solutions. You can still edit your compose files and use normal `docker compose` commands from the CLI.
+Dockge manages Docker Compose stacks from a web interface. Your compose files stay on disk, and you can keep using `docker compose` from the command line.
 
-For a detailed list of changes from dockge, please see the [dockge-mod changelog](https://github.com/ethanpil/dockge-mod/blob/master/CHANGELOG.md).
+The full list of changes is in the [changelog](CHANGELOG.md).
 
-<img width="1550" height="819" alt="image" src="https://github.com/user-attachments/assets/b30646a2-6c8f-472b-b47f-f89338af6b2c" />
-
-
-## dockge Compatibility
-
-dockge and dockge-mod work in the same way:
-
-- The environment variables have the same names.
-- The `data` directory and the database have the same format. dockge-mod adds its own tables to the database, but it does not change the tables of Dockge.
-- The stacks directory has the same format.
-- The default port is 5001.
-- An agent connection works between dockge-mod and Dockge in both directions.
-
-You can point dockge-mod at the data directory of an existing Dockge installation. You can also go back to Dockge later. There is no migration step. This is a primary goal of the project.
-
-### The Database
-
-dockge-mod keeps its own data in tables with the `mod_` prefix, in the same SQLite file. It does not add a column to a table of Dockge, and it does not change the migration ledger of Dockge. The `mod_` tables have their own ledger, `mod_knex_migrations`, with its lock table `mod_knex_migrations_lock`. Dockge can then run its own migrations after you go back to it. dockge-mod can run its migrations after you return.
-
-Dockge ignores the `mod_` tables. They stay in the file when you go back to Dockge. Their data is there again when you return to dockge-mod.
-
-### Go Back to Dockge
-
-Change the image in your compose file to the Dockge image, then start the container again. Your data stays. You lose the new features, but you lose no data.
-
-Three conditions apply after you go back:
-
-- The `mod_` tables stay in the database. Dockge does not read them, and they do not change the tables of Dockge.
-- The Dockge interface does not show the override file, but `docker compose` continues to merge it. Your stacks keep their behavior, but the interface shows only the base file.
-- Dockge does not write the `.env` file when you save a stack. Your `.env` files stay on the disk, but a change that you make in the Dockge editor does not go to the disk.
-
-### Differences in Behavior
-
-dockge-mod does some things differently from Dockge. The data stays compatible, but you must know these conditions:
-
-- A save writes the `.env` file when the file exists or the panel has text. Dockge does not touch the `.env` file. If you edit the `.env` file by hand and save the stack in the interface, the interface writes its content to the disk.
-- A save can remove the override file. An empty override editor removes the file on the next save. Dockge does not touch this file.
-- The backups of a stack hold the `.env` file with its secrets, in the database. The database file is more sensitive than the database file of Dockge. Keep it safe.
-- Each docker command has a time limit of 30 seconds. Dockge waits without a limit. A daemon that answers slowly, for example a host with many containers on a slow disk, can give a timeout in dockge-mod where Dockge waits.
-- A feature of dockge-mod on a Dockge agent gives a timeout, not a message that says the feature is not available. Dockge drops an event that it does not know without an answer. The **Resources** page, the backups, the image check, and the service logs wait 30 seconds and then show a timeout message for such an agent. Their buttons do not show for a Dockge agent when the interface can know that.
-- dockge-mod does more work in the background. It reads the events of docker all the time, it asks the registries for new image versions every six hours, and it reads the disk usage of docker every minute while the home page is open. A registry with a rate limit sees a HEAD request for each image at each check.
-- The host console is one shell for each user. In Dockge, all users share one shell.
+<img width="1550" height="819" alt="The dockge-mod stack page" src="https://github.com/user-attachments/assets/b30646a2-6c8f-472b-b47f-f89338af6b2c" />
 
 ## Features
 
-- Make, edit, start, stop, restart, and delete compose stacks.
-- Update the Docker images of a stack.
-- Edit `compose.yaml` in an interactive editor.
-- Make and edit an optional override file. Docker merges it with `compose.yaml`. A settings page holds the text of a new override file.
-- Open a web terminal for a stack or for the host.
-- Manage stacks on more than one Docker host from one interface.
-- Change a `docker run` command into a `compose.yaml` file.
-- See the progress of a pull, an up, or a down operation while it runs.
-- See the resource usage of the containers in a stack.
-- See which images have a new version. The server checks the registry every six hours.
-- Get a notification on a webhook, ntfy, or Apprise for a new image version, a container that exits with an error, or an unhealthy container.
-- Go back to an earlier version of the files of a stack. A save and a git pull keep a copy.
-- List and prune the images, the volumes, and the networks of the host.
-- See the log of one service.
-- Select more than one stack, then start, stop, restart, or update the selection.
-- Filter the stack list by status and by name.
-- Use a git checkout as a stack, with an override file for the local changes.
+Everything Dockge does, plus:
 
-## Compare
-
-dockge-mod is for a user who runs Dockge now. It keeps the files on the disk, and it keeps the data of Dockge. Other tools do more, but they do not use the Dockge data:
-
-| | dockge-mod | Dockge | Arcane | Komodo |
-| --- | --- | --- | --- | --- |
-| Keeps the files on the disk | Yes | Yes | Yes | Yes |
-| Uses the Dockge data, goes back to Dockge | Yes | - | No | No |
-| Override file and git checkout | Yes | No | Git only | Git only |
-| Image update check | Yes | No | Yes | Yes |
-| Notifications | Yes | No | Yes | Yes |
-| Images, volumes, networks | Yes | No | Yes | Yes |
-| OIDC or SSO | No | No | Yes | Yes |
-| Kubernetes | No | No | No | No |
-
-If you need SSO or many users, use Arcane or Komodo. If you run Dockge and want to keep it, use dockge-mod.
-
-## Requirements
-
-You must have this software and hardware:
-
-- Docker 20 or later, or Podman.
-- For Podman only: the `podman-docker` package. On Debian, run `apt install podman-docker`.
-- A Linux system that can run Docker or Podman. Ubuntu, Debian, Raspbian, CentOS, Fedora, and Arch Linux are known to work.
-- A CPU architecture of armv7, arm64, or amd64.
-
-Debian Buster and Raspbian Buster are too old. Windows is not supported.
+- **Override files.** Create and edit `compose.override.yaml` next to `compose.yaml`, with a settings page for the default content.
+- **Git checkouts as stacks.** The stack list shows the branch and uncommitted changes. **Pull & Redeploy** runs `git pull` and deploys.
+- **Image update checks.** The server checks the registries every six hours and marks stacks with newer images.
+- **Notifications** to a webhook, ntfy, or Apprise for new image versions, containers that exit with an error, and unhealthy containers.
+- **Backups of stack files.** Each save and git pull keeps a copy of the compose, `.env`, and override files. The last 20 copies per stack can be restored.
+- **Resources page.** List and remove images, volumes, and networks. Removing unused items shows the exact list first, and keeps everything that belongs to a stack.
+- **Per-service logs, Validate, and Merged config** (`docker compose config`) on the stack page.
+- **`.env` editor** with a row per variable, and a global `.env` for all stacks.
+- **Bulk actions** and a status filter in the stack list.
+- **Health page** that checks Docker, Compose, Git, and write access to the directories.
+- Host statistics on the home page: load, memory, and Docker disk usage.
 
 ## Install
 
-The image is on Docker Hub as [`ethanpil/dockge-mod`](https://hub.docker.com/r/ethanpil/dockge-mod). It is available for amd64, arm64, and armv7. You do not need the source code to run it.
+Requirements: Docker 20 or later on Linux, on amd64, arm64, or armv7. Podman with `podman-docker` works for the Dockge features; the new features (event watcher, image checks, Resources page) are tested on Docker only.
 
-Each image has two tags: `latest`, and a version such as `1.5.0-mod-a1b2c3d`. The version tag does not change, thus you can select an image and go back to it. The About page shows the version of the image that you run. A new image goes to Docker Hub at a release, and not at each change of the code, thus `latest` can be older than the source code.
+The image is [`ethanpil/dockge-mod`](https://hub.docker.com/r/ethanpil/dockge-mod) on Docker Hub. Each release has two tags: `latest` and a fixed version such as `1.5.0-mod-a1b2c3d`. **Settings** > **About** shows the version you run.
 
-### Step 1. Make the Directories
+1. Create a directory for your stacks and one for dockge-mod:
 
-Make one directory for your stacks and one directory for dockge-mod.
+   ```bash
+   mkdir -p /opt/stacks /opt/dockge-mod
+   ```
+
+2. Save this as `/opt/dockge-mod/compose.yaml`:
+
+   ```yaml
+   services:
+     dockge-mod:
+       image: ethanpil/dockge-mod:latest
+       restart: unless-stopped
+       ports:
+         - 5001:5001
+       volumes:
+         - /var/run/docker.sock:/var/run/docker.sock
+         - ./data:/app/data
+         # The stacks directory. Use an absolute path, and the same path on both sides.
+         - /opt/stacks:/opt/stacks
+       environment:
+         - DOCKGE_STACKS_DIR=/opt/stacks
+   ```
+
+   The stacks path must be identical on both sides of the colon (`/opt/stacks:/opt/stacks`). Docker Compose resolves relative paths in your stacks against the host path, so a different path inside the container breaks bind mounts.
+
+3. Start it:
+
+   ```bash
+   cd /opt/dockge-mod && docker compose up -d
+   ```
+
+4. Open `http://<host>:5001` and create the admin account.
+
+### Switch from Dockge
+
+1. Stop Dockge: `docker compose down` in its directory.
+2. Back up its `data` directory.
+3. Change the `image` line to `ethanpil/dockge-mod:latest`.
+4. `docker compose up -d`.
+
+Your users, settings, agents, and stacks carry over. To go back, change the `image` line again. See [Compatibility](#compatibility) for what changes.
+
+### Upgrade
 
 ```bash
-mkdir -p /opt/stacks /opt/dockge-mod
+cd /opt/dockge-mod && docker compose pull && docker compose up -d
 ```
 
-### Step 2. Make the Compose File
-
-The two stack paths in the `volumes` section must be the same. If the two paths are different, dockge-mod writes your data to a wrong path.
-
-- A correct example is `/opt/stacks:/opt/stacks`. The two paths are the same.
-- A wrong example is `/docker:/opt/stacks`. The two paths are different.
-
-Write this text to `/opt/dockge-mod/compose.yaml`:
-
-```yaml
-services:
-  dockge-mod:
-    image: ethanpil/dockge-mod:latest
-    restart: unless-stopped
-    ports:
-      # Host port : container port
-      - 5001:5001
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-      - ./data:/app/data
-
-      # Your stacks directory. Use a full path. Do not use a relative path.
-      # The path on the left and the path on the right must be the same.
-      - /opt/stacks:/opt/stacks
-    environment:
-      # This tells dockge-mod where your stacks directory is.
-      - DOCKGE_STACKS_DIR=/opt/stacks
-```
-
-### Step 3. Start the Server
-
-```bash
-cd /opt/dockge-mod && docker compose up -d
-```
-
-If you use docker-compose V1 or Podman, run `docker-compose up -d` instead.
-
-dockge-mod now runs on `http://localhost:5001`. Open this address in a browser. The first page asks you to make an administrator account.
-
-### Build the Image Yourself
-
-This step is not necessary. Use it if you want to run a change that is not in the published image. Docker does all the build steps, so you do not need Node.js on the host. The build downloads the Node.js and the Go images from Docker Hub.
+### Build the image yourself
 
 ```bash
 git clone https://github.com/ethanpil/dockge-mod.git
 cd dockge-mod && docker build --target release -f docker/Dockerfile -t dockge-mod:local .
 ```
 
-Then put `dockge-mod:local` in the `image` line of your compose file.
+Then use `image: dockge-mod:local`. Node.js is not needed on the host.
 
-## Move from Dockge
+## Compatibility
 
-dockge-mod can use the data of an existing Dockge installation. Do the steps that follow:
+Compatibility with Dockge is the main goal of this project. dockge-mod is based on Dockge upstream commit [`f809ae1`](https://github.com/louislam/dockge/commit/f809ae192b571944ad773e9866d3e67064ae8043) and works with databases and agents from the Dockge **1.5.0** release.
 
-1. Go to the directory that holds the compose file of Dockge.
-2. Stop Dockge with `docker compose down`.
-3. Make a copy of the `data` directory. Keep this copy in a safe place.
-4. In the compose file, change the `image` line to `ethanpil/dockge-mod:latest`.
-5. Start the new container with `docker compose up -d`.
+- **Database.** dockge-mod keeps its own data in tables prefixed `mod_`, with a separate migration ledger (`mod_knex_migrations`). It never changes the Dockge tables or the Dockge migration ledger.
+- **Stacks directory.** Same layout. Override files, `.env` files, and `.git` directories are standard Docker Compose and git files that Dockge ignores or leaves alone.
+- **Environment variables.** Same names and defaults. They keep the `DOCKGE_` prefix.
+- **Agents.** A dockge-mod server can manage Dockge agents, and a Dockge server can manage dockge-mod agents.
 
-Your stacks, your users, and your settings stay the same. To go back to Dockge, change the `image` line again.
+### Going back to Dockge
 
-## Upgrade
+Change the image back. Nothing is lost, but:
+
+- The `mod_` tables stay in the database. Dockge ignores them, and dockge-mod picks them up again if you return.
+- Dockge does not show override files, but `docker compose` still applies them.
+- Dockge 1.5.0 does not use `global.env`. Variables defined only there are missing on the next deploy.
+- Friendly agent names need a database column that Dockge 1.5.0 does not create. On a database that Dockge 1.5.0 created, agents show their host name, and renaming is not available.
+
+### Differences in behavior
+
+- **Override files on save.** An empty override editor deletes the override file on save.
+- **Backups contain secrets.** The backups keep copies of `.env` files in the database, so `dockge.db` is more sensitive than with Dockge.
+- **Time limits.** Docker queries (status, stats, inspect) time out after 30 seconds. A compose operation (up, pull, down) is stopped after 60 minutes. The interface stops waiting for an answer after 5 minutes, but the operation keeps running and its result still shows. Dockge has no limits.
+- **Dockge agents.** Features that only dockge-mod has (Resources page, backups, image checks, service logs, per-service start/stop) are hidden or time out after 30 seconds on a Dockge agent.
+- **Background work.** dockge-mod watches `docker events`, checks registries every six hours (one HEAD request per image, which does not count against the Docker Hub pull limit), and reads `docker system df` while the home page is open.
+
+## Usage notes
+
+### Panels and editors
+
+Drag the bar under a panel to resize it; double-click to reset. In edit mode, the `.env` panel shows one row per variable. Click **Text** to edit the raw file. **Settings** > **Global .env** has the same editor.
+
+### Override files
+
+Put local changes in an override file when the base compose file comes from somewhere else, such as a git repository. In edit mode, click **Create override** below the compose editor. dockge-mod uses the first of `compose.override.yml`, `compose.override.yaml`, `docker-compose.override.yml`, and `docker-compose.override.yaml` that exists.
+
+**Merged config** shows the output of `docker compose config` for the files on disk. **Validate** runs the same check on the editor content without saving.
+
+### Git checkouts
+
+If a stack directory is a git checkout, the stack shows its branch (or commit, when detached) and a dot for uncommitted changes to tracked files. **Pull & Redeploy** runs `git pull` and then deploys.
+
+For a private repository over SSH, mount a key and a `known_hosts` file, for example `- /root/.ssh:/root/.ssh:ro`. Git runs with `ssh -o BatchMode=yes`, so it fails instead of prompting. Set `GIT_SSH_COMMAND` to override this.
+
+### Image update checks
+
+The server compares the local image digest with the registry every six hours. Stacks with newer images show a badge. **Update** pulls and recreates the stack and clears the badge. The **Resources** page shows the last check of each image and a **Check now** button.
+
+Private registries: mount your Docker credentials (`- /root/.docker:/root/.docker:ro`). Credentials stored in a credential helper (`credsStore` / `credHelpers`) are not supported, because the helper binaries are not in the image. For a registry with a private CA, mount the CA file and set `NODE_EXTRA_CA_CERTS` to its path.
+
+### Notifications
+
+**Settings** > **Notifications**. Each target gets a POST request:
+
+| Type | Body |
+| --- | --- |
+| Webhook | JSON: `{"event", "title", "message", "time"}` |
+| ntfy | The message as text, with `Title` and `Tags` headers |
+| Apprise | JSON: `{"title", "body", "type": "info"}` |
+
+Events are `image_update`, `container_exited`, `container_unhealthy`, and `test`. A container sends at most one message per event every five minutes. A container that you stop does not count as exited. Notifications are per server: configure them on each agent to get alerts from its containers.
+
+### Backups
+
+Each save and git pull stores the previous compose, `.env`, and override files in the database. The last 20 per stack are kept and are deleted with the stack. Open a stack and click **Backups** to restore one. Restoring writes the files; click **Deploy** to apply them.
+
+### Removing unused resources
+
+The **Resources** page never runs `docker ... prune`. It builds a list first, shows it, and removes only those items. It keeps:
+
+- Anything a container uses, running or stopped.
+- Images, networks, and volumes of any stack on this server, running or not.
+- Images named in a compose file, including by digest or from a build.
+- Named volumes. Only anonymous volumes can be removed, and those that a stack created are kept even after `docker compose down`.
+- The `bridge`, `host`, and `none` networks.
+
+Images of other programs on the same host can appear in the list. Read it before you confirm. If dockge-mod cannot read a compose file or inspect every container, it refuses to remove anything.
+
+### Host terminal
+
+The host console is off by default. Set `DOCKGE_ENABLE_CONSOLE=true` to enable it. It gives root access to the container, which has the Docker socket, so treat it as root on the host.
+
+### Multiple hosts
+
+Install dockge-mod (or Dockge) on each host. On the main server, click **Add Agent** on the home page and enter the URL, username, and password of the other server. The main server connects to the agent's URL; the agent does not need to reach the main server. The agent password is stored in the main server's database in plain text, as in Dockge.
+
+## Operations
+
+### Back up
+
+Stop the container and copy the `data` directory. The database is SQLite in WAL mode; if you copy it while it runs, include `dockge.db-wal` and `dockge.db-shm`.
+
+### Reset the password
 
 ```bash
-cd /opt/dockge-mod && docker compose pull && docker compose up -d
+docker compose exec dockge-mod npm run reset-password
 ```
 
-Your data stays in the `data` volume. Your stacks stay in your stacks directory.
+### Reverse proxy
 
-If you build the image yourself, get the new source code with `git pull`, build the image again, then start it with `docker compose up -d`.
-
-## Reverse Proxy
-
-dockge-mod uses a WebSocket connection. Your reverse proxy must send the `Upgrade` and the `Connection` headers to the container, or the interface does not connect.
-
-For nginx, add these lines to the location block:
+The interface uses a WebSocket. The proxy must forward the `Upgrade` and `Connection` headers and the original `Host` header. For nginx:
 
 ```nginx
-proxy_http_version 1.1;
-proxy_set_header Upgrade $http_upgrade;
-proxy_set_header Connection "upgrade";
+location / {
+    proxy_pass http://127.0.0.1:5001;
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "upgrade";
+    proxy_set_header Host $host;
+}
 ```
 
-Caddy and Traefik do this without more configuration.
+Caddy and Traefik work without extra settings. If the log shows `Origin ... does not match host`, the proxy changes the `Host` header. Fix the proxy, or set `UPTIME_KUMA_WS_ORIGIN_CHECK=bypass` to turn the check off.
 
-## Use
+### Troubleshooting
 
-### Make a Stack
+- **A stack is missing from the list.** The stack must be in `<stacks dir>/<name>/compose.yaml` (or `docker-compose.yml`), and the stacks path must be the same inside and outside the container. Click **Scan Stacks Folder** in the top-right menu after you move files.
+- **Something fails.** **Settings** > **Health** checks the tools and the directories. The server log is `docker compose logs dockge-mod`.
+- **A Dockge agent times out.** See [Differences in behavior](#differences-in-behavior).
 
-1. Click **Compose** in the top bar.
-2. Type a name for the stack.
-3. Type your services in the editor, or paste a `docker run` command into the conversion box.
-4. Click **Save** to write the file, or click **Deploy** to write the file and start the stack.
+## Environment variables
 
-dockge-mod writes the stack to a new directory in your stacks directory.
-
-### Control a Stack
-
-Select a stack in the list on the left. Then use the buttons at the top of the page:
-
-- **Start** starts the containers of the stack.
-- **Stop** stops the containers of the stack.
-- **Restart** stops and then starts the containers.
-- **Update** pulls the newest images and then starts the containers again.
-- **Delete** stops the containers and removes the stack directory.
-
-### Add an Existing Stack
-
-dockge-mod reads only the stacks in your stacks directory. To add a stack that is not in this directory, do the steps that follow:
-
-1. Stop the stack with `docker compose down`.
-2. Move the compose file to `/opt/stacks/<stackName>/compose.yaml`.
-3. Open the menu in the top-right corner of the page.
-4. Click **Scan Stacks Folder**.
-
-The stack is now in the list.
-
-### Change the Height of the Panels
-
-A thin bar with a grip is below the compose panels, the logs panel, and the compose and override editors in edit mode. Drag the bar to change the height of the panel above it. A double click on the bar gives the default height back. The heights are not saved. On a narrow window the file panels go one above the other, and the bar below them does not show.
-
-### Edit the Environment Variables
-
-In edit mode, the `.env` panel shows each variable as a pair of fields: one for the key and one for the value. The values are not masked. Click **Add variable** for a new pair. Comments keep their positions. Click **Text** to edit the file as plain text, for example for a comment or a value on more than one line. The **Global .env** page under **Settings** has the same editor.
-
-### Use an Override File
-
-Docker compose merges an override file with the base compose file. Put your changes in the override file when the base file comes from a different source, for example a git repository. An update of the base file does not remove your changes.
-
-To make an override file, do the steps that follow:
-
-1. Open the stack and click **Edit**.
-2. Click **Create override** below the compose editor.
-3. Write your changes in the new editor.
-4. Click **Save** to write the file, or click **Deploy** to write the file and start the stack.
-
-To remove the file, click **Delete override**, then save. An empty editor also removes the file on the next save.
-
-dockge-mod uses the same names as docker: `compose.override.yml`, `compose.override.yaml`, `docker-compose.override.yml`, and `docker-compose.override.yaml`. It uses the first file that it finds. The Dockge interface does not show this file, but `docker compose` continues to merge it. Thus the stacks directory stays compatible.
-
-### See the Merged Configuration
-
-Docker merges the compose file, the override file, and the env files into one configuration. Click **Merged config** at the top of the compose panel to see the result of `docker compose config`. The view is read only, and it shows the files on the disk. If the configuration is not correct, the view shows the error text of docker.
-
-In edit mode, click **Validate** to examine the editor content before you save it. The server puts the content in a temporary directory and runs `docker compose config` on it. The files of the stack do not change. For a stack that exists on the disk, a reference to a file of the stack directory stays correct. Docker finds problems that a YAML check cannot see, for example an unknown key or a wrong service reference.
-
-### Use a Git Checkout as a Stack
-
-A stack directory can be a git checkout. dockge-mod then shows the branch next to the stack name. A dot after the branch shows tracked changes that are not committed. Files that git does not track, for example an override file or a `.env` file, do not cause the dot. A **Pull & Redeploy** button also appears. The button runs `git pull` in the stack directory and then deploys the stack.
-
-When the checkout is on a tag or a commit, and not on a branch, the badge shows the short commit hash. A pull is not possible then, thus the button does not show.
-
-Use a git checkout together with an override file: git holds the base compose file, and your local changes stay in the override file.
-
-The `.git` entry is not visible in the Dockge interface, and Dockge does not touch it. Thus the stacks directory stays compatible.
-
-### See Which Images Have a New Version
-
-The server compares each image of the managed stacks with the registry every six hours. A stack with a new image version shows a badge in the stack list and on the stack page. Click **Update** on the stack page to pull the new version and start the stack again.
-
-The **Resources** page shows each image with the time of the last check. Click **Check now** to start a check at once. A private registry needs the Docker credentials, see **Private Registries** below. An image from a local build has no registry version, and the page says so.
-
-### Get a Notification
-
-Open **Settings** > **Notifications** and add a target. A target is a webhook, an ntfy topic, or an Apprise API. Select the events for the target:
-
-- A new image version is available.
-- A container exits with an error. A container that you stop does not send a message.
-- A container is unhealthy.
-
-Click **Test** to send a test message. One container sends one message in five minutes, thus a container in a restart loop does not flood the target.
-
-### Go Back to an Earlier Version of a Stack
-
-A save and a git pull make a copy of the compose file, the `.env` file, and the override file before they change them. The last 20 copies of a stack stay in the database, also the `.env` file with its secrets. The copies of a stack go away with the stack when you delete it in the interface. Open the stack and click **Backups** to see the copies. Click **Restore** to write a copy back to the disk. The containers do not change until you click **Deploy**.
-
-### Manage the Images, the Volumes, and the Networks
-
-The **Resources** page lists the images, the volumes, and the networks of a host. Each item shows if a container uses it. You can remove one item, or remove the items that nothing uses.
-
-dockge-mod does not use the prune command of docker. That command removes the network of a stack that you stopped, and it removes the images of a stack that is down. dockge-mod makes a list first, and it keeps:
-
-- Each resource of a container, also a container that is stopped.
-- Each resource of a stack of this server, also a stack that is not running.
-- Each image that a compose file of this server names. This includes an image that a compose file names with a digest, and an image that a compose file builds.
-- Each volume that has a name. Only a volume that docker named itself can go away. The data of a database is in a volume with a name.
-- Each volume that a stack of this server made, also after a `down` of that stack. dockge-mod writes the stack of a volume while a container of that stack exists, thus it knows the stack later. See [The Database](#the-database).
-- The `bridge`, `host`, and `none` networks of docker.
-
-The list of the items comes before the question, thus you see each name before you confirm. dockge-mod then makes the list again and removes only the items that are still in it. An item that a container took in the time between the two lists stays. dockge-mod removes the items one after the other, and it tells you which items did not go away.
-
-Two conditions stay with you:
-
-- An image of a different program on the same host, for example a stack that dockge-mod does not manage, is in the list. Read the names before you confirm.
-- A network that a compose file declares as `external` does not come back. Docker compose makes its own networks again at the next deploy.
-- dockge-mod knows the stack of a volume only from a container that it saw. A stack that went down while Dockge was in control, and that did not start again in dockge-mod, has no record. Start such a stack one time before you remove the unused volumes.
-
-dockge-mod stops the removal when it cannot read the compose file of a stack, and when docker does not answer for each container. It cannot keep the resources of a stack that it cannot read.
-
-### See the Log of One Service
-
-Click the log icon of a service in the container table of a stack. A panel shows the log of that service only. The **Logs** panel of the stack shows the log of all services.
-
-### Examine the Health of the Server
-
-The **Health** page under **Settings** shows if the tools that dockge-mod needs are on the server: Docker, Docker Compose, and Git. It also shows if the server can write in the stacks directory and the data directory. The image holds these tools. If you run dockge-mod from the source, install them yourself.
-
-### Use the Terminal
-
-Each stack has a terminal tab. The terminal shows the output of the containers of that stack.
-
-The host terminal is off by default. To make the host terminal available, set `DOCKGE_ENABLE_CONSOLE` to `true`. This terminal gives full access to the host, so be careful.
-
-### Manage More Than One Host
-
-You can control the stacks on other Docker hosts from one interface. Do the steps that follow:
-
-1. Install dockge-mod on each host.
-2. Open the home page of the first installation.
-3. Click **Add Agent**.
-4. Type the URL, the username, and the password of the other installation.
-
-The stacks of each agent are then in the same list. An agent can run dockge-mod or Dockge.
-
-## Environment Variables
-
-The environment variables have the same names as the upstream names. The names keep the `DOCKGE_` prefix on purpose. This keeps your compose file compatible with both programs.
-
-| Name | Default | Function |
+| Name | Default | Description |
 | --- | --- | --- |
-| `DOCKGE_STACKS_DIR` | `/opt/stacks` | The directory that holds your stacks. |
-| `DOCKGE_DATA_DIR` | `./data/` | The directory that holds the database and the settings. |
-| `DOCKGE_PORT` | `5001` | The port of the web server. |
-| `DOCKGE_HOSTNAME` | none | The hostname that the web server listens on. |
-| `DOCKGE_ENABLE_CONSOLE` | `false` | Set this to `true` to make the host terminal available. |
-| `DOCKGE_SSL_KEY` | none | The path to an SSL key file. |
-| `DOCKGE_SSL_CERT` | none | The path to an SSL certificate file. |
-| `DOCKGE_SSL_KEY_PASSPHRASE` | none | The passphrase of the SSL key. |
-| `PUID` | none | The user that owns the stack files. |
-| `PGID` | none | The group that owns the stack files. |
+| `DOCKGE_STACKS_DIR` | `/opt/stacks` | The stacks directory. |
+| `DOCKGE_DATA_DIR` | `./data/` | The directory for the database. |
+| `DOCKGE_PORT` | `5001` | The HTTP port. |
+| `DOCKGE_HOSTNAME` | all addresses | The address to listen on. |
+| `DOCKGE_ENABLE_CONSOLE` | `false` | `true` enables the host terminal. |
+| `DOCKGE_SSL_KEY`, `DOCKGE_SSL_CERT` | none | Paths to a TLS key and certificate. |
+| `DOCKGE_SSL_KEY_PASSPHRASE` | none | The passphrase of the TLS key. |
+| `PUID`, `PGID` | none | Owner of the stack files that dockge-mod writes. Set both, or neither. |
+| `TZ` | detected | Time zone of the server. |
+| `DOCKGE_HIDE_LOG` | none | Log lines to hide, for example `debug_server,info_monitor`. |
+| `UPTIME_KUMA_WS_ORIGIN_CHECK` | none | `bypass` turns off the WebSocket origin check. |
+| `GIT_SSH_COMMAND` | `ssh -o BatchMode=yes` | The SSH command for git. |
+| `NODE_EXTRA_CA_CERTS` | none | A CA file for registries with a private certificate. |
 
-By default, the stack files belong to `root`. To change the owner, set `PUID` and `PGID`. You must set both variables. If you set only one variable, dockge-mod ignores it.
+`PUID` and `PGID` are from upstream master and have no effect in Dockge 1.5.0.
 
-```yaml
-    environment:
-      - PUID=1000
-      - PGID=1000
-```
+## Security
 
-## Private Registries
+- The container runs as root and has the Docker socket, which is root access to the host. Do not expose dockge-mod to the internet without a reverse proxy with TLS, and ideally an extra authentication layer.
+- There is one user account.
+- `data/dockge.db` holds the password hash, the agent passwords, and the `.env` backups. Protect it and its backups.
 
-To use a private registry, give the Docker authentication file to the container. Add this line to the `volumes` section of your compose file:
+Report vulnerabilities as described in [SECURITY.md](SECURITY.md).
 
-```yaml
-      - /root/.docker/:/root/.docker
-```
+## Contributing
 
-## Contributions
-
-This is a personal fork, and I am unlikely to accept pull requests.
-
-If you find a problem in a feature that comes from the upstream project, report it to [Dockge](https://github.com/louislam/dockge/issues). If the problem is only in the interface of this fork, open an issue in this repository.
+Bug reports and feature requests are welcome in the [issues](https://github.com/ethanpil/dockge-mod/issues). Report problems here first, even if they may come from Dockge; they will be passed upstream when that is the case. This is a personal fork, so pull requests may not be accepted.
 
 ## Translations
 
-The interface has the languages of the upstream project. The texts of the new features are machine translations, made with Claude. If a text is wrong in your language, open an issue with the key and the correct text.
+The interface has all the languages of Dockge. Texts for the new features are machine translated. If a translation is wrong, open an issue with the key and the correct text.
 
-## AI Assistance
+## AI assistance
 
-I made the changes in this fork with help from Claude Fable.
+This fork was developed with help from Claude.
 
 ## License
 
-dockge-mod uses the MIT license, the same license as the upstream project. The copyright of the original code belongs to Louis Lam. Read the [LICENSE](LICENSE) file for the full text.
+MIT, the same as Dockge. The original code is copyright Louis Lam. See [LICENSE](LICENSE).
