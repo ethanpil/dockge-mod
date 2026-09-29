@@ -287,5 +287,20 @@
     "inUseYes": "Dipakai",
     "inUseNo": "Tidak dipakai",
     "pruneSkipped": "Item yang dipertahankan oleh rencana baru: {n}",
-    "inUseUnknown": "Tidak diketahui"
+    "inUseUnknown": "Tidak diketahui",
+    "agentName": "Nama",
+    "editAgentName": "Ubah nama",
+    "updateAgentName": "Simpan nama",
+    "agentUpdatedSuccessfully": "Agen diperbarui",
+    "close": "Tutup",
+    "collapse": "Ciutkan",
+    "noStackMatch": "Tidak ada stack yang cocok dengan filter.",
+    "bulkConfirmMsg": "{action} {n} stack yang dipilih?",
+    "gitPullConfirmMsg": "Jalankan git pull di direktori stack, lalu terapkan stack?",
+    "discardConfirmMsg": "Buang perubahan yang belum disimpan?",
+    "aboutCompat": "Pengganti langsung untuk {dockge}, berdasarkan commit {commit}.",
+    "hostLoad": "beban {load}",
+    "hostCpus": "{n} CPU",
+    "loading": "Memuat…",
+    "retry": "Coba lagi"
 }

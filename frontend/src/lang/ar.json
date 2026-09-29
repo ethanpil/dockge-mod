@@ -287,5 +287,20 @@
     "inUseYes": "قيد الاستخدام",
     "inUseNo": "غير مستخدم",
     "pruneSkipped": "عناصر أبقت عليها خطة جديدة: {n}",
-    "inUseUnknown": "غير معروف"
+    "inUseUnknown": "غير معروف",
+    "agentName": "الاسم",
+    "editAgentName": "تعديل الاسم",
+    "updateAgentName": "حفظ الاسم",
+    "agentUpdatedSuccessfully": "تم تحديث الوكيل",
+    "close": "إغلاق",
+    "collapse": "طي",
+    "noStackMatch": "لا توجد حزم تطابق عامل التصفية.",
+    "bulkConfirmMsg": "{action} الحزم المحددة ({n})؟",
+    "gitPullConfirmMsg": "تشغيل git pull في مجلد الحزمة، ثم نشر الحزمة؟",
+    "discardConfirmMsg": "تجاهل التغييرات غير المحفوظة؟",
+    "aboutCompat": "بديل مباشر لـ {dockge}، مبني على الإيداع {commit}.",
+    "hostLoad": "الحمل {load}",
+    "hostCpus": "{n} معالج",
+    "loading": "جارٍ التحميل…",
+    "retry": "إعادة المحاولة"
 }

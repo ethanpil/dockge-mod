@@ -287,5 +287,20 @@
     "inUseYes": "En uso",
     "inUseNo": "Sin uso",
     "pruneSkipped": "Elementos que un plan nuevo ha conservado: {n}",
-    "inUseUnknown": "Desconocido"
+    "inUseUnknown": "Desconocido",
+    "agentName": "Nombre",
+    "editAgentName": "Editar nombre",
+    "updateAgentName": "Guardar nombre",
+    "agentUpdatedSuccessfully": "Agente actualizado",
+    "close": "Cerrar",
+    "collapse": "Contraer",
+    "noStackMatch": "Ninguna pila coincide con el filtro.",
+    "bulkConfirmMsg": "¿{action} {n} pilas seleccionadas?",
+    "gitPullConfirmMsg": "¿Ejecutar git pull en el directorio de la pila y luego desplegar la pila?",
+    "discardConfirmMsg": "¿Descartar los cambios sin guardar?",
+    "aboutCompat": "Un reemplazo directo de {dockge}, basado en el commit {commit}.",
+    "hostLoad": "carga {load}",
+    "hostCpus": "{n} CPU",
+    "loading": "Cargando…",
+    "retry": "Reintentar"
 }

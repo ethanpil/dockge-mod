@@ -287,5 +287,20 @@
     "inUseYes": "Используется",
     "inUseNo": "Не используется",
     "pruneSkipped": "Элементов, сохранённых новым планом: {n}",
-    "inUseUnknown": "Неизвестно"
+    "inUseUnknown": "Неизвестно",
+    "agentName": "Имя",
+    "editAgentName": "Изменить имя",
+    "updateAgentName": "Сохранить имя",
+    "agentUpdatedSuccessfully": "Агент обновлён",
+    "close": "Закрыть",
+    "collapse": "Свернуть",
+    "noStackMatch": "Нет стеков, соответствующих фильтру.",
+    "bulkConfirmMsg": "{action} выбранные стеки ({n})?",
+    "gitPullConfirmMsg": "Выполнить git pull в каталоге стека, а затем развернуть стек?",
+    "discardConfirmMsg": "Отменить несохранённые изменения?",
+    "aboutCompat": "Полноценная замена для {dockge}, основанная на коммите {commit}.",
+    "hostLoad": "нагрузка {load}",
+    "hostCpus": "{n} CPU",
+    "loading": "Загрузка…",
+    "retry": "Повторить"
 }

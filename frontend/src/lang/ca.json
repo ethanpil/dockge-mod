@@ -287,5 +287,20 @@
     "inUseYes": "En ús",
     "inUseNo": "Sense ús",
     "pruneSkipped": "Elements que un pla nou ha conservat: {n}",
-    "inUseUnknown": "Desconegut"
+    "inUseUnknown": "Desconegut",
+    "agentName": "Nom",
+    "editAgentName": "Edita el nom",
+    "updateAgentName": "Desa el nom",
+    "agentUpdatedSuccessfully": "Agent actualitzat",
+    "close": "Tanca",
+    "collapse": "Replega",
+    "noStackMatch": "Cap pila coincideix amb el filtre.",
+    "bulkConfirmMsg": "{action} {n} piles seleccionades?",
+    "gitPullConfirmMsg": "Executar git pull al directori de la pila i després desplegar la pila?",
+    "discardConfirmMsg": "Vols descartar els canvis no desats?",
+    "aboutCompat": "Un substitut directe de {dockge}, basat en el commit {commit}.",
+    "hostLoad": "càrrega {load}",
+    "hostCpus": "{n} CPU",
+    "loading": "S'està carregant…",
+    "retry": "Torna-ho a provar"
 }

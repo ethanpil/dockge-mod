@@ -287,5 +287,20 @@
     "inUseYes": "Utilisé",
     "inUseNo": "Non utilisé",
     "pruneSkipped": "Éléments qu'un nouveau plan a conservés : {n}",
-    "inUseUnknown": "Inconnu"
+    "inUseUnknown": "Inconnu",
+    "agentName": "Nom",
+    "editAgentName": "Modifier le nom",
+    "updateAgentName": "Enregistrer le nom",
+    "agentUpdatedSuccessfully": "Agent mis à jour",
+    "close": "Fermer",
+    "collapse": "Réduire",
+    "noStackMatch": "Aucune pile ne correspond au filtre.",
+    "bulkConfirmMsg": "{action} les {n} piles sélectionnées ?",
+    "gitPullConfirmMsg": "Exécuter git pull dans le répertoire de la pile, puis déployer la pile ?",
+    "discardConfirmMsg": "Abandonner vos modifications non enregistrées ?",
+    "aboutCompat": "Un remplaçant direct de {dockge}, basé sur le commit {commit}.",
+    "hostLoad": "charge {load}",
+    "hostCpus": "{n} CPU",
+    "loading": "Chargement…",
+    "retry": "Réessayer"
 }

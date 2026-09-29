@@ -287,5 +287,20 @@
     "inUseYes": "V uporabi",
     "inUseNo": "Ni v uporabi",
     "pruneSkipped": "Elementov, ki jih je ohranil nov načrt: {n}",
-    "inUseUnknown": "Neznano"
+    "inUseUnknown": "Neznano",
+    "agentName": "Ime",
+    "editAgentName": "Uredi ime",
+    "updateAgentName": "Shrani ime",
+    "agentUpdatedSuccessfully": "Agent posodobljen",
+    "close": "Zapri",
+    "collapse": "Strni",
+    "noStackMatch": "Noben Stack se ne ujema s filtrom.",
+    "bulkConfirmMsg": "{action}: izbrani Stack-i ({n})?",
+    "gitPullConfirmMsg": "Zaženem git pull v mapi Stack-a in nato namestim Stack?",
+    "discardConfirmMsg": "Zavržem neshranjene spremembe?",
+    "aboutCompat": "Neposredna zamenjava za {dockge}, osnovana na commitu {commit}.",
+    "hostLoad": "obremenitev {load}",
+    "hostCpus": "{n} CPU",
+    "loading": "Nalaganje…",
+    "retry": "Poskusi znova"
 }

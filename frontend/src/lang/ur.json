@@ -287,5 +287,20 @@
     "inUseYes": "زیرِ استعمال",
     "inUseNo": "غیر استعمال شدہ",
     "pruneSkipped": "نئے منصوبے کے تحت برقرار رکھی گئی اشیاء: {n}",
-    "inUseUnknown": "نامعلوم"
+    "inUseUnknown": "نامعلوم",
+    "agentName": "نام",
+    "editAgentName": "نام میں ترمیم کریں",
+    "updateAgentName": "نام محفوظ کریں",
+    "agentUpdatedSuccessfully": "ایجنٹ اپ ڈیٹ ہو گیا",
+    "close": "بند کریں",
+    "collapse": "سمیٹیں",
+    "noStackMatch": "کوئی اسٹیک فلٹر سے مماثل نہیں ہے۔",
+    "bulkConfirmMsg": "{action}: {n} منتخب اسٹیکس؟",
+    "gitPullConfirmMsg": "اسٹیک کی ڈائریکٹری میں git pull چلائیں، پھر اسٹیک تعینات کریں؟",
+    "discardConfirmMsg": "اپنی غیر محفوظ تبدیلیاں رد کریں؟",
+    "aboutCompat": "{dockge} کا براہِ راست متبادل، کمٹ {commit} پر مبنی۔",
+    "hostLoad": "لوڈ {load}",
+    "hostCpus": "{n} CPU",
+    "loading": "لوڈ ہو رہا ہے…",
+    "retry": "دوبارہ کوشش کریں"
 }

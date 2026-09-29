@@ -287,5 +287,20 @@
     "inUseYes": "使用中",
     "inUseNo": "未使用",
     "pruneSkipped": "新計畫保留的項目：{n}",
-    "inUseUnknown": "未知"
+    "inUseUnknown": "未知",
+    "agentName": "名稱",
+    "editAgentName": "編輯名稱",
+    "updateAgentName": "儲存名稱",
+    "agentUpdatedSuccessfully": "代理已更新",
+    "close": "關閉",
+    "collapse": "收合",
+    "noStackMatch": "沒有符合篩選條件的堆疊。",
+    "bulkConfirmMsg": "對選取的 {n} 個堆疊執行「{action}」？",
+    "gitPullConfirmMsg": "在堆疊目錄中執行 git pull，然後部署該堆疊？",
+    "discardConfirmMsg": "捨棄未儲存的變更？",
+    "aboutCompat": "{dockge} 的直接替代品，基於提交 {commit}。",
+    "hostLoad": "負載 {load}",
+    "hostCpus": "{n} 個 CPU",
+    "loading": "載入中…",
+    "retry": "重試"
 }

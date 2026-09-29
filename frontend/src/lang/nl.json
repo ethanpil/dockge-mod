@@ -287,5 +287,20 @@
     "inUseYes": "In gebruik",
     "inUseNo": "Niet gebruikt",
     "pruneSkipped": "Items die een nieuw plan heeft behouden: {n}",
-    "inUseUnknown": "Onbekend"
+    "inUseUnknown": "Onbekend",
+    "agentName": "Naam",
+    "editAgentName": "Naam bewerken",
+    "updateAgentName": "Naam opslaan",
+    "agentUpdatedSuccessfully": "Agent bijgewerkt",
+    "close": "Sluiten",
+    "collapse": "Inklappen",
+    "noStackMatch": "Geen stacks komen overeen met het filter.",
+    "bulkConfirmMsg": "{action} {n} geselecteerde stacks?",
+    "gitPullConfirmMsg": "Git pull uitvoeren in de map van de stack en daarna de stack opzetten?",
+    "discardConfirmMsg": "Niet-opgeslagen wijzigingen verwerpen?",
+    "aboutCompat": "Een directe vervanging voor {dockge}, gebaseerd op commit {commit}.",
+    "hostLoad": "belasting {load}",
+    "hostCpus": "{n} CPU",
+    "loading": "Laden…",
+    "retry": "Opnieuw proberen"
 }

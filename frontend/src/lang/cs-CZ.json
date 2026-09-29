@@ -287,5 +287,20 @@
     "inUseYes": "Používá se",
     "inUseNo": "Nepoužívá se",
     "pruneSkipped": "Položek, které zachoval nový plán: {n}",
-    "inUseUnknown": "Neznámé"
+    "inUseUnknown": "Neznámé",
+    "agentName": "Název",
+    "editAgentName": "Upravit název",
+    "updateAgentName": "Uložit název",
+    "agentUpdatedSuccessfully": "Agent byl aktualizován",
+    "close": "Zavřít",
+    "collapse": "Sbalit",
+    "noStackMatch": "Filtru neodpovídá žádný stack.",
+    "bulkConfirmMsg": "{action} vybrané stacky ({n})?",
+    "gitPullConfirmMsg": "Spustit git pull v adresáři stacku a potom stack nasadit?",
+    "discardConfirmMsg": "Zahodit neuložené změny?",
+    "aboutCompat": "Přímá náhrada za {dockge}, založená na commitu {commit}.",
+    "hostLoad": "zátěž {load}",
+    "hostCpus": "{n} CPU",
+    "loading": "Načítání…",
+    "retry": "Zkusit znovu"
 }

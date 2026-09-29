@@ -287,5 +287,20 @@
     "inUseYes": "Används",
     "inUseNo": "Används inte",
     "pruneSkipped": "Objekt som en ny plan behöll: {n}",
-    "inUseUnknown": "Okänt"
+    "inUseUnknown": "Okänt",
+    "agentName": "Namn",
+    "editAgentName": "Redigera namn",
+    "updateAgentName": "Spara namn",
+    "agentUpdatedSuccessfully": "Agent uppdaterad",
+    "close": "Stäng",
+    "collapse": "Fäll ihop",
+    "noStackMatch": "Inga stackar matchar filtret.",
+    "bulkConfirmMsg": "{action} {n} valda stackar?",
+    "gitPullConfirmMsg": "Köra git pull i stackens katalog och sedan distribuera stacken?",
+    "discardConfirmMsg": "Kasta dina osparade ändringar?",
+    "aboutCompat": "En direkt ersättare för {dockge}, baserad på commit {commit}.",
+    "hostLoad": "belastning {load}",
+    "hostCpus": "{n} CPU",
+    "loading": "Laddar…",
+    "retry": "Försök igen"
 }

@@ -287,5 +287,20 @@
     "inUseYes": "In uso",
     "inUseNo": "Non in uso",
     "pruneSkipped": "Elementi mantenuti da un nuovo piano: {n}",
-    "inUseUnknown": "Sconosciuto"
+    "inUseUnknown": "Sconosciuto",
+    "agentName": "Nome",
+    "editAgentName": "Modifica nome",
+    "updateAgentName": "Salva nome",
+    "agentUpdatedSuccessfully": "Agente aggiornato",
+    "close": "Chiudi",
+    "collapse": "Comprimi",
+    "noStackMatch": "Nessuno stack corrisponde al filtro.",
+    "bulkConfirmMsg": "{action} {n} stack selezionati?",
+    "gitPullConfirmMsg": "Eseguire git pull nella directory dello stack e poi rilasciare lo stack?",
+    "discardConfirmMsg": "Scartare le modifiche non salvate?",
+    "aboutCompat": "Un sostituto diretto di {dockge}, basato sul commit {commit}.",
+    "hostLoad": "carico {load}",
+    "hostCpus": "{n} CPU",
+    "loading": "Caricamento…",
+    "retry": "Riprova"
 }

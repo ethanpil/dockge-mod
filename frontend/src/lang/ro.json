@@ -287,5 +287,20 @@
     "inUseYes": "În uz",
     "inUseNo": "Neutilizat",
     "pruneSkipped": "Elemente păstrate de un plan nou: {n}",
-    "inUseUnknown": "Necunoscut"
+    "inUseUnknown": "Necunoscut",
+    "agentName": "Nume",
+    "editAgentName": "Editează numele",
+    "updateAgentName": "Salvează numele",
+    "agentUpdatedSuccessfully": "Agentul a fost actualizat",
+    "close": "Închide",
+    "collapse": "Restrânge",
+    "noStackMatch": "Nicio stivă nu corespunde filtrului.",
+    "bulkConfirmMsg": "{action}: {n} stive selectate?",
+    "gitPullConfirmMsg": "Rulați git pull în directorul stivei, apoi lansați stiva?",
+    "discardConfirmMsg": "Renunțați la modificările nesalvate?",
+    "aboutCompat": "Un înlocuitor direct pentru {dockge}, bazat pe commit-ul {commit}.",
+    "hostLoad": "încărcare {load}",
+    "hostCpus": "{n} CPU",
+    "loading": "Se încarcă…",
+    "retry": "Reîncearcă"
 }

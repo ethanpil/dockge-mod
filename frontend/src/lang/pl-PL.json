@@ -287,5 +287,20 @@
     "inUseYes": "W użyciu",
     "inUseNo": "Nieużywane",
     "pruneSkipped": "Elementy zachowane przez nowy plan: {n}",
-    "inUseUnknown": "Nieznane"
+    "inUseUnknown": "Nieznane",
+    "agentName": "Nazwa",
+    "editAgentName": "Edytuj nazwę",
+    "updateAgentName": "Zapisz nazwę",
+    "agentUpdatedSuccessfully": "Agent zaktualizowany",
+    "close": "Zamknij",
+    "collapse": "Zwiń",
+    "noStackMatch": "Żaden stos nie pasuje do filtra.",
+    "bulkConfirmMsg": "{action} wybrane stosy ({n})?",
+    "gitPullConfirmMsg": "Wykonać git pull w katalogu stosu, a następnie wdrożyć stos?",
+    "discardConfirmMsg": "Odrzucić niezapisane zmiany?",
+    "aboutCompat": "Bezpośredni zamiennik dla {dockge}, oparty na commicie {commit}.",
+    "hostLoad": "obciążenie {load}",
+    "hostCpus": "{n} CPU",
+    "loading": "Ładowanie…",
+    "retry": "Ponów"
 }

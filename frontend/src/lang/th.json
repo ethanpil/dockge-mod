@@ -287,5 +287,20 @@
     "inUseYes": "ใช้งานอยู่",
     "inUseNo": "ไม่ได้ใช้งาน",
     "pruneSkipped": "รายการที่แผนใหม่เก็บไว้: {n}",
-    "inUseUnknown": "ไม่ทราบ"
+    "inUseUnknown": "ไม่ทราบ",
+    "agentName": "ชื่อ",
+    "editAgentName": "แก้ไขชื่อ",
+    "updateAgentName": "บันทึกชื่อ",
+    "agentUpdatedSuccessfully": "อัปเดตเอเย่นต์แล้ว",
+    "close": "ปิด",
+    "collapse": "ย่อ",
+    "noStackMatch": "ไม่มี stack ที่ตรงกับตัวกรอง",
+    "bulkConfirmMsg": "{action} stack ที่เลือก {n} รายการหรือไม่?",
+    "gitPullConfirmMsg": "รัน git pull ในไดเรกทอรีของ stack แล้วปรับใช้ stack หรือไม่?",
+    "discardConfirmMsg": "ละทิ้งการเปลี่ยนแปลงที่ยังไม่ได้บันทึกหรือไม่?",
+    "aboutCompat": "ตัวแทนที่ใช้แทน {dockge} ได้ทันที อ้างอิงจาก commit {commit}",
+    "hostLoad": "โหลด {load}",
+    "hostCpus": "{n} CPU",
+    "loading": "กำลังโหลด…",
+    "retry": "ลองอีกครั้ง"
 }

@@ -287,5 +287,20 @@
     "inUseYes": "Verwendet",
     "inUseNo": "Nicht verwendet",
     "pruneSkipped": "Einträge, die ein neuer Plan behalten hat: {n}",
-    "inUseUnknown": "Unbekannt"
+    "inUseUnknown": "Unbekannt",
+    "agentName": "Name",
+    "editAgentName": "Name bearbeiten",
+    "updateAgentName": "Name speichern",
+    "agentUpdatedSuccessfully": "Agent aktualisiert",
+    "close": "Schließen",
+    "collapse": "Einklappen",
+    "noStackMatch": "Kein Stack entspricht dem Filter.",
+    "bulkConfirmMsg": "{action}: {n} ausgewählte Stacks?",
+    "gitPullConfirmMsg": "Git pull im Stack-Verzeichnis ausführen und danach den Stack deployen?",
+    "discardConfirmMsg": "Nicht gespeicherte Änderungen verwerfen?",
+    "aboutCompat": "Ein direkter Ersatz für {dockge}, basierend auf Commit {commit}.",
+    "hostLoad": "Last {load}",
+    "hostCpus": "{n} CPU",
+    "loading": "Wird geladen…",
+    "retry": "Erneut versuchen"
 }

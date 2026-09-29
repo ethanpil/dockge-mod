@@ -287,5 +287,20 @@
     "inUseYes": "I brug",
     "inUseNo": "Ikke i brug",
     "pruneSkipped": "Elementer som en ny plan beholdt: {n}",
-    "inUseUnknown": "Ukendt"
+    "inUseUnknown": "Ukendt",
+    "agentName": "Navn",
+    "editAgentName": "Rediger navn",
+    "updateAgentName": "Gem navn",
+    "agentUpdatedSuccessfully": "Agent opdateret",
+    "close": "Luk",
+    "collapse": "Fold sammen",
+    "noStackMatch": "Ingen stacks matcher filteret.",
+    "bulkConfirmMsg": "{action} {n} valgte stacks?",
+    "gitPullConfirmMsg": "Kør git pull i stackens mappe, og udrul derefter stacken?",
+    "discardConfirmMsg": "Kassér dine ikke-gemte ændringer?",
+    "aboutCompat": "En direkte erstatning for {dockge}, baseret på commit {commit}.",
+    "hostLoad": "belastning {load}",
+    "hostCpus": "{n} CPU",
+    "loading": "Indlæser…",
+    "retry": "Prøv igen"
 }

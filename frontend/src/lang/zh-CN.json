@@ -287,5 +287,20 @@
     "inUseYes": "使用中",
     "inUseNo": "未使用",
     "pruneSkipped": "新计划保留的项目：{n}",
-    "inUseUnknown": "未知"
+    "inUseUnknown": "未知",
+    "agentName": "名称",
+    "editAgentName": "编辑名称",
+    "updateAgentName": "保存名称",
+    "agentUpdatedSuccessfully": "代理已更新",
+    "close": "关闭",
+    "collapse": "收起",
+    "noStackMatch": "没有与筛选条件匹配的堆栈。",
+    "bulkConfirmMsg": "对选中的 {n} 个堆栈执行“{action}”？",
+    "gitPullConfirmMsg": "在堆栈目录中运行 git pull，然后部署该堆栈？",
+    "discardConfirmMsg": "放弃未保存的更改？",
+    "aboutCompat": "{dockge} 的直接替代品，基于提交 {commit}。",
+    "hostLoad": "负载 {load}",
+    "hostCpus": "{n} 个 CPU",
+    "loading": "加载中…",
+    "retry": "重试"
 }

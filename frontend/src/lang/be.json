@@ -287,5 +287,20 @@
     "inUseYes": "Выкарыстоўваецца",
     "inUseNo": "Не выкарыстоўваецца",
     "pruneSkipped": "Элементаў, якія захаваў новы план: {n}",
-    "inUseUnknown": "Невядома"
+    "inUseUnknown": "Невядома",
+    "agentName": "Назва",
+    "editAgentName": "Змяніць назву",
+    "updateAgentName": "Захаваць назву",
+    "agentUpdatedSuccessfully": "Агент абноўлены",
+    "close": "Закрыць",
+    "collapse": "Згарнуць",
+    "noStackMatch": "Няма стэкаў, якія адпавядаюць фільтру.",
+    "bulkConfirmMsg": "{action} выбраныя стэкі ({n})?",
+    "gitPullConfirmMsg": "Выканаць git pull у каталогу стэка, а потым разгарнуць стэк?",
+    "discardConfirmMsg": "Адкінуць незахаваныя змены?",
+    "aboutCompat": "Поўная замена для {dockge}, заснаваная на каміце {commit}.",
+    "hostLoad": "нагрузка {load}",
+    "hostCpus": "{n} CPU",
+    "loading": "Загрузка…",
+    "retry": "Паўтарыць"
 }

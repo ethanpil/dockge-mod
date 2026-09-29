@@ -287,5 +287,20 @@
     "inUseYes": "Đang dùng",
     "inUseNo": "Không dùng",
     "pruneSkipped": "Số mục được kế hoạch mới giữ lại: {n}",
-    "inUseUnknown": "Không rõ"
+    "inUseUnknown": "Không rõ",
+    "agentName": "Tên",
+    "editAgentName": "Sửa tên",
+    "updateAgentName": "Lưu tên",
+    "agentUpdatedSuccessfully": "Agent đã được cập nhật",
+    "close": "Đóng",
+    "collapse": "Thu gọn",
+    "noStackMatch": "Không có stack nào khớp với bộ lọc.",
+    "bulkConfirmMsg": "{action} {n} stack đã chọn?",
+    "gitPullConfirmMsg": "Chạy git pull trong thư mục của stack, sau đó triển khai stack?",
+    "discardConfirmMsg": "Huỷ các thay đổi chưa lưu?",
+    "aboutCompat": "Bản thay thế trực tiếp cho {dockge}, dựa trên commit {commit}.",
+    "hostLoad": "tải {load}",
+    "hostCpus": "{n} CPU",
+    "loading": "Đang tải…",
+    "retry": "Thử lại"
 }

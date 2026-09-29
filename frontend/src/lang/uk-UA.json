@@ -287,5 +287,20 @@
     "inUseYes": "Використовується",
     "inUseNo": "Не використовується",
     "pruneSkipped": "Елементів, які зберіг новий план: {n}",
-    "inUseUnknown": "Невідомо"
+    "inUseUnknown": "Невідомо",
+    "agentName": "Назва",
+    "editAgentName": "Змінити назву",
+    "updateAgentName": "Зберегти назву",
+    "agentUpdatedSuccessfully": "Агента оновлено",
+    "close": "Закрити",
+    "collapse": "Згорнути",
+    "noStackMatch": "Немає стеків, що відповідають фільтру.",
+    "bulkConfirmMsg": "{action} вибрані стеки ({n})?",
+    "gitPullConfirmMsg": "Виконати git pull у каталозі стеку, а потім розгорнути стек?",
+    "discardConfirmMsg": "Відхилити незбережені зміни?",
+    "aboutCompat": "Повноцінна заміна для {dockge}, заснована на коміті {commit}.",
+    "hostLoad": "навантаження {load}",
+    "hostCpus": "{n} CPU",
+    "loading": "Завантаження…",
+    "retry": "Повторити"
 }

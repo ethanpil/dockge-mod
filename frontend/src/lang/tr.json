@@ -287,5 +287,20 @@
     "inUseYes": "Kullanımda",
     "inUseNo": "Kullanılmıyor",
     "pruneSkipped": "Yeni bir planın koruduğu öğeler: {n}",
-    "inUseUnknown": "Bilinmiyor"
+    "inUseUnknown": "Bilinmiyor",
+    "agentName": "Ad",
+    "editAgentName": "Adı düzenle",
+    "updateAgentName": "Adı kaydet",
+    "agentUpdatedSuccessfully": "Aracı güncellendi",
+    "close": "Kapat",
+    "collapse": "Daralt",
+    "noStackMatch": "Filtreyle eşleşen yığın yok.",
+    "bulkConfirmMsg": "{action}: seçili {n} yığın?",
+    "gitPullConfirmMsg": "Yığın dizininde git pull çalıştırılsın ve ardından yığın dağıtılsın mı?",
+    "discardConfirmMsg": "Kaydedilmemiş değişiklikleriniz atılsın mı?",
+    "aboutCompat": "{dockge} için doğrudan bir alternatif, {commit} commit'ine dayanır.",
+    "hostLoad": "yük {load}",
+    "hostCpus": "{n} CPU",
+    "loading": "Yükleniyor…",
+    "retry": "Yeniden dene"
 }

@@ -287,5 +287,20 @@
     "inUseYes": "In úsáid",
     "inUseNo": "Gan úsáid",
     "pruneSkipped": "Míreanna a choinnigh plean nua: {n}",
-    "inUseUnknown": "Anaithnid"
+    "inUseUnknown": "Anaithnid",
+    "agentName": "Ainm",
+    "editAgentName": "Cuir an t-ainm in eagar",
+    "updateAgentName": "Sábháil an t-ainm",
+    "agentUpdatedSuccessfully": "Aighne nuashonraithe",
+    "close": "Dún",
+    "collapse": "Laghdaigh",
+    "noStackMatch": "Níl aon staca ag teacht leis an scagaire.",
+    "bulkConfirmMsg": "{action} na stacaí roghnaithe ({n})?",
+    "gitPullConfirmMsg": "Rith git pull i gcomhadlann an staca, agus ansin imscar an staca?",
+    "discardConfirmMsg": "Caith amach na hathruithe nár sábháladh?",
+    "aboutCompat": "Ionadaí díreach do {dockge}, bunaithe ar thiomantas {commit}.",
+    "hostLoad": "ualach {load}",
+    "hostCpus": "{n} CPU",
+    "loading": "Á lódáil…",
+    "retry": "Bain triail eile as"
 }

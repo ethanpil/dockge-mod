@@ -287,5 +287,20 @@
     "inUseYes": "Verwendet",
     "inUseNo": "Nöd verwendet",
     "pruneSkipped": "Iiträg wo en neue Plan bhalte het: {n}",
-    "inUseUnknown": "Unbekannt"
+    "inUseUnknown": "Unbekannt",
+    "agentName": "Name",
+    "editAgentName": "Name bearbeite",
+    "updateAgentName": "Name speichere",
+    "agentUpdatedSuccessfully": "Agent aktualisiert",
+    "close": "Schliesse",
+    "collapse": "Zueklappe",
+    "noStackMatch": "Kei Stack passt zum Filter.",
+    "bulkConfirmMsg": "{action}: {n} usgwählti Stacks?",
+    "gitPullConfirmMsg": "Git pull im Stack-Verzeichnis usfüehre und dänn de Stack deploye?",
+    "discardConfirmMsg": "Nöd gspeicheret Änderige verwerfe?",
+    "aboutCompat": "En direkte Ersatz für {dockge}, basierend uf Commit {commit}.",
+    "hostLoad": "Last {load}",
+    "hostCpus": "{n} CPU",
+    "loading": "Lade…",
+    "retry": "Nomal probiere"
 }

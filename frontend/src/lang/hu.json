@@ -287,5 +287,20 @@
     "inUseYes": "Használatban",
     "inUseNo": "Nincs használatban",
     "pruneSkipped": "Egy új terv által megtartott elemek: {n}",
-    "inUseUnknown": "Ismeretlen"
+    "inUseUnknown": "Ismeretlen",
+    "agentName": "Név",
+    "editAgentName": "Név szerkesztése",
+    "updateAgentName": "Név mentése",
+    "agentUpdatedSuccessfully": "Felügyelő frissítve",
+    "close": "Bezárás",
+    "collapse": "Összecsukás",
+    "noStackMatch": "Egy stack sem felel meg a szűrőnek.",
+    "bulkConfirmMsg": "{action}: {n} kijelölt stack?",
+    "gitPullConfirmMsg": "Futtatja a git pull parancsot a stack könyvtárában, majd telepíti a stack-et?",
+    "discardConfirmMsg": "Elveti a nem mentett módosításokat?",
+    "aboutCompat": "Közvetlen helyettesítője a(z) {dockge} programnak, a(z) {commit} commit alapján.",
+    "hostLoad": "terhelés {load}",
+    "hostCpus": "{n} CPU",
+    "loading": "Betöltés…",
+    "retry": "Újra"
 }

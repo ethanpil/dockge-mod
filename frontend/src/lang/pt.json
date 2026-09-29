@@ -287,5 +287,20 @@
     "inUseYes": "Em uso",
     "inUseNo": "Não usado",
     "pruneSkipped": "Itens que um novo plano manteve: {n}",
-    "inUseUnknown": "Desconhecido"
+    "inUseUnknown": "Desconhecido",
+    "agentName": "Nome",
+    "editAgentName": "Editar nome",
+    "updateAgentName": "Guardar nome",
+    "agentUpdatedSuccessfully": "Agente atualizado",
+    "close": "Fechar",
+    "collapse": "Recolher",
+    "noStackMatch": "Nenhuma pilha corresponde ao filtro.",
+    "bulkConfirmMsg": "{action} {n} pilhas selecionadas?",
+    "gitPullConfirmMsg": "Executar git pull no diretório da pilha e depois implementar a pilha?",
+    "discardConfirmMsg": "Descartar as alterações não guardadas?",
+    "aboutCompat": "Um substituto direto do {dockge}, baseado no commit {commit}.",
+    "hostLoad": "carga {load}",
+    "hostCpus": "{n} CPU",
+    "loading": "A carregar…",
+    "retry": "Tentar novamente"
 }
