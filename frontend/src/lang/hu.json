@@ -266,7 +266,6 @@
     "filterAll": "Összes",
     "bulkProgress": "{n} / {m}",
     "selectedStackCount": "{0} kijelölve",
-    "noStackSelected": "Nincs kijelölt stack",
     "backupReason_pull": "Git pull",
     "checkInProgress": "Ellenőrzés van folyamatban.",
     "checkProgress": "{n} / {m} ellenőrizve",

@@ -16,7 +16,7 @@
                     <span v-if="gitInfo" class="git-badge" :title="gitInfo.isDirty ? $t('gitDirtyMsg') : ''">
                         <font-awesome-icon icon="code-branch" class="me-1" />{{ gitInfo.branch }}<template v-if="gitInfo.isDirty"> &#9679;</template>
                     </span>
-                    <span v-if="!isEditMode && serviceCount > 0" class="panel-note d-none d-sm-inline">{{ serviceCount }} {{ $tc("container", serviceCount).toLowerCase() }}</span>
+                    <span v-if="!isEditMode && serviceCount > 0" class="panel-note d-none d-sm-inline">{{ serviceCount }} {{ $tc("container", serviceCount) }}</span>
                 </template>
 
                 <StackToolbar
@@ -40,11 +40,11 @@
                     @restart="restartStack"
                     @update="updateStack"
                     @check-updates="checkStackUpdates"
-                    @git-pull="gitPullStack"
+                    @git-pull="$refs.confirmGitPull.show()"
                     @stop="stopStack"
                     @backups="openBackups"
                     @down="downStack"
-                    @discard="discardStack"
+                    @discard="askDiscard"
                     @delete="$refs.confirmDeleteStack.show()"
                 />
             </div>
@@ -115,7 +115,6 @@
                                     v-for="(service, name) in jsonConfig.services"
                                     :key="name"
                                     :name="name"
-                                    :is-edit-mode="isEditMode"
                                     :default-open="serviceCount < 3"
                                 />
                             </div>
@@ -168,7 +167,7 @@
                                 <button v-if="overrideSupported" class="mini-btn" :disabled="mergedConfigLoading" :title="$t('mergedConfigNote')" @click="showMergedConfig">
                                     <font-awesome-icon icon="layer-group" class="me-1" />{{ $t("mergedConfig") }}
                                 </button>
-                                <button class="mini-btn" :title="expandedPanel === 'yaml' ? $t('cancel') : $t('expand')" @click="toggleExpand('yaml')">
+                                <button class="mini-btn" :title="expandedPanel === 'yaml' ? $t('collapse') : $t('expand')" @click="toggleExpand('yaml')">
                                     <font-awesome-icon :icon="expandedPanel === 'yaml' ? 'compress' : 'expand'" />
                                 </button>
                             </div>
@@ -203,7 +202,7 @@
                         <div v-if="hasOverride" class="panel split-b" :class="{ pop: expandedPanel === 'override', 'split-gone': splitLeft === 100 }">
                             <div class="panel-head">
                                 <span class="panel-title">{{ overrideFileName }}</span>
-                                <button class="mini-btn expand-btn" :title="expandedPanel === 'override' ? $t('cancel') : $t('expand')" @click="toggleExpand('override')">
+                                <button class="mini-btn expand-btn" :title="expandedPanel === 'override' ? $t('collapse') : $t('expand')" @click="toggleExpand('override')">
                                     <font-awesome-icon :icon="expandedPanel === 'override' ? 'compress' : 'expand'" />
                                 </button>
                             </div>
@@ -231,7 +230,7 @@
                         <div class="panel-head">
                             <span class="panel-title">{{ $t("logs") }}</span>
                             <span class="panel-note">{{ stack.name }}</span>
-                            <button class="mini-btn expand-btn" :title="expandedPanel === 'logs' ? $t('cancel') : $t('expand')" @click="toggleExpand('logs')">
+                            <button class="mini-btn expand-btn" :title="expandedPanel === 'logs' ? $t('collapse') : $t('expand')" @click="toggleExpand('logs')">
                                 <font-awesome-icon :icon="expandedPanel === 'logs' ? 'compress' : 'expand'" />
                             </button>
                         </div>
@@ -259,7 +258,7 @@
                         <div class="panel-head">
                             <span class="panel-title">{{ $t("mergedConfig") }}</span>
                             <span class="panel-note">{{ $t(mergedConfigNoteKey) }}</span>
-                            <button class="mini-btn expand-btn" :title="$t('cancel')" @click="toggleExpand('merged')">
+                            <button class="mini-btn expand-btn" :title="$t('close')" @click="toggleExpand('merged')">
                                 <font-awesome-icon icon="compress" />
                             </button>
                         </div>
@@ -286,7 +285,7 @@
                         <div class="panel-head">
                             <span class="panel-title">{{ $t("serviceLogs") }}</span>
                             <span class="panel-note">{{ serviceLogName }} &middot; {{ $t("serviceLogsNote") }}</span>
-                            <button class="mini-btn expand-btn" :title="$t('cancel')" @click="toggleExpand('serviceLogs')">
+                            <button class="mini-btn expand-btn" :title="$t('close')" @click="toggleExpand('serviceLogs')">
                                 <font-awesome-icon icon="compress" />
                             </button>
                         </div>
@@ -313,7 +312,7 @@
                             <button v-if="backupShown" class="mini-btn expand-btn" @click="backupShown = null">
                                 <font-awesome-icon icon="arrow-left" class="me-1" />{{ $t("backups") }}
                             </button>
-                            <button class="mini-btn" :class="{ 'expand-btn': !backupShown }" :title="$t('cancel')" @click="toggleExpand('backups')">
+                            <button class="mini-btn" :class="{ 'expand-btn': !backupShown }" :title="$t('close')" @click="toggleExpand('backups')">
                                 <font-awesome-icon icon="compress" />
                             </button>
                         </div>
@@ -436,6 +435,14 @@
                 {{ $t("stackNotManagedByDockgeMsg") }}
             </div>
 
+            <!-- Until the first answer of getStack, the stack has no flag -->
+            <div v-if="stack.isManagedByDockge === undefined" class="text-body-secondary">
+                <template v-if="processing">
+                    <font-awesome-icon icon="spinner" spin class="me-1" />{{ $t("loading") }}
+                </template>
+                <button v-else type="button" class="btn btn-sm btn-normal" @click="loadStack()">{{ $t("retry") }}</button>
+            </div>
+
             <!-- Delete Dialog -->
             <Confirm ref="confirmDeleteStack" btn-style="btn-danger" :yes-text="$t('deleteStack')" :no-text="$t('cancel')" @yes="deleteDialog">
                 {{ $t("deleteStackMsg") }}
@@ -444,6 +451,16 @@
             <!-- Restore Backup Dialog -->
             <Confirm ref="confirmRestoreBackup" btn-style="btn-danger" :yes-text="$t('restore')" :no-text="$t('cancel')" @yes="restoreBackup">
                 {{ $t("restoreBackupMsg") }}
+            </Confirm>
+
+            <!-- Pull & Redeploy Dialog -->
+            <Confirm ref="confirmGitPull" :yes-text="$t('gitPullRedeploy')" :no-text="$t('cancel')" @yes="gitPullStack">
+                {{ $t("gitPullConfirmMsg") }}
+            </Confirm>
+
+            <!-- Discard Dialog -->
+            <Confirm ref="confirmDiscard" btn-style="btn-danger" :yes-text="$t('discardStack')" :no-text="$t('cancel')" @yes="discardStack">
+                {{ $t("discardConfirmMsg") }}
             </Confirm>
 
             <!-- Delete Override Dialog -->
@@ -813,13 +830,7 @@ export default {
             return Object.keys(this.jsonConfig.services ?? {}).length;
         },
 
-        /**
-         * Milliseconds between two status polls. The seconds come from the
-         * settings, through the info event. A value outside the limits
-         * gives the default of 5 seconds. This is the same value as
-         * dockge uses.
-         * @return {number}
-         */
+        /** Milliseconds between two status polls, the same as Dockge */
         pollIntervalMs() {
             return POLL_INTERVAL_DEFAULT * 1000;
         },
@@ -852,10 +863,6 @@ export default {
                 return "";
             }
             return getCombinedTerminalName(this.endpoint, this.stack.name);
-        },
-
-        networks() {
-            return this.jsonConfig.networks;
         },
 
         endpoint() {
@@ -910,7 +917,8 @@ export default {
         /**
          * A login after a reconnect gives a new socket. The server removed
          * the old socket from the log process, thus the open service log
-         * joins again. The terminal component binds itself again.
+         * joins again. The terminal components join their output terminals
+         * again through terminalJoin.
          * @returns {void}
          */
         "$root.socketIO.loginCount"() {
@@ -1234,14 +1242,21 @@ export default {
             }
             this.leaveServiceLogs();
             this.serviceLogsBusy = true;
+            const endpoint = this.endpoint;
+            const name = this.stack.name;
 
-            this.$root.emitAgentWithTimeout(this.endpoint, "serviceLogs", [ this.stack.name, serviceName ], 30000, (res) => {
+            this.$root.emitAgentWithTimeout(endpoint, "serviceLogs", [ name, serviceName ], 30000, (res) => {
                 this.serviceLogsBusy = false;
-                if (this.pageGone) {
+                if (!res.ok) {
+                    if (!this.pageGone) {
+                        this.$root.toastRes(res);
+                    }
                     return;
                 }
-                if (!res.ok) {
-                    this.$root.toastRes(res);
+                // The user left, or opened edit mode or another overlay, while
+                // the request ran. Do not open the overlay over it.
+                if (this.pageGone || this.isEditMode || this.expandedPanel) {
+                    this.$root.emitAgent(endpoint, "leaveServiceLogs", name, serviceName, () => {});
                     return;
                 }
                 this.serviceLogName = serviceName;
@@ -1379,8 +1394,14 @@ export default {
          */
         loadStack(callback) {
             this.processing = true;
+            const endpoint = this.endpoint;
+            const name = this.stack.name;
 
             const onAnswer = (res) => {
+                if (this.pageGone) {
+                    this.leaveAfterGone(endpoint, name, res);
+                    return;
+                }
                 this.processing = false;
                 if (res.ok) {
                     this.stack = res.stack;
@@ -1395,11 +1416,23 @@ export default {
 
             // An agent that does not answer left the page empty for ever.
             // A late answer still fills the page.
-            this.$root.emitAgentWithTimeout(this.endpoint, "getStack", [ this.stack.name ], 30000, onAnswer, (res) => {
-                if (!this.pageGone) {
-                    onAnswer(res);
-                }
-            });
+            this.$root.emitAgentWithTimeout(endpoint, "getStack", [ name ], 30000, onAnswer, onAnswer);
+        },
+
+        /**
+         * The server joins this client to the log terminal of a stack when
+         * it answers getStack or a stack action. An answer that arrives
+         * after the page is gone leaves that terminal again, or its
+         * `docker compose logs -f` process runs until the tab closes.
+         * @param {string} endpoint the agent of the request
+         * @param {string} name the stack of the request
+         * @param {object} res the answer
+         * @returns {void}
+         */
+        leaveAfterGone(endpoint, name, res) {
+            if (res.ok && name) {
+                this.$root.emitAgent(endpoint, "leaveCombinedTerminal", name, () => {});
+            }
         },
 
         deployStack() {
@@ -1438,9 +1471,17 @@ export default {
             // usable while the reply travels
             const sent = this.currentEditState();
 
+            const endpoint = this.stack.endpoint;
+            const name = this.stack.name;
             const onAnswer = (res) => {
-                this.processing = false;
+                // The result of a long deploy is worth a toast on any page,
+                // but the page must not pull the user back to this stack
                 this.$root.toastRes(res);
+                if (this.pageGone) {
+                    this.leaveAfterGone(endpoint, name, res);
+                    return;
+                }
+                this.processing = false;
 
                 if (res.ok) {
                     this.applySavedState(sent);
@@ -1452,11 +1493,7 @@ export default {
             // A deploy with a long pull takes minutes. An agent that does
             // not answer must not close the toolbar for ever, and a late
             // answer still applies.
-            this.$root.emitAgentWithTimeout(this.stack.endpoint, "deployStack", this.stackSaveArgs(sent), 300000, onAnswer, (res) => {
-                if (!this.pageGone) {
-                    onAnswer(res);
-                }
-            });
+            this.$root.emitAgentWithTimeout(endpoint, "deployStack", this.stackSaveArgs(sent), 300000, onAnswer, onAnswer);
         },
 
         /**
@@ -1503,7 +1540,7 @@ export default {
          * @returns {Promise<void>}
          */
         async saveStackAndExit() {
-            if (await this.saveStack()) {
+            if (await this.saveStack() && !this.pageGone) {
                 this.isEditMode = false;
                 this.$router.push(this.url);
             }
@@ -1520,16 +1557,19 @@ export default {
          */
         runStackAction(event) {
             this.processing = true;
+            const endpoint = this.endpoint;
+            const name = this.stack.name;
 
             const onAnswer = (res) => {
                 if (this.pageGone) {
+                    this.leaveAfterGone(endpoint, name, res);
                     return;
                 }
                 this.processing = false;
                 this.$root.toastRes(res);
             };
 
-            this.$root.emitAgentWithTimeout(this.endpoint, event, [ this.stack.name ], 300000, onAnswer, onAnswer);
+            this.$root.emitAgentWithTimeout(endpoint, event, [ name ], 300000, onAnswer, onAnswer);
         },
 
         startStack() {
@@ -1641,18 +1681,29 @@ export default {
             // close while it runs, and they open again when no answer
             // comes.
             const onAnswer = (res) => {
-                this.processing = false;
                 this.$root.toastRes(res);
+                if (this.pageGone) {
+                    return;
+                }
+                this.processing = false;
                 if (res.ok) {
                     this.$router.push("/");
                 }
             };
 
-            this.$root.emitAgentWithTimeout(this.endpoint, "deleteStack", [ this.stack.name ], 300000, onAnswer, (res) => {
-                if (!this.pageGone) {
-                    onAnswer(res);
-                }
-            });
+            this.$root.emitAgentWithTimeout(this.endpoint, "deleteStack", [ this.stack.name ], 300000, onAnswer, onAnswer);
+        },
+
+        /**
+         * Discard asks first when there are unsaved changes to lose.
+         * @returns {void}
+         */
+        askDiscard() {
+            if (this.isDirty) {
+                this.$refs.confirmDiscard.show();
+            } else {
+                this.discardStack();
+            }
         },
 
         discardStack() {
@@ -1914,8 +1965,11 @@ export default {
             this.processing = true;
 
             // A late answer, after the time limit, gets the same treatment
+            const endpoint = this.endpoint;
+            const name = this.stack.name;
             const onAnswer = (res) => {
                 if (this.pageGone) {
+                    this.leaveAfterGone(endpoint, name, res);
                     return;
                 }
                 this.processing = false;
@@ -1926,7 +1980,7 @@ export default {
                 }
             };
 
-            this.$root.emitAgentWithTimeout(this.endpoint, event, [ this.stack.name, serviceName ], 300000, onAnswer, onAnswer);
+            this.$root.emitAgentWithTimeout(endpoint, event, [ name, serviceName ], 300000, onAnswer, onAnswer);
         },
 
         startService(serviceName) {

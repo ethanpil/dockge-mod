@@ -266,7 +266,6 @@
     "filterAll": "Toutes",
     "bulkProgress": "{n} / {m}",
     "selectedStackCount": "{0} sélectionnée(s)",
-    "noStackSelected": "Aucune pile sélectionnée",
     "backupReason_pull": "Git pull",
     "checkInProgress": "Une vérification est en cours.",
     "checkProgress": "{n} sur {m} vérifiées",

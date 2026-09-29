@@ -18,7 +18,6 @@
                         dark="true"
                         tab="true"
                         :hasFocus="editorFocus"
-                        @change="onChange"
                     />
                 </div>
                 <div v-else class="shadow-box mb-3">
@@ -97,10 +96,6 @@ export default {
         /** Save the settings */
         saveGeneral() {
             this.saveSettings();
-        },
-
-        onChange() {
-            // hook for future live validation if desired
         },
     },
 };

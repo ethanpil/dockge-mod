@@ -6,7 +6,7 @@
                 <div class="panel-head">
                     <span class="panel-title">{{ $t("home") }}</span>
                     <!-- Windows sends no load average, but it still has a CPU count -->
-                    <span v-if="hostStats.load || hostStats.cpus" class="panel-note mono"><template v-if="hostStats.load">load {{ hostStats.load }}</template><template v-if="hostStats.load && hostStats.cpus"> · </template><template v-if="hostStats.cpus">{{ hostStats.cpus }} cpu</template></span>
+                    <span v-if="hostStats.load || hostStats.cpus" class="panel-note mono"><template v-if="hostStats.load">{{ $t("hostLoad", { load: hostStats.load }) }}</template><template v-if="hostStats.load && hostStats.cpus"> · </template><template v-if="hostStats.cpus">{{ $t("hostCpus", { n: hostStats.cpus }) }}</template></span>
                 </div>
                 <div class="tiles">
                     <div class="tile">

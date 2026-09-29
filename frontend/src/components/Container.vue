@@ -126,10 +126,6 @@ export default defineComponent({
             type: String,
             required: true,
         },
-        isEditMode: {
-            type: Boolean,
-            default: false,
-        },
         /** Open the config on mount (used when the stack has few services) */
         defaultOpen: {
             type: Boolean,

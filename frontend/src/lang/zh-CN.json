@@ -266,7 +266,6 @@
     "filterAll": "全部",
     "bulkProgress": "{n} / {m}",
     "selectedStackCount": "已选择 {0} 个",
-    "noStackSelected": "未选择堆栈",
     "backupReason_pull": "Git pull",
     "checkInProgress": "检查正在进行中。",
     "checkProgress": "已检查 {n} / {m}",

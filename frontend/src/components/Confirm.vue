@@ -1,9 +1,9 @@
 <template>
-    <div ref="modal" class="modal fade" tabindex="-1" :data-bs-backdrop="noCloseOnBackdrop ? 'static' : true">
+    <div ref="modal" class="modal fade" tabindex="-1" role="dialog" aria-modal="true" :aria-label="title || $t('Confirm')" :data-bs-backdrop="noCloseOnBackdrop ? 'static' : true">
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 id="exampleModalLabel" class="modal-title">
+                    <h5 class="modal-title">
                         {{ title || $t("Confirm") }}
                     </h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" />

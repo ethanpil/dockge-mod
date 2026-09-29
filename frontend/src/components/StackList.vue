@@ -48,21 +48,22 @@
                     <button class="btn btn-sm btn-primary" type="button" :disabled="bulkDisabled" @click="runBulk('startStack')">
                         <font-awesome-icon icon="play" class="me-1" />{{ $t("startStack") }}
                     </button>
-                    <button class="btn btn-sm btn-normal" type="button" :disabled="bulkDisabled" @click="runBulk('stopStack')">
+                    <button class="btn btn-sm btn-normal" type="button" :disabled="bulkDisabled" @click="askBulk('stopStack')">
                         <font-awesome-icon icon="stop" class="me-1" />{{ $t("stopStack") }}
                     </button>
-                    <button class="btn btn-sm btn-normal" type="button" :disabled="bulkDisabled" @click="runBulk('restartStack')">
+                    <button class="btn btn-sm btn-normal" type="button" :disabled="bulkDisabled" @click="askBulk('restartStack')">
                         <font-awesome-icon icon="rotate" class="me-1" />{{ $t("restartStack") }}
                     </button>
-                    <button class="btn btn-sm btn-normal" type="button" :disabled="bulkDisabled" @click="runBulk('updateStack')">
+                    <button class="btn btn-sm btn-normal" type="button" :disabled="bulkDisabled" @click="askBulk('updateStack')">
                         <font-awesome-icon icon="cloud-arrow-down" class="me-1" />{{ $t("updateStack") }}
                     </button>
                 </div>
             </div>
         </div>
         <div ref="stackList" class="stack-list" :class="{ scrollbar: scrollbar }" :style="stackListStyle">
-            <div v-if="agentStackList[0] && agentStackList[0].stacks.length === 0" class="text-center mt-3">
-                <router-link to="/compose">{{ $t("addFirstStackMsg") }}</router-link>
+            <div v-if="agentStackList.length === 0" class="text-center mt-3">
+                <span v-if="filtersActive" class="text-body-secondary">{{ $t("noStackMatch") }}</span>
+                <router-link v-else to="/compose">{{ $t("addFirstStackMsg") }}</router-link>
             </div>
             <div v-for="(agent, agentIndex) in agentStackList" :key="agentIndex" class="stack-list-inner">
                 <div
@@ -83,17 +84,23 @@
                 />
             </div>
         </div>
+
+        <Confirm ref="confirmBulk" btn-style="btn-danger" :yes-text="pendingBulkLabel" :no-text="$t('cancel')" @yes="runBulk(pendingBulk)">
+            {{ $t("bulkConfirmMsg", { action: pendingBulkLabel, n: selectedStackCount }) }}
+        </Confirm>
     </div>
 </template>
 
 <script>
 import StackListItem from "../components/StackListItem.vue";
+import Confirm from "../components/Confirm.vue";
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
 import { CREATED_FILE, CREATED_STACK, EXITED, RUNNING, UNKNOWN, statusNameShort } from "../../../common/util-common";
 
 export default {
     components: {
         StackListItem,
+        Confirm,
         FontAwesomeIcon,
     },
     props: {
@@ -112,11 +119,11 @@ export default {
             bulkRunning: false,
             bulkDone: 0,
             bulkTotal: 0,
+            // The bulk action that waits for the confirm dialog
+            pendingBulk: null,
             windowTop: 0,
             filterState: {
                 status: null,
-                active: null,
-                tags: null,
             },
             closedAgents: new Map(),
         };
@@ -167,21 +174,7 @@ export default {
                     statusMatch = statusNameShort(stack.status) === this.filterState.status;
                 }
 
-                // filter by active
-                let activeMatch = true;
-                if (this.filterState.active != null && this.filterState.active.length > 0) {
-                    activeMatch = this.filterState.active.includes(stack.active);
-                }
-
-                // filter by tags
-                let tagsMatch = true;
-                if (this.filterState.tags != null && this.filterState.tags.length > 0) {
-                    tagsMatch = stack.tags.map(tag => tag.tag_id) // convert to array of tag IDs
-                        .filter(stackTagId => this.filterState.tags.includes(stackTagId)) // perform Array Intersaction between filter and stack's tags
-                        .length > 0;
-                }
-
-                return searchTextMatch && statusMatch && activeMatch && tagsMatch;
+                return searchTextMatch && statusMatch;
             });
 
             result.sort((m1, m2) => {
@@ -275,8 +268,12 @@ export default {
          * @returns {boolean} True if any filter is active, false otherwise.
          */
         filtersActive() {
-            return this.filterState.status != null || this.filterState.active != null || this.filterState.tags != null || this.searchText !== "";
-        }
+            return this.filterState.status != null || this.searchText !== "";
+        },
+
+        pendingBulkLabel() {
+            return this.pendingBulk ? this.$t(this.pendingBulk) : "";
+        },
     },
     watch: {
         selectMode() {
@@ -369,6 +366,16 @@ export default {
          * @param {string} event startStack, stopStack, restartStack or updateStack
          * @returns {Promise<void>}
          */
+        /**
+         * Ask before a bulk action that stops or recreates containers.
+         * @param {string} event the socket event of the action
+         * @returns {void}
+         */
+        askBulk(event) {
+            this.pendingBulk = event;
+            this.$refs.confirmBulk.show();
+        },
+
         async runBulk(event) {
             const keys = Object.keys(this.selectedStacks);
             if (this.bulkRunning || keys.length === 0) {

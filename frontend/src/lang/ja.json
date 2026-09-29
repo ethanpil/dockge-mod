@@ -266,7 +266,6 @@
     "filterAll": "すべて",
     "bulkProgress": "{n} / {m}",
     "selectedStackCount": "{0} 件選択中",
-    "noStackSelected": "スタックが選択されていません",
     "backupReason_pull": "Git pull",
     "checkInProgress": "確認を実行中です。",
     "checkProgress": "{m} 件中 {n} 件を確認",

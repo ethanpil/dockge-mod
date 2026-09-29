@@ -266,7 +266,6 @@
     "filterAll": "Усе",
     "bulkProgress": "{n} / {m}",
     "selectedStackCount": "Выбрана: {0}",
-    "noStackSelected": "Стэк не выбраны",
     "backupReason_pull": "Git pull",
     "checkInProgress": "Праверка выконваецца.",
     "checkProgress": "Праверана {n} з {m}",

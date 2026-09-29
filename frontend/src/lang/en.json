@@ -264,7 +264,6 @@
     "filterAll": "All",
     "bulkProgress": "{n} / {m}",
     "selectedStackCount": "{0} selected",
-    "noStackSelected": "No stack selected",
     "checkProgress": "Checked {n} of {m}",
     "nextCheck": "Next check at {t}",
     "checkUpdatesForStack": "Check the images of this stack",
@@ -288,5 +287,16 @@
     "agentName": "Name",
     "editAgentName": "Edit name",
     "updateAgentName": "Save name",
-    "agentUpdatedSuccessfully": "Agent updated"
+    "agentUpdatedSuccessfully": "Agent updated",
+    "close": "Close",
+    "collapse": "Collapse",
+    "noStackMatch": "No stacks match the filter.",
+    "bulkConfirmMsg": "{action} {n} selected stacks?",
+    "gitPullConfirmMsg": "Run git pull in the stack directory, then deploy the stack?",
+    "discardConfirmMsg": "Discard your unsaved changes?",
+    "aboutCompat": "A drop-in replacement for {dockge}, based on commit {commit}.",
+    "hostLoad": "load {load}",
+    "hostCpus": "{n} CPU",
+    "loading": "Loading…",
+    "retry": "Retry"
 }

@@ -178,7 +178,6 @@
     "filterAll": "Alle",
     "bulkProgress": "{n} / {m}",
     "selectedStackCount": "{0} valgt",
-    "noStackSelected": "Ingen stack valgt",
     "restartPolicyUnlessStopped": "Med mindre stoppet",
     "restartPolicyAlways": "Alltid",
     "restartPolicyOnFailure": "Ved feil",

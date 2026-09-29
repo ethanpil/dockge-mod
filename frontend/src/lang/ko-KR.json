@@ -260,7 +260,6 @@
     "filterAll": "전체",
     "bulkProgress": "{n} / {m}",
     "selectedStackCount": "{0}개 선택됨",
-    "noStackSelected": "선택된 스택이 없습니다",
     "Saved": "저장됨",
     "Deleted": "삭제됨",
     "Updated": "업데이트됨",

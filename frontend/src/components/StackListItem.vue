@@ -36,11 +36,6 @@ export default {
             type: Boolean,
             default: false,
         },
-        /** How many ancestors are above this stack */
-        depth: {
-            type: Number,
-            default: 0,
-        },
         /** Callback to determine if stack is selected */
         isSelected: {
             type: Function,
@@ -63,20 +58,12 @@ export default {
         };
     },
     computed: {
-        endpointDisplay() {
-            return this.$root.endpointDisplayFunction(this.stack.endpoint);
-        },
         url() {
             if (this.stack.endpoint) {
                 return `/compose/${this.stack.name}/${this.stack.endpoint}`;
             } else {
                 return `/compose/${this.stack.name}`;
             }
-        },
-        depthMargin() {
-            return {
-                marginLeft: `${31 * this.depth}px`,
-            };
         },
         stackName() {
             return this.stack.name;

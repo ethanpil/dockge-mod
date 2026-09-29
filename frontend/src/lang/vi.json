@@ -266,7 +266,6 @@
     "filterAll": "Tất cả",
     "bulkProgress": "{n} / {m}",
     "selectedStackCount": "Đã chọn {0}",
-    "noStackSelected": "Chưa chọn stack nào",
     "backupReason_pull": "Git pull",
     "checkInProgress": "Một lượt kiểm tra đang chạy.",
     "checkProgress": "Đã kiểm tra {n} / {m}",

@@ -9,11 +9,14 @@
             <div class="mt-3">
                 <a href="https://github.com/ethanpil/dockge-mod" target="_blank" rel="noopener">github.com/ethanpil/dockge-mod</a>
             </div>
-            <div class="compat-note mt-1">
-                Drop in replacement for the <a href="https://github.com/louislam/dockge" target="_blank" rel="noopener">dockge</a> project.
-                Fully backported and compatible up to dockge commit
-                <a href="https://github.com/louislam/dockge/commit/f809ae192b571944ad773e9866d3e67064ae8043" target="_blank" rel="noopener" class="mono">f809ae1</a>
-            </div>
+            <i18n-t keypath="aboutCompat" tag="div" class="compat-note mt-1">
+                <template #dockge>
+                    <a href="https://github.com/louislam/dockge" target="_blank" rel="noopener">Dockge</a>
+                </template>
+                <template #commit>
+                    <a href="https://github.com/louislam/dockge/commit/f809ae192b571944ad773e9866d3e67064ae8043" target="_blank" rel="noopener" class="mono">f809ae1</a>
+                </template>
+            </i18n-t>
 
         </div>
     </div>

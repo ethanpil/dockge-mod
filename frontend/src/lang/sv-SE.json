@@ -266,7 +266,6 @@
     "filterAll": "Alla",
     "bulkProgress": "{n} / {m}",
     "selectedStackCount": "{0} valda",
-    "noStackSelected": "Ingen stack vald",
     "backupReason_pull": "Git pull",
     "checkInProgress": "En kontroll pågår.",
     "checkProgress": "Kontrollerade {n} av {m}",

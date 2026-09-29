@@ -266,7 +266,6 @@
     "filterAll": "Vse",
     "bulkProgress": "{n} / {m}",
     "selectedStackCount": "Izbrano: {0}",
-    "noStackSelected": "Noben Stack ni izbran",
     "backupReason_pull": "Git pull",
     "checkInProgress": "Preverjanje je v teku.",
     "checkProgress": "Preverjeno {n} od {m}",

@@ -38,7 +38,7 @@
                         </thead>
                         <tbody>
                             <tr v-if="resources.images.length === 0">
-                                <td colspan="6" class="note">{{ $t("noResources") }}</td>
+                                <td colspan="6" class="note">{{ busy.images ? $t("loading") : $t("noResources") }}</td>
                             </tr>
                             <tr v-for="img in resources.images" :key="img.ID + img.Repository + img.Tag">
                                 <td>{{ img.Repository }}:{{ img.Tag }}</td>
@@ -85,7 +85,7 @@
                         </thead>
                         <tbody>
                             <tr v-if="resources.volumes.length === 0">
-                                <td colspan="4" class="note">{{ $t("noResources") }}</td>
+                                <td colspan="4" class="note">{{ busy.volumes ? $t("loading") : $t("noResources") }}</td>
                             </tr>
                             <tr v-for="vol in resources.volumes" :key="vol.Name">
                                 <td>{{ vol.Name }}</td>
@@ -133,7 +133,7 @@
                         </thead>
                         <tbody>
                             <tr v-if="resources.networks.length === 0">
-                                <td colspan="5" class="note">{{ $t("noResources") }}</td>
+                                <td colspan="5" class="note">{{ busy.networks ? $t("loading") : $t("noResources") }}</td>
                             </tr>
                             <tr v-for="net in resources.networks" :key="net.ID">
                                 <td>{{ net.Name }}</td>
@@ -183,7 +183,7 @@
                         </thead>
                         <tbody>
                             <tr v-if="imageUpdates.length === 0">
-                                <td colspan="4" class="note">{{ $t("noResources") }}</td>
+                                <td colspan="4" class="note">{{ busy.updates ? $t("loading") : $t("noResources") }}</td>
                             </tr>
                             <tr v-for="row in imageUpdates" :key="row.image">
                                 <td>{{ row.image }}</td>

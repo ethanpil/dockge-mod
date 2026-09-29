@@ -86,12 +86,12 @@
 
             <!-- The down menu is a view mode action, the same as the
                  other stack actions -->
-            <button v-if="!isEditMode" type="button" class="btn btn-normal dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" aria-expanded="false">
+            <button v-if="!isEditMode" type="button" class="btn btn-normal dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" aria-expanded="false" :disabled="processing">
                 <span class="visually-hidden">{{ $t("downStack") }}</span>
             </button>
             <ul v-if="!isEditMode" class="dropdown-menu dropdown-menu-end">
                 <li>
-                    <button type="button" class="dropdown-item" @click="$emit('down')">
+                    <button type="button" class="dropdown-item" :disabled="processing" @click="$emit('down')">
                         <font-awesome-icon icon="stop" class="me-1" />
                         {{ $t("downStack") }}
                     </button>
