@@ -81,13 +81,18 @@ export class DockgeServer {
      */
     needSetup = false;
 
-    /** Cached host statistics shared by every client (see getHostStats) */
     /**
      * The host statistics, for all clients. `docker system df` reads the
      * full image store and the full volume store, thus it must not run
      * one time for each open tab.
      */
     private hostStatsCache = new CachedCall(() => this.collectHostStats(), 60 * 1000);
+
+    /** The last good `docker system df` rows. A slow host keeps its tile. */
+    private lastDiskUsage? : object[];
+
+    /** After a failed `docker system df`, the next try waits until this time */
+    private diskUsageRetryAt = 0;
 
     /**
      * The output of `docker stats`, for all clients. The command blocks
@@ -677,6 +682,16 @@ export class DockgeServer {
      * @param useCache
      */
     async sendStackList(useCache = false) {
+        try {
+            await this.sendStackListOrThrow(useCache);
+        } catch (e) {
+            // Many callers do not wait for this. A daemon that is down must
+            // not give an unhandled rejection for each action.
+            log.warn("server", "Cannot send the stack list: " + errorMessage(e));
+        }
+    }
+
+    private async sendStackListOrThrow(useCache : boolean) {
         let socketList = this.io.sockets.sockets.values();
 
         let stackList;
@@ -741,6 +756,15 @@ export class DockgeServer {
         for (const [ name, time ] of this.stoppedContainers) {
             if (now - time > 60 * 1000) {
                 this.stoppedContainers.delete(name);
+            }
+        }
+
+        // docker stop gives kill, die, stop. An image with its own stop
+        // signal (nginx: SIGQUIT, postgres: SIGINT) can exit non-zero on
+        // that signal, so a stop in the same batch marks the die as a stop.
+        for (const change of changes) {
+            if (change.action === "stop") {
+                this.stoppedContainers.set(change.name, now);
             }
         }
 
@@ -844,23 +868,35 @@ export class DockgeServer {
         }
         stats.cpus = os.cpus().length;
 
-        try {
-            const res = await childProcessAsync.spawn("docker", [ "system", "df", "--format", "{{json .}}" ], DOCKER_SPAWN_OPTIONS);
-            if (res.stdout) {
-                const rows = [];
-                for (const line of res.stdout.toString().split("\n")) {
-                    try {
-                        rows.push(JSON.parse(line));
-                    } catch (e) {
-                        // Skip non-JSON lines
+        // docker system df walks every volume. On a large host it can take
+        // minutes, so it gets a longer limit, and a failure waits 10 minutes
+        // before the next try instead of running every minute.
+        if (Date.now() >= this.diskUsageRetryAt) {
+            try {
+                const res = await childProcessAsync.spawn("docker", [ "system", "df", "--format", "{{json .}}" ], {
+                    ...DOCKER_SPAWN_OPTIONS,
+                    timeout: 120 * 1000,
+                });
+                if (res.stdout) {
+                    const rows = [];
+                    for (const line of res.stdout.toString().split("\n")) {
+                        try {
+                            rows.push(JSON.parse(line));
+                        } catch (e) {
+                            // Skip non-JSON lines
+                        }
                     }
+                    this.lastDiskUsage = rows;
                 }
-                stats.df = rows;
+            } catch (e) {
+                // Expected whenever the docker CLI or daemon is unavailable; the
+                // frontend hides the tiles, so this must not spam the error log
+                log.debug("hostStats", "docker system df failed: " + errorMessage(e));
+                this.diskUsageRetryAt = Date.now() + 10 * 60 * 1000;
             }
-        } catch (e) {
-            // Expected whenever the docker CLI or daemon is unavailable; the
-            // frontend hides the tiles, so this must not spam the error log
-            log.debug("hostStats", "docker system df failed: " + errorMessage(e));
+        }
+        if (this.lastDiskUsage) {
+            stats.df = this.lastDiskUsage;
         }
 
         return stats;

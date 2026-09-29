@@ -7,6 +7,8 @@ import { log } from "../log";
 import { ImageUpdateChecker } from "../image-update";
 import { StackBackup } from "../stack-backup";
 import { DockerResources, PRUNE_KINDS, ProtectedResources, refRepository, RESOURCE_KINDS } from "../docker-resources";
+import { Terminal } from "../terminal";
+import { getComposeTerminalName } from "../../common/util-common";
 
 /**
  * Put the arguments of a save event in sequence. A client without override
@@ -130,6 +132,11 @@ export class DockerSocketHandler extends AgentSocketHandler {
             const { composeOverrideYAML, callback } = acceptSaveArgs(overrideArg, callbackArg);
             try {
                 checkLogin(socket);
+                // Check before the save: a deploy that cannot run must not
+                // change the files under an operation that runs
+                if (typeof name === "string" && Terminal.getTerminal(getComposeTerminalName(socket.endpoint, name))) {
+                    throw new ValidationError("Another operation is already running, please try again later.");
+                }
                 const stack = await this.saveStack(server, name, composeYAML, composeENV, isAdd, composeOverrideYAML);
                 await stack.deploy(socket);
                 server.sendStackList();

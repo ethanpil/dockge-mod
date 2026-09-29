@@ -155,6 +155,31 @@ export class ImageUpdateChecker {
         return this.running;
     }
 
+    /**
+     * After a pull, clear the update flag of each image whose local digest
+     * now matches the registry digest of the last check. This makes no
+     * registry request.
+     * @param images The images of the stack that was pulled
+     */
+    static async afterPull(images : string[]) : Promise<void> {
+        const pending = images.filter((image) => ImageUpdateChecker.available.has(image));
+        if (pending.length === 0) {
+            return;
+        }
+        const local = await ImageUpdateChecker.readLocalDigests(pending);
+        const rows = await R.knex("mod_image_update").whereIn("image", pending).select("image", "remote_digest");
+        for (const row of rows as { image : string, remote_digest : string | null }[]) {
+            const repoDigests = local.get(ImageUpdateChecker.key(row.image));
+            if (row.remote_digest && repoDigests && repoDigests.length > 0 && digestsMatch(repoDigests, row.remote_digest)) {
+                await R.knex("mod_image_update").where({ image: row.image }).update({
+                    update_available: false,
+                    local_digest: digestOf(repoDigests[0]),
+                });
+                ImageUpdateChecker.available.delete(row.image);
+            }
+        }
+    }
+
     async loadAvailable() {
         const rows = await R.knex("mod_image_update").where({ update_available: true }).select("image");
         ImageUpdateChecker.available = new Set(rows.map((row : { image : string }) => row.image));

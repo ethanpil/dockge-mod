@@ -2,7 +2,7 @@ import { DockgeServer } from "./dockge-server";
 import * as os from "node:os";
 import * as pty from "@homebridge/node-pty-prebuilt-multiarch";
 import { LimitQueue } from "./utils/limit-queue";
-import { DockgeSocket } from "./util-server";
+import { DockgeSocket, errorMessage } from "./util-server";
 import {
     PROGRESS_TERMINAL_ROWS,
     TERMINAL_COLS,
@@ -369,11 +369,20 @@ export class Terminal {
             const limit = setTimeout(() => {
                 if (Terminal.terminalMap.get(terminalName) === terminal) {
                     log.warn("Terminal", "The operation " + terminalName + " did not end in time, stop it");
-                    terminal.ptyProcess?.kill();
-                    // A process that ignores the first signal gets SIGKILL
+                    try {
+                        terminal.ptyProcess?.kill();
+                    } catch (e) {
+                        log.warn("Terminal", "Cannot stop " + terminalName + ": " + errorMessage(e));
+                    }
+                    // A process that ignores the first signal gets SIGKILL.
+                    // node-pty on Windows throws for a signal name.
                     setTimeout(() => {
                         if (Terminal.terminalMap.get(terminalName) === terminal) {
-                            terminal.ptyProcess?.kill("SIGKILL");
+                            try {
+                                terminal.ptyProcess?.kill("SIGKILL");
+                            } catch (e) {
+                                log.warn("Terminal", "Cannot kill " + terminalName + ": " + errorMessage(e));
+                            }
                         }
                     }, 10000);
                 }
@@ -411,13 +420,6 @@ export class Terminal {
  */
 export class InteractiveTerminal extends Terminal {
     /**
-     * The user that made the terminal. Only this user can read the
-     * buffer and write input. A terminal without a user is open to each
-     * user with a login, the same as before.
-     */
-    public userID? : number;
-
-    /**
      * The time between the disconnect of the last client and the close
      * of the shell. A short disconnect of the network keeps the shell.
      */
@@ -427,16 +429,6 @@ export class InteractiveTerminal extends Terminal {
     protected closeDelay = InteractiveTerminal.CLOSE_DELAY;
 
     protected closeTimer? : NodeJS.Timeout;
-
-    /**
-     * Refuse a client of a different user.
-     * @param socket The client
-     */
-    public checkUser(socket : DockgeSocket) {
-        if (this.userID !== undefined && this.userID !== socket.userID) {
-            throw new Error("This terminal belongs to a different user.");
-        }
-    }
 
     public write(input : string) {
         this.ptyProcess?.write(input);
@@ -511,7 +503,7 @@ export class InteractiveTerminal extends Terminal {
  * User interactive terminal that use bash or powershell with limited commands such as docker, ls, cd, dir
  */
 export class MainTerminal extends InteractiveTerminal {
-    constructor(server : DockgeServer, name : string, userID? : number) {
+    constructor(server : DockgeServer, name : string) {
         let shell;
 
         // Throw an error if console is not enabled
@@ -529,7 +521,6 @@ export class MainTerminal extends InteractiveTerminal {
             shell = "bash";
         }
         super(server, name, shell, [], server.stacksDir);
-        this.userID = userID;
         // A reload of the page or a short loss of the network must not
         // end a command that runs in the host shell
         this.closeDelay = 60 * 1000;

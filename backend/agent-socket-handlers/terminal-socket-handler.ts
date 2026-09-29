@@ -23,7 +23,6 @@ export class TerminalSocketHandler extends AgentSocketHandler {
 
                 let terminal = Terminal.getTerminal(terminalName);
                 if (terminal instanceof InteractiveTerminal) {
-                    terminal.checkUser(socket);
                     terminal.write(cmd);
                 } else {
                     throw new Error("Terminal not found or it is not a Interactive Terminal.");
@@ -55,7 +54,7 @@ export class TerminalSocketHandler extends AgentSocketHandler {
                 let terminal = Terminal.getTerminal(terminalName);
 
                 if (!terminal) {
-                    terminal = new MainTerminal(server, terminalName, socket.userID);
+                    terminal = new MainTerminal(server, terminalName);
                     terminal.rows = 50;
                     log.debug("mainTerminal", "Terminal created");
                 }
@@ -63,9 +62,6 @@ export class TerminalSocketHandler extends AgentSocketHandler {
                 if (!(terminal instanceof MainTerminal)) {
                     throw new ValidationError("The terminal name is in use.");
                 }
-
-                // The shell of a different user stays closed to this one
-                terminal.checkUser(socket);
 
                 terminal.join(socket);
                 terminal.start();
@@ -112,7 +108,7 @@ export class TerminalSocketHandler extends AgentSocketHandler {
 
                 // Get stack
                 const stack = await Stack.getStack(server, stackName);
-                stack.joinContainerTerminal(socket, serviceName, shell);
+                await stack.joinContainerTerminal(socket, serviceName, shell);
 
                 callbackResult({
                     ok: true,
@@ -135,9 +131,11 @@ export class TerminalSocketHandler extends AgentSocketHandler {
                     throw new ValidationError("Terminal name must be a string.");
                 }
 
+                // Join an output terminal, so a client that reconnects gets
+                // the new output too. A shell is joined by its own event.
                 const terminal = Terminal.getTerminal(terminalName);
-                if (terminal instanceof InteractiveTerminal) {
-                    terminal.checkUser(socket);
+                if (terminal && !(terminal instanceof InteractiveTerminal)) {
+                    terminal.join(socket);
                 }
                 let buffer : string = terminal?.getBuffer() ?? "";
 

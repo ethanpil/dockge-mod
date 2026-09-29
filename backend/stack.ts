@@ -753,7 +753,14 @@ export class Stack {
 
         // Use cached stack list?
         if (useCacheForManaged && this.managedStackList.size > 0) {
-            stackList = this.managedStackList;
+            // A copy, so the projects that compose ls adds below do not stay
+            // in the cache. Reset the status: a stack that is no longer in
+            // compose ls (for example after a down outside dockge-mod) must
+            // not keep its old status.
+            stackList = new Map(this.managedStackList);
+            for (const stack of stackList.values()) {
+                stack._status = CREATED_FILE;
+            }
         } else {
             stackList = new Map<string, Stack>();
 
@@ -994,6 +1001,11 @@ export class Stack {
             throw new Error("Failed to pull, please check the terminal output for more information.");
         }
 
+        // Clear the update badge of the images that the pull brought up to date
+        await ImageUpdateChecker.afterPull(this.images).catch((e) => {
+            log.warn("update", "Cannot refresh the update state of " + this.name + ": " + errorMessage(e));
+        });
+
         // If the stack is not running, we don't need to restart it
         await this.updateStatus();
         log.debug("update", "Status: " + this.status);
@@ -1074,7 +1086,6 @@ export class Stack {
         if (!terminal) {
             const newTerminal = new InteractiveTerminal(this.server, terminalName, "docker", this.getComposeOptions("exec", serviceName, shell), this.path);
             newTerminal.rows = TERMINAL_ROWS;
-            newTerminal.userID = socket.userID;
             terminal = newTerminal;
             log.debug("joinContainerTerminal", "Terminal created");
         }
@@ -1082,9 +1093,6 @@ export class Stack {
         if (!(terminal instanceof InteractiveTerminal)) {
             throw new ValidationError("The terminal name is in use.");
         }
-
-        // The shell of a different user stays closed to this one
-        terminal.checkUser(socket);
 
         terminal.join(socket);
         terminal.start();
