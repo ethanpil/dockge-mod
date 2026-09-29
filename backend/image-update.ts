@@ -375,7 +375,7 @@ export class ImageUpdateChecker {
             // A registry that had a problem in the last run gets a new try
             this.registry.reset();
 
-            const images = await this.collectImages();
+            const { images, complete } = await this.collectImages();
 
             // An image that fails each time waits longer for its next
             // check. A check that the user starts examines each image.
@@ -405,7 +405,7 @@ export class ImageUpdateChecker {
             // Remove the rows of images that no stack uses now. A list
             // without images comes from a stacks directory that is not
             // ready, thus the rows and their counts stay.
-            if (images.size > 0) {
+            if (images.size > 0 && complete) {
                 await R.knex("mod_image_update").whereNotIn("image", [ ...images ]).del();
             }
             ImageUpdateChecker.available = next;
@@ -422,14 +422,20 @@ export class ImageUpdateChecker {
      * name gets the value from the .env file of the stack.
      * @returns The unique image names
      */
-    async collectImages() : Promise<Set<string>> {
+    async collectImages() : Promise<{ images : Set<string>, complete : boolean }> {
         const images = new Set<string>();
+        let complete = true;
         // Not the cached list: its stacks keep the compose content they read
         // first, so an edit outside dockge-mod would never be checked
         const stackList = await Stack.getStackList(this.server);
         for (const stack of stackList.values()) {
             if (!stack.isManagedByDockge) {
                 continue;
+            }
+            // A compose file that cannot be read now (for example half
+            // written) gives no images, which must not delete its rows
+            if (!stack.composeInfo.ok) {
+                complete = false;
             }
             for (const image of stack.images) {
                 try {
@@ -445,7 +451,10 @@ export class ImageUpdateChecker {
                 images.add(image);
             }
         }
-        return images;
+        return {
+            images,
+            complete,
+        };
     }
 
     /**

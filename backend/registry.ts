@@ -213,7 +213,8 @@ export function credentialKeys(registry : string) : string[] {
  * @returns True when the request can hold the credentials
  */
 export function realmAcceptsCredential(registry : string, realmHost : string) : boolean {
-    if (registry === realmHost) {
+    // The URL parser lowercases the host and drops the default port
+    if (registry.toLowerCase().replace(/:443$/, "") === realmHost.toLowerCase()) {
         return true;
     }
     return DOCKER_HUB_HOSTS.has(registry) && DOCKER_HUB_HOSTS.has(realmHost);

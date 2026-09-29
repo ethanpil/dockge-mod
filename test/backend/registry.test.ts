@@ -7,6 +7,7 @@ import {
     findCredential,
     parseAuthChallenge,
     parseImageRef,
+    realmAcceptsCredential,
 } from "../../backend/registry";
 
 /**
@@ -194,5 +195,18 @@ describe("findCredential", () => {
     it("gives none for a registry without an entry", () => {
         expect(findCredential({}, "ghcr.io")).toEqual({ kind: "none" });
         expect(findCredential({ credsStore: "pass" }, "ghcr.io")).toEqual({ kind: "none" });
+    });
+});
+
+describe("realmAcceptsCredential", () => {
+    it.each([
+        [ "ghcr.io", "ghcr.io", true ],
+        [ "harbor.example.com:443", "harbor.example.com", true ],
+        [ "Harbor.Example.com", "harbor.example.com", true ],
+        [ "docker.io", "auth.docker.io", true ],
+        [ "registry-1.docker.io", "auth.docker.io", true ],
+        [ "evil.example.com", "harbor.example.com", false ],
+    ])("%s with a realm at %s gives %s", (registry, realm, expected) => {
+        expect(realmAcceptsCredential(registry, realm)).toBe(expected);
     });
 });

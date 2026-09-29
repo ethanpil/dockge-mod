@@ -680,6 +680,11 @@ export default {
         };
     },
     computed: {
+        /** The link status of the agent of this stack */
+        agentLinkStatus() {
+            return this.$root.agentStatusList[this.endpoint];
+        },
+
         endpointDisplay() {
             return this.$root.endpointDisplayFunction(this.endpoint);
         },
@@ -930,20 +935,19 @@ export default {
             if (!this.isAdd && !this.stopDockerStatsTimeout) {
                 this.requestDockerStats();
             }
+            this.rejoinLogs();
+        },
 
-            // The server joins the log terminal in getStack, and it may have
-            // closed the terminal while this client was away. Only the join
-            // matters here; the stack itself stays as the user left it.
-            if (!this.isAdd && this.stack.name) {
-                this.$root.emitAgent(this.endpoint, "getStack", this.stack.name, () => {});
-            }
-
-            if (this.expandedPanel === "serviceLogs" && this.serviceLogName) {
-                this.$root.emitAgent(this.endpoint, "serviceLogs", this.stack.name, this.serviceLogName, (res) => {
-                    if (!res.ok) {
-                        this.$root.toastRes(res);
-                    }
-                });
+        /**
+         * The link to the agent of this stack came back. The agent dropped
+         * this client from its log terminals.
+         * @param {string} status the new status of the agent
+         * @param {string} old the status before
+         * @returns {void}
+         */
+        agentLinkStatus(status, old) {
+            if (this.endpoint && status === "online" && old && old !== "online") {
+                this.rejoinLogs();
             }
         },
 
@@ -1428,6 +1432,26 @@ export default {
             // An agent that does not answer left the page empty for ever.
             // A late answer still fills the page.
             this.$root.emitAgentWithTimeout(endpoint, "getStack", [ name ], 30000, onAnswer, onAnswer);
+        },
+
+        /**
+         * Join the log terminals again after a reconnect. The server joins
+         * the stack log in getStack, and it may have closed that terminal
+         * while this client was away. Only the join matters here; the stack
+         * itself stays as the user left it.
+         * @returns {void}
+         */
+        rejoinLogs() {
+            if (!this.isAdd && this.stack.name) {
+                this.$root.emitAgent(this.endpoint, "getStack", this.stack.name, () => {});
+            }
+            if (this.expandedPanel === "serviceLogs" && this.serviceLogName) {
+                this.$root.emitAgent(this.endpoint, "serviceLogs", this.stack.name, this.serviceLogName, (res) => {
+                    if (!res.ok) {
+                        this.$root.toastRes(res);
+                    }
+                });
+            }
         },
 
         /**

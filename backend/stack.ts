@@ -133,7 +133,8 @@ export class Stack {
             }
             return {
                 uid: stat.uid,
-                gid: stat.gid,
+                // Not the root group, which can read root-group files
+                gid: stat.gid === 0 ? 65534 : stat.gid,
                 // root's home is not readable by that user, and git stops
                 // when it cannot read the global config
                 env: {

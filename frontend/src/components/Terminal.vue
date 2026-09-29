@@ -124,26 +124,20 @@ export default {
          * @returns {void}
          */
         "$root.socketIO.loginCount"() {
-            // The join writes the full buffer of the server again. An empty
-            // terminal then shows the text one time only.
-            this.terminal.reset();
-            this.joinServerTerminal();
-            // The server dropped the size of the old socket
-            this.resendSize();
+            this.scheduleRejoin();
         },
 
         /**
          * The link between this server and an agent came back. The agent
          * dropped this client from its terminals, and closes a shell that
-         * has no client after 10 seconds, so join again now.
+         * has no client after 10 seconds, so join again.
          * @param {string} status the new status of the agent
          * @param {string} old the status before
          * @returns {void}
          */
         agentStatus(status, old) {
             if (this.endpoint && status === "online" && old && old !== "online") {
-                this.joinServerTerminal();
-                this.resendSize();
+                this.scheduleRejoin();
             }
         },
     },
@@ -203,6 +197,7 @@ export default {
     },
 
     unmounted() {
+        clearTimeout(this.rejoinTimer);
         this.boxObserver?.disconnect();
         this.$root.unbindTerminal(this.name);
         this.terminal.dispose();
@@ -389,6 +384,24 @@ export default {
             // which makes output wrap mid-word on any wider viewport.
             this.emitResize();
         },
+        /**
+         * Join the server terminal again after a reconnect. A reconnect of
+         * this client also reconnects its agents, so both watchers fire;
+         * one rejoin must run, or the buffer is written two times.
+         * @returns {void}
+         */
+        scheduleRejoin() {
+            clearTimeout(this.rejoinTimer);
+            this.rejoinTimer = setTimeout(() => {
+                // The join writes the full buffer of the server again. An
+                // empty terminal then shows the text one time only.
+                this.terminal.reset();
+                this.joinServerTerminal();
+                // The server dropped the size of the old socket
+                this.resendSize();
+            }, 300);
+        },
+
         /**
          * Send the size even when it did not change, for a new socket or a
          * new terminal name that has no size on the server.
