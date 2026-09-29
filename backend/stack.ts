@@ -110,9 +110,41 @@ export class Stack {
             dir = dir.replace(/\\/g, "/");
         }
         // safe.directory lets root run git in a checkout that another user
-        // owns. Turn off fsmonitor, so a hook in that checkout's config
-        // cannot run a command as root (the reason for safe.directory).
-        return [ "-c", "safe.directory=" + dir, "-c", "core.fsmonitor=false" ];
+        // owns. Repository config can still run commands (fsmonitor, filter
+        // drivers, hooks), so getGitInfo runs as the owner instead, and a
+        // pull, which the user starts, runs without hooks.
+        return [ "-c", "safe.directory=" + dir, "-c", "core.fsmonitor=false", "-c", "core.hooksPath=/dev/null" ];
+    }
+
+    /**
+     * Spawn options that run git as the owner of the checkout, when this
+     * server runs as root and another user owns the checkout. Commands
+     * from the repository config then run with that user's rights, not
+     * root's.
+     */
+    protected get gitOwnerOptions() : { uid? : number, gid? : number, env? : NodeJS.ProcessEnv } {
+        if (process.getuid?.() !== 0) {
+            return {};
+        }
+        try {
+            const stat = fs.statSync(path.join(this.fullPath, ".git"));
+            if (stat.uid === 0) {
+                return {};
+            }
+            return {
+                uid: stat.uid,
+                gid: stat.gid,
+                // root's home is not readable by that user, and git stops
+                // when it cannot read the global config
+                env: {
+                    ...process.env,
+                    HOME: os.tmpdir(),
+                    XDG_CONFIG_HOME: os.tmpdir(),
+                },
+            };
+        } catch (e) {
+            return {};
+        }
     }
 
     /**
@@ -131,6 +163,7 @@ export class Stack {
         }
 
         const git = (...args : string[]) => childProcessAsync.spawn("git", [ ...this.gitSafeArgs, ...args ], {
+            ...this.gitOwnerOptions,
             cwd: this.path,
             encoding: "utf-8",
             // The output of a git checkout with many changes can go over
