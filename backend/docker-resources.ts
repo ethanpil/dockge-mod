@@ -637,13 +637,30 @@ export class DockerResources {
      * writes the records again.
      */
     static async syncVolumeOwners() : Promise<void> {
-        try {
-            const scan = await DockerResources.scanContainers();
-            await DockerResources.recordVolumeOwners(scan.owners);
-        } catch (e) {
-            log.warn("dockerResources", "Cannot read the projects of the volumes: " + errorMessage(e));
+        // A deploy or a restart loop gives many event batches. One scan runs
+        // at a time, and the batches that arrive meanwhile share one more.
+        if (DockerResources.volumeSync) {
+            DockerResources.volumeSyncAgain = true;
+            return DockerResources.volumeSync;
         }
+        DockerResources.volumeSync = (async () => {
+            do {
+                DockerResources.volumeSyncAgain = false;
+                try {
+                    const scan = await DockerResources.scanContainers();
+                    await DockerResources.recordVolumeOwners(scan.owners);
+                } catch (e) {
+                    log.warn("dockerResources", "Cannot read the projects of the volumes: " + errorMessage(e));
+                }
+            } while (DockerResources.volumeSyncAgain);
+        })().finally(() => {
+            DockerResources.volumeSync = undefined;
+        });
+        return DockerResources.volumeSync;
     }
+
+    private static volumeSync? : Promise<void>;
+    private static volumeSyncAgain = false;
 
     /**
      * Remove the records of the volumes that are not on the host. A

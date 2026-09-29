@@ -91,8 +91,16 @@ export class DockgeServer {
     /** The last good `docker system df` rows. A slow host keeps its tile. */
     private lastDiskUsage? : object[];
 
+    /** When lastDiskUsage was read */
+    private diskUsageAt = 0;
+
     /** After a failed `docker system df`, the next try waits until this time */
     private diskUsageRetryAt = 0;
+
+    /** The `docker system df` run in progress */
+    private diskUsageRefresh? : Promise<void>;
+
+    static readonly DISK_USAGE_INTERVAL = 10 * 60 * 1000;
 
     /**
      * The output of `docker stats`, for all clients. The command blocks
@@ -729,8 +737,9 @@ export class DockgeServer {
      * @param other True when a container without a project changed
      */
     onDockerChange(projects : Set<string>, other : boolean, changes : ContainerChange[]) {
+        // The stats cache is not invalidated: its 4 s life is short, and an
+        // invalidation during a run would start a second `docker stats`
         Stack.invalidateCaches(other ? undefined : projects);
-        this.dockerStatsCache.invalidate();
         this.notifyChanges(changes);
         this.sendStackList(true).catch((e) => {
             log.warn("server", "Cannot send the stack list: " + errorMessage(e));
@@ -774,6 +783,9 @@ export class DockgeServer {
             const stopSignal = change.signal === null || [ "15", "9", "SIGTERM", "SIGKILL" ].includes(change.signal);
             if (change.action === "stop" || (change.action === "kill" && stopSignal)) {
                 this.stoppedContainers.set(change.name, now);
+            } else if (change.action === "start") {
+                // A crash after a restart or a redeploy must send a message
+                this.stoppedContainers.delete(change.name);
             } else if (change.action === "die" && change.exitCode !== null && change.exitCode !== 0 && !this.stoppedContainers.has(change.name)) {
                 Notifier.send("container_exited", "Container exited", "The container " + change.name + " exited with code " + change.exitCode + ".", "exit:" + change.name).catch(() => undefined);
             } else if (change.action === "health_status: unhealthy") {
@@ -868,38 +880,38 @@ export class DockgeServer {
         }
         stats.cpus = os.cpus().length;
 
-        // docker system df walks every volume. On a large host it can take
-        // minutes, so it gets a longer limit, and a failure waits 10 minutes
-        // before the next try instead of running every minute.
-        if (Date.now() >= this.diskUsageRetryAt) {
-            try {
-                const res = await childProcessAsync.spawn("docker", [ "system", "df", "--format", "{{json .}}" ], {
-                    ...DOCKER_SPAWN_OPTIONS,
-                    timeout: 120 * 1000,
-                });
-                if (res.stdout) {
-                    const rows = [];
-                    for (const line of res.stdout.toString().split("\n")) {
-                        try {
-                            rows.push(JSON.parse(line));
-                        } catch (e) {
-                            // Skip non-JSON lines
-                        }
-                    }
-                    this.lastDiskUsage = rows;
-                }
-            } catch (e) {
-                // Expected whenever the docker CLI or daemon is unavailable; the
-                // frontend hides the tiles, so this must not spam the error log
-                log.debug("hostStats", "docker system df failed: " + errorMessage(e));
-                this.diskUsageRetryAt = Date.now() + 10 * 60 * 1000;
-            }
+        // docker system df walks every volume and container layer, which can
+        // take minutes on a large host. It refreshes in the background every
+        // 10 minutes, so the memory and load tiles never wait for it.
+        const now = Date.now();
+        if (!this.diskUsageRefresh && now - this.diskUsageAt >= DockgeServer.DISK_USAGE_INTERVAL && now >= this.diskUsageRetryAt) {
+            this.diskUsageRefresh = this.refreshDiskUsage().finally(() => {
+                this.diskUsageRefresh = undefined;
+            });
         }
         if (this.lastDiskUsage) {
             stats.df = this.lastDiskUsage;
         }
 
         return stats;
+    }
+
+    private async refreshDiskUsage() : Promise<void> {
+        try {
+            const res = await childProcessAsync.spawn("docker", [ "system", "df", "--format", "{{json .}}" ], {
+                ...DOCKER_SPAWN_OPTIONS,
+                timeout: 120 * 1000,
+            });
+            this.lastDiskUsage = parseJSONLines(res.stdout?.toString() ?? "");
+            this.diskUsageAt = Date.now();
+            // The next poll gets the new rows, not the cached stats without them
+            this.hostStatsCache.invalidate();
+        } catch (e) {
+            // Expected whenever the docker CLI or daemon is unavailable; the
+            // frontend hides the tiles, so this must not spam the error log
+            log.debug("hostStats", "docker system df failed: " + errorMessage(e));
+            this.diskUsageRetryAt = Date.now() + DockgeServer.DISK_USAGE_INTERVAL;
+        }
     }
 
     get stackDirFullPath() {

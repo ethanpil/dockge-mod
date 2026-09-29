@@ -462,13 +462,19 @@ export class InteractiveTerminal extends Terminal {
     /**
      * End the shell process. Ctrl+C does not stop a shell. A process
      * that ignores the first signal gets SIGKILL. If no exit event
-     * comes, the terminal leaves the map, thus a new one can start.
+     * comes, the terminal is marked as exited after 10 seconds.
      */
     close() {
         clearInterval(this.keepAliveInterval);
         clearInterval(this.kickDisconnectedClientsInterval);
         clearTimeout(this.closeTimer);
         this.closeTimer = undefined;
+
+        // Leave the map now, so a join while the shell dies starts a new
+        // shell instead of joining this one
+        if (Terminal.terminalMap.get(this.name) === this) {
+            Terminal.terminalMap.delete(this.name);
+        }
 
         const process = this.ptyProcess;
         if (!process) {
@@ -477,7 +483,7 @@ export class InteractiveTerminal extends Terminal {
         }
         process.kill();
         setTimeout(() => {
-            if (Terminal.terminalMap.get(this.name) === this) {
+            if (!this.exited) {
                 try {
                     process.kill("SIGKILL");
                 } catch (e) {
@@ -486,7 +492,7 @@ export class InteractiveTerminal extends Terminal {
             }
         }, 5000);
         setTimeout(() => {
-            if (Terminal.terminalMap.get(this.name) === this) {
+            if (!this.exited) {
                 log.warn("Terminal", "No exit event from " + this.name + ", remove it");
                 this.exit({ exitCode: 137 });
             }

@@ -88,7 +88,9 @@ COPY --chown=node:node ./common ./common
 COPY --chown=node:node ./extra/reset-password.ts ./extra/reset-password.ts
 COPY --chown=node:node --from=frontend_build /app/frontend-dist /app/frontend-dist
 RUN if [ -n "$APP_VERSION" ]; then npm pkg set version="$APP_VERSION"; fi
-RUN mkdir ./data
+# Dockge has tsx on the PATH. Keep that for compose files and commands that
+# call it, pointing at the version of the lock file.
+RUN mkdir ./data && ln -s /app/node_modules/.bin/tsx /usr/local/bin/tsx
 
 
 # It is just for safe, as by default, it is disabled in the latest Node.js now.

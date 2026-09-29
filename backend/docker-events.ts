@@ -91,6 +91,12 @@ export class DockerEvents {
     // The changes since the last call of the handler
     private changes : ContainerChange[] = [];
 
+    /** True when changes were dropped, so every cache must be invalidated */
+    private overflow = false;
+
+    /** True after the first start, so a restart can invalidate the caches */
+    private hasRun = false;
+
     /**
      * @param handler The function to call after a change
      */
@@ -133,14 +139,25 @@ export class DockerEvents {
             for (const line of lines) {
                 const change = parseContainerChange(line);
                 if (change) {
-                    // A limit for a period with very many events
+                    // A limit for a period with very many events. The
+                    // dropped changes still invalidate every cache.
                     if (this.changes.length < 1000) {
                         this.changes.push(change);
+                    } else {
+                        this.overflow = true;
                     }
                     this.schedule();
                 }
             }
         });
+
+        // Events that happened while no watcher ran are lost, so the caches
+        // start fresh after a restart
+        if (this.hasRun) {
+            this.overflow = true;
+            this.schedule();
+        }
+        this.hasRun = true;
 
         process.stderr?.setEncoding("utf-8");
         process.stderr?.on("data", (chunk : string) => {
@@ -190,7 +207,8 @@ export class DockerEvents {
             const changes = this.changes;
             this.changes = [];
             const projects = new Set<string>();
-            let other = false;
+            let other = this.overflow;
+            this.overflow = false;
             for (const change of changes) {
                 if (change.project !== null) {
                     projects.add(change.project);
