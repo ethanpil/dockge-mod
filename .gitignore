@@ -1,12 +1,10 @@
-# Should update .dockerignore as well
 .env
 node_modules
 .idea
+.claude/settings.local.json
 data
 stacks
 tmp
 /private
-
-# Git only
 frontend-dist
-
+extra/healthcheck

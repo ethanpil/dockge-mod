@@ -1,22 +1,24 @@
-# Should be identical to .gitignore
+# The release stage copies only the files it needs. These rules keep the
+# build context small and keep local files out of every stage.
 .env
 node_modules
 .idea
+.claude
 data
 stacks
 tmp
 /private
-
-# Docker extra
-docker
-# frontend/ is NOT ignored: the frontend_build stage compiles it inside the image.
-# frontend-dist is ignored so a stale local build cannot shadow that stage's output.
-frontend-dist
-# The same reason: the build_healthcheck stage compiles this binary for the
-# target architecture, and a local build must not take its place.
-extra/healthcheck
-.editorconfig
-.eslintrc.cjs
 .git
-.gitignore
+.github
+test
+docker
+CLAUDE.md
+CHANGELOG.md
 README.md
+SECURITY.md
+
+# The frontend_build stage compiles frontend/ inside the image. A stale local
+# build must not shadow that output.
+frontend-dist
+# The build_healthcheck stage compiles this binary for the target platform.
+extra/healthcheck

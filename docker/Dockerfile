@@ -27,15 +27,14 @@ RUN apt update && apt install --yes --no-install-recommends \
          docker-ce-cli \
          docker-compose-plugin \
          docker-buildx-plugin \
-    && rm -rf /var/lib/apt/lists/* \
-    && npm install -g tsx
+    && rm -rf /var/lib/apt/lists/*
 
 ############################################
 # Healthcheck Binary
 # Go compiles for the target architecture on the build platform, so
 # this stage does not run under emulation.
 ############################################
-FROM --platform=$BUILDPLATFORM golang:1.24-bookworm AS build_healthcheck
+FROM --platform=$BUILDPLATFORM golang:1.27-bookworm AS build_healthcheck
 WORKDIR /app
 ARG TARGETOS
 ARG TARGETARCH
@@ -82,10 +81,12 @@ WORKDIR /app
 ARG APP_VERSION
 COPY --chown=node:node --from=build_healthcheck /app/extra/healthcheck /app/extra/healthcheck
 COPY --from=build /app/node_modules /app/node_modules
-COPY --chown=node:node  . .
-# After `COPY . .` so the freshly compiled frontend always wins.
+# Only what the server needs at runtime
+COPY --chown=node:node ./package.json ./tsconfig.json ./
+COPY --chown=node:node ./backend ./backend
+COPY --chown=node:node ./common ./common
+COPY --chown=node:node ./extra/reset-password.ts ./extra/reset-password.ts
 COPY --chown=node:node --from=frontend_build /app/frontend-dist /app/frontend-dist
-# After `COPY . .`, which brings the package.json of the source
 RUN if [ -n "$APP_VERSION" ]; then npm pkg set version="$APP_VERSION"; fi
 RUN mkdir ./data
 
@@ -100,4 +101,5 @@ VOLUME /app/data
 EXPOSE 5001
 HEALTHCHECK --interval=60s --timeout=30s --start-period=60s --retries=5 CMD extra/healthcheck
 ENTRYPOINT ["/usr/bin/dumb-init", "--"]
-CMD ["tsx", "./backend/index.ts"]
+# The tsx of the lock file, not a global install
+CMD ["/app/node_modules/.bin/tsx", "./backend/index.ts"]
