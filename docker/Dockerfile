@@ -1,16 +1,11 @@
 ############################################
 # Base
-# The runtime environment: Node.js, the docker CLI, the compose
-# plugin, git, dumb-init, and tsx. The upstream project publishes
-# this layer as an image. This file builds it from the source, so
-# the image does not depend on that registry.
+# Node.js, the docker CLI with the compose and buildx plugins, git, and
+# dumb-init. Upstream publishes this layer as a separate image; building it
+# here removes that dependency.
 #
-# git is necessary for the stack directory that is a git checkout.
-# Without it the branch does not show and a pull is not possible.
-# The buildx plugin is the second method of the image update check. The
-# first method is a HEAD request to the registry. The plugin reads a
-# registry with a private certificate, or a registry that gives no
-# digest header.
+# git: stacks that are git checkouts (branch badge, Pull & Redeploy).
+# buildx: `docker compose build` for stacks with a build section.
 ############################################
 FROM node:22-bookworm-slim AS base
 RUN apt update && apt install --yes --no-install-recommends \

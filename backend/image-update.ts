@@ -5,7 +5,7 @@ import { DOCKER_SPAWN_OPTIONS, errorMessage, stderrOf } from "./util-server";
 import { DockgeServer } from "./dockge-server";
 import { Stack } from "./stack";
 import { Notifier } from "./notification";
-import { canonicalRef, DIGEST_REGEX, parseImageRef, RegistryClient, RegistryFallbackError } from "./registry";
+import { canonicalRef, DIGEST_REGEX, parseImageRef, RegistryClient } from "./registry";
 
 /**
  * One row of the mod_image_update table, for the interface.
@@ -481,34 +481,6 @@ export class ImageUpdateChecker {
     }
 
     /**
-     * The digest that the registry has for the tag of an image. The
-     * request goes to the registry, because a HEAD there does not count
-     * in the pull limit of Docker Hub. The docker CLI does a GET, thus
-     * it is the second method only.
-     * @param image The image name
-     * @returns The digest
-     */
-    private async remoteDigest(image : string) : Promise<string> {
-        try {
-            return await this.registry.getDigest(image);
-        } catch (e) {
-            if (!(e instanceof RegistryFallbackError)) {
-                throw e;
-            }
-            log.debug("imageUpdate", image + ": " + e.message + ", the docker CLI does this one");
-        }
-
-        // This method reads a slow registry, for example one with a
-        // private certificate, thus it gets more time than a usual
-        // docker command.
-        const remote = await childProcessAsync.spawn("docker", [ "buildx", "imagetools", "inspect", "--format", "{{.Manifest.Digest}}", "--", image ], {
-            ...DOCKER_SPAWN_OPTIONS,
-            timeout: 60000,
-        });
-        return remote.stdout?.toString().trim() ?? "";
-    }
-
-    /**
      * Check one image and write the result.
      * @param image The image name, with or without a tag
      * @param repoDigests The repo digests of the image on this host, or
@@ -558,7 +530,7 @@ export class ImageUpdateChecker {
                 // RepoDigests, on the classic store and on the containerd
                 // store. The per-platform manifest digest is different,
                 // thus it cannot be the comparison.
-                const remoteDigest = await this.remoteDigest(image);
+                const remoteDigest = await this.registry.getDigest(image);
                 if (!DIGEST_REGEX.test(remoteDigest)) {
                     result.error = "The registry gave no digest";
                 } else {

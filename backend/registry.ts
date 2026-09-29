@@ -312,31 +312,25 @@ export function findCredential(config : DockerConfig, registry : string) : Crede
 }
 
 /**
- * The registry cannot answer this request, but the docker CLI can. The
- * CLI has its own credentials and its own trust for a registry with a
- * private certificate.
- *
- * A sticky error is a property of the registry, for example a
- * credential helper. Each later image of that registry then goes to the
- * CLI at once. A different error is a property of one request.
+ * The registry did not give a digest. A registry-wide error (unreachable,
+ * rate limited, unsupported authentication) fails the remaining images of
+ * that registry for the rest of the check, so one bad registry cannot
+ * stall a check or keep hitting a rate limit.
  */
-export class RegistryFallbackError extends Error {
-    readonly sticky : boolean;
+export class RegistryError extends Error {
+    readonly registryWide : boolean;
 
-    constructor(message : string, sticky = false) {
+    constructor(message : string, registryWide = false) {
         super(message);
-        this.sticky = sticky;
+        this.registryWide = registryWide;
     }
 }
 
 /**
- * A client that reads the digest of an image from its registry.
- *
- * The request is a HEAD of the manifest, and the answer holds the
- * digest in a header. Docker Hub does not count a HEAD in the pull
- * limit of the address, and a GET of the same manifest costs one pull.
- * The docker CLI makes a GET, thus a check of many images used the
- * limit of the user.
+ * Reads the digest of an image from its registry with a HEAD request on
+ * the manifest. Docker Hub does not count a HEAD against the pull limit;
+ * a GET (what `docker manifest inspect` and `buildx imagetools` do)
+ * counts as a pull.
  */
 export class RegistryClient {
 
@@ -350,20 +344,12 @@ export class RegistryClient {
 
     private configCache = new CachedCall(() => RegistryClient.readConfig(), RegistryClient.CONFIG_TTL);
 
-    /**
-     * The registries that always need the docker CLI. Only a property
-     * of the registry itself goes in this set, thus one image with a
-     * bad name or one answer with the status 500 does not move a whole
-     * registry to the CLI.
-     */
-    private fallbackRegistries : Set<string> = new Set();
+    /** Registry-wide errors of the current check, by registry */
+    private failedRegistries : Map<string, string> = new Map();
 
-    /**
-     * Forget what the client learned. Each check starts again, thus a
-     * registry that had one problem gets a new try.
-     */
+    /** Start a new check: every registry gets a new try. */
     reset() {
-        this.fallbackRegistries.clear();
+        this.failedRegistries.clear();
         this.tokens.clear();
         this.configCache.invalidate();
     }
@@ -372,7 +358,7 @@ export class RegistryClient {
      * Read the digest that the registry has for the tag of an image.
      * @param image The image name from a compose file
      * @returns The digest, for example sha256:abc
-     * @throws RegistryFallbackError when the docker CLI must do this
+     * @throws RegistryError when the registry gives no digest
      */
     async getDigest(image : string) : Promise<string> {
         const ref = parseImageRef(image);
@@ -386,8 +372,9 @@ export class RegistryClient {
         if (!REPOSITORY_REGEX.test(ref.repository) || !TAG_REGEX.test(ref.tag)) {
             throw new Error("The image name is not correct");
         }
-        if (this.fallbackRegistries.has(ref.registry)) {
-            throw new RegistryFallbackError("An earlier request to " + ref.registry + " needed the docker CLI");
+        const earlier = this.failedRegistries.get(ref.registry);
+        if (earlier !== undefined) {
+            throw new RegistryError("Skipped after an earlier error: " + earlier);
         }
 
         // The URL parser gives the host that the request goes to. The
@@ -401,19 +388,15 @@ export class RegistryClient {
         try {
             return await this.readDigest(ref, url.toString());
         } catch (e) {
-            // A problem of the registry itself sends each later image of
-            // that registry to the docker CLI at once. A problem of one
-            // request does not.
-            if (e instanceof RegistryFallbackError && e.sticky) {
-                this.fallbackRegistries.add(ref.registry);
+            if (e instanceof RegistryError && e.registryWide) {
+                this.failedRegistries.set(ref.registry, e.message);
             }
             throw e;
         }
     }
 
     /**
-     * Ask the registry for the digest. The caller does the checks of the
-     * name and keeps the registries that need the docker CLI.
+     * Ask the registry for the digest. The caller checks the name.
      * @param ref The parts of the image name
      * @param url The full URL of the manifest
      * @returns The digest
@@ -426,10 +409,10 @@ export class RegistryClient {
             const credential = await this.credential(ref.registry);
 
             if (credential.kind === "helper") {
-                throw new RegistryFallbackError("The credentials of " + ref.registry + " are in the helper " + credential.helper, true);
+                throw new RegistryError("The credentials of " + ref.registry + " are in the credential helper " + credential.helper + ", which is not supported", true);
             }
             if (challenge === null) {
-                throw new RegistryFallbackError(ref.registry + " gave no authentication challenge", true);
+                throw new RegistryError(ref.registry + " gave no authentication challenge", true);
             }
 
             if (challenge.scheme === "bearer") {
@@ -438,29 +421,28 @@ export class RegistryClient {
             } else if (challenge.scheme === "basic" && credential.kind === "basic") {
                 res = await this.head(ref, url, "Basic " + basic(credential.username, credential.password));
             } else {
-                throw new RegistryFallbackError(ref.registry + " needs the authentication scheme " + challenge.scheme, true);
+                throw new RegistryError(ref.registry + " needs the unsupported authentication scheme " + challenge.scheme, true);
             }
         }
 
+        if (res.status === 429) {
+            throw new RegistryError(ref.registry + " rate limit reached (HTTP 429)", true);
+        }
         if (!res.ok) {
-            // A registry can hide a repository that the caller cannot
-            // see behind the status 403 or 404. The docker CLI has the
-            // credentials of a helper, thus it gets an answer.
-            throw new RegistryFallbackError(ref.registry + " answered with the status " + res.status);
+            throw new RegistryError(ref.registry + " answered with HTTP " + res.status);
         }
 
         const digest = res.headers.get("docker-content-digest") ?? "";
         if (!DIGEST_REGEX.test(digest)) {
-            throw new RegistryFallbackError(ref.registry + " gave no digest header", true);
+            throw new RegistryError(ref.registry + " gave no digest header", true);
         }
 
         return digest;
     }
 
     /**
-     * Make a HEAD request. A failure of the network or of the
-     * certificate needs the docker CLI, which can trust a private
-     * certificate and can use a mirror.
+     * Make a HEAD request. A network or certificate failure is
+     * registry-wide. For a private CA, set NODE_EXTRA_CA_CERTS.
      * @param ref The parts of the image name
      * @param url The full URL
      * @param authorization The value of the Authorization header
@@ -482,9 +464,7 @@ export class RegistryClient {
                 redirect: "follow",
             }, true);
         } catch (e) {
-            // A host that does not answer, or a certificate that this
-            // process does not trust, is a property of the registry
-            throw new RegistryFallbackError("Cannot reach " + ref.registry + ": " + (e as Error).message, true);
+            throw new RegistryError("Cannot reach " + ref.registry + ": " + (e as Error).message, true);
         }
     }
 
@@ -503,10 +483,10 @@ export class RegistryClient {
         try {
             realmURL = new URL(realm);
         } catch (e) {
-            throw new RegistryFallbackError(ref.registry + " gave no realm for the token", true);
+            throw new RegistryError(ref.registry + " gave no realm for the token", true);
         }
         if (realmURL.protocol !== "https:") {
-            throw new RegistryFallbackError(ref.registry + " gave a realm that is not https", true);
+            throw new RegistryError(ref.registry + " gave a realm that is not https", true);
         }
 
         // The registry names its own token service. A registry that is
@@ -548,26 +528,26 @@ export class RegistryClient {
         let res : Response;
         try {
             // A token service must not send this request to a different
-            // address. A redirect goes to the docker CLI.
+            // address, so a redirect is an error
             res = await this.fetchWithTimeout(realmURL.toString(), {
                 method: "GET",
                 headers,
                 redirect: "manual",
             }, false);
         } catch (e) {
-            throw new RegistryFallbackError("Cannot reach the token service of " + ref.registry + ": " + (e as Error).message, true);
+            throw new RegistryError("Cannot reach the token service of " + ref.registry + ": " + (e as Error).message, true);
         }
 
         if (!res.ok) {
             // Read the body, thus the connection goes back to the pool
             await res.arrayBuffer().catch(() => undefined);
-            throw new RegistryFallbackError("The token service of " + ref.registry + " answered with the status " + res.status);
+            throw new RegistryError("The token service of " + ref.registry + " answered with HTTP " + res.status, res.status === 429);
         }
 
         const body = await res.json().catch(() => null) as { token? : string, access_token? : string, expires_in? : number } | null;
         const token = body?.token ?? body?.access_token;
         if (!token) {
-            throw new RegistryFallbackError("The token service of " + ref.registry + " gave no token", true);
+            throw new RegistryError("The token service of " + ref.registry + " gave no token", true);
         }
 
         // A short life keeps the token good for the rest of the check

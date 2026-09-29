@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import fs from "fs";
 import os from "os";
 import path from "path";
-import { RegistryClient, RegistryFallbackError } from "../../backend/registry";
+import { RegistryClient, RegistryError } from "../../backend/registry";
 
 const DIGEST = "sha256:" + "a".repeat(64);
 const OTHER_DIGEST = "sha256:" + "b".repeat(64);
@@ -195,7 +195,7 @@ describe("RegistryClient", () => {
         expect(headers.Authorization).toBe("Basic " + Buffer.from("user:pass").toString("base64"));
     });
 
-    it("goes to the docker CLI when a helper holds the credentials", async () => {
+    it("fails when a credential helper holds the credentials", async () => {
         writeConfig({
             auths: { "ghcr.io": {} },
             credsStore: "pass",
@@ -203,18 +203,30 @@ describe("RegistryClient", () => {
         stubFetch([ challengeAnswer("https://ghcr.io/token") ]);
         const client = new RegistryClient();
 
-        await expect(client.getDigest("ghcr.io/o/a:v1")).rejects.toThrow(RegistryFallbackError);
+        await expect(client.getDigest("ghcr.io/o/a:v1")).rejects.toThrow(/credential helper/);
         // The client does not ask for a token that it cannot get
         expect(calls).toHaveLength(1);
     });
 
-    it("goes to the docker CLI for a status that hides a private image", async () => {
+    it("fails for a status that hides a private image", async () => {
         stubFetch([ answer(404) ]);
         const client = new RegistryClient();
-        await expect(client.getDigest("ghcr.io/o/a:v1")).rejects.toThrow(RegistryFallbackError);
+        await expect(client.getDigest("ghcr.io/o/a:v1")).rejects.toThrow(RegistryError);
     });
 
-    it("goes to the docker CLI when the answer has no digest header", async () => {
+    it("stops asking a registry after a rate limit", async () => {
+        stubFetch([
+            answer(429),
+            digestAnswer(),
+        ]);
+        const client = new RegistryClient();
+
+        await expect(client.getDigest("ghcr.io/o/a:v1")).rejects.toThrow(/429/);
+        await expect(client.getDigest("ghcr.io/o/b:v1")).rejects.toThrow(/Skipped/);
+        expect(calls).toHaveLength(1);
+    });
+
+    it("fails when the answer has no digest header", async () => {
         stubFetch([ answer(200) ]);
         const client = new RegistryClient();
         await expect(client.getDigest("ghcr.io/o/a:v1")).rejects.toThrow(/no digest header/);
@@ -227,9 +239,9 @@ describe("RegistryClient", () => {
         ]);
         const client = new RegistryClient();
 
-        await expect(client.getDigest("down.example.com/o/a:v1")).rejects.toThrow(RegistryFallbackError);
+        await expect(client.getDigest("down.example.com/o/a:v1")).rejects.toThrow(RegistryError);
         // The second image of that registry makes no request
-        await expect(client.getDigest("down.example.com/o/b:v1")).rejects.toThrow(/needed the docker CLI/);
+        await expect(client.getDigest("down.example.com/o/b:v1")).rejects.toThrow(/Skipped/);
         expect(calls).toHaveLength(1);
     });
 
@@ -240,8 +252,8 @@ describe("RegistryClient", () => {
         ]);
         const client = new RegistryClient();
 
-        await expect(client.getDigest("ghcr.io/o/a:v1")).rejects.toThrow(RegistryFallbackError);
-        // A status of the server is not a property of the registry
+        await expect(client.getDigest("ghcr.io/o/a:v1")).rejects.toThrow(RegistryError);
+        // A server error is not registry-wide
         expect(await client.getDigest("ghcr.io/o/b:v1")).toBe(DIGEST);
     });
 
@@ -252,7 +264,7 @@ describe("RegistryClient", () => {
         ]);
         const client = new RegistryClient();
 
-        await expect(client.getDigest("down.example.com/o/a:v1")).rejects.toThrow(RegistryFallbackError);
+        await expect(client.getDigest("down.example.com/o/a:v1")).rejects.toThrow(RegistryError);
         client.reset();
         expect(await client.getDigest("down.example.com/o/a:v1")).toBe(DIGEST);
     });
@@ -268,7 +280,7 @@ describe("RegistryClient", () => {
 
         const error = await client.getDigest(image).catch((e) => e);
         expect(error).toBeInstanceOf(Error);
-        expect(error).not.toBeInstanceOf(RegistryFallbackError);
+        expect(error).not.toBeInstanceOf(RegistryError);
         expect(calls).toHaveLength(0);
     });
 });
