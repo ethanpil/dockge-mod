@@ -5,7 +5,7 @@
                 <h1 class="fs-3 mb-0">{{ $t("resources") }}</h1>
                 <select v-if="$root.agentCount > 1" class="form-select w-auto" :value="endpoint" @change="changeEndpoint($event.target.value)">
                     <option v-for="(agent, agentEndpoint) in $root.agentList" :key="agentEndpoint" :value="agentEndpoint">
-                        {{ (agent.name !== '') ? agent.name : agent.url || $t("Current") }}
+                        {{ $root.endpointDisplayFunction(agentEndpoint) }}
                     </option>
                 </select>
             </div>

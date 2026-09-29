@@ -7,6 +7,7 @@
                 data-bs-boundary="viewport"
                 aria-expanded="false"
                 @mousedown="useFixedMenu"
+                @keydown="useFixedMenu"
             >
                 {{ $t("actions") }}
             </button>
@@ -16,18 +17,18 @@
                         <font-awesome-icon icon="terminal" fixed-width class="me-2" /> Bash
                     </router-link>
                 </li>
-                <li v-if="running && serviceCount > 1"><hr class="dropdown-divider"></li>
-                <li v-if="!running && serviceCount > 1">
+                <li v-if="running && multi"><hr class="dropdown-divider"></li>
+                <li v-if="!running && multi">
                     <button class="dropdown-item" :disabled="processing" @click="$emit('start')">
                         <font-awesome-icon icon="play" fixed-width class="me-2" /> {{ $t("startStack") }}
                     </button>
                 </li>
-                <li v-if="restartable && serviceCount > 1">
+                <li v-if="restartable && multi">
                     <button class="dropdown-item" :disabled="processing" @click="$emit('restart')">
                         <font-awesome-icon icon="rotate" fixed-width class="me-2" /> {{ $t("restartStack") }}
                     </button>
                 </li>
-                <li v-if="restartable && serviceCount > 1">
+                <li v-if="restartable && multi">
                     <button class="dropdown-item" :disabled="processing" @click="$emit('stop')">
                         <font-awesome-icon icon="stop" fixed-width class="me-2" /> {{ $t("stopStack") }}
                     </button>
@@ -71,6 +72,11 @@ export default {
             type: [ Object, String ],
             default: "",
         },
+        /** False for a Dockge 1.5.0 agent, which has no service events */
+        serviceActions: {
+            type: Boolean,
+            default: true,
+        },
     },
     emits: [
         "start",
@@ -86,8 +92,13 @@ export default {
             return this.running || this.status === "unhealthy";
         },
 
+        /** Start, restart, and stop of one service of several */
+        multi() {
+            return this.serviceActions && this.serviceCount > 1;
+        },
+
         hasActions() {
-            return this.running || this.serviceCount > 1;
+            return this.running || this.multi;
         },
     },
     methods: {
@@ -96,9 +107,10 @@ export default {
          * one. The container table scrolls sideways, and a menu inside that
          * box is cut off and adds a scrollbar. A fixed menu is not in the box.
          *
-         * mousedown comes before the click that bootstrap listens for, so the
-         * instance that this makes is the instance that bootstrap then uses.
-         * @param {MouseEvent} e the mousedown on the toggle button
+         * mousedown and keydown come before the click that bootstrap listens
+         * for, so the instance that this makes is the instance that bootstrap
+         * then uses.
+         * @param {Event} e the mousedown or keydown on the toggle button
          * @returns {void}
          */
         useFixedMenu(e) {

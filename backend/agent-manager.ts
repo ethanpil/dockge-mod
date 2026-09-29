@@ -78,14 +78,29 @@ export class AgentManager {
      * @param password
      * @param name
      */
-    async add(url: string, username: string, password: string, name: string): Promise<Agent> {
+    async add(url: string, username: string, password: string, name: unknown): Promise<Agent> {
         let bean = R.dispense("agent") as Agent;
         bean.url = url;
         bean.username = username;
         bean.password = password;
-        bean.name = name;
+        if (await AgentManager.hasNameColumn()) {
+            bean.name = typeof name === "string" ? name : "";
+        }
         await R.store(bean);
         return bean;
+    }
+
+    private static nameColumn : boolean | undefined;
+
+    /**
+     * Upstream added agent.name by editing an applied migration, so a
+     * database created by Dockge 1.5.0 has no such column. Writing to it
+     * fails, and adding it would change a Dockge table.
+     */
+    static async hasNameColumn() : Promise<boolean> {
+        const has = AgentManager.nameColumn ?? await R.knex.schema.hasColumn("agent", "name");
+        AgentManager.nameColumn = has;
+        return has;
     }
 
     /**
@@ -114,6 +129,9 @@ export class AgentManager {
      * @param updatedName
      */
     async update(url: string, updatedName: string) {
+        if (!await AgentManager.hasNameColumn()) {
+            throw new Error("This database was created by Dockge 1.5.0 and cannot store agent names");
+        }
         const agent = await R.findOne("agent", " url = ? ", [
             url,
         ]);

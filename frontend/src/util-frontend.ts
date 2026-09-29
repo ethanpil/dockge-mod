@@ -189,3 +189,24 @@ export function getToastErrorTimeout() {
 // The pure helpers live in util-common, thus a test can examine them
 // without the browser. The re-export keeps the import paths of the pages.
 export { formatUptime, formatPorts, formatBytes, parseDockerSize, isSimpleList } from "../../common/util-common";
+
+/**
+ * Convert the serviceStatusList of an agent to the container list that the
+ * container table reads. Dockge 1.5.0 sends one status string per service,
+ * and upstream master sends an array of containers.
+ * @param {object} list The serviceStatusList of the answer
+ * @returns {object} The containers of each service
+ */
+export function containerListFromStatus(list : Record<string, unknown> | undefined) : Record<string, object[]> {
+    const result : Record<string, object[]> = {};
+    for (const [ service, value ] of Object.entries(list ?? {})) {
+        if (Array.isArray(value)) {
+            result[service] = value;
+        } else if (typeof value === "string" && value !== "") {
+            result[service] = [ { status: value } ];
+        } else {
+            result[service] = [];
+        }
+    }
+    return result;
+}

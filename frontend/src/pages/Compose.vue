@@ -87,7 +87,7 @@
                                 <label for="endpoint" class="form-label">{{ $t("dockgeAgent") }}</label>
                                 <select id="endpoint" v-model="stack.endpoint" class="form-select">
                                     <option v-for="(agent, agentEndpoint) in $root.agentList" :key="agentEndpoint" :value="agentEndpoint" :disabled="$root.agentStatusList[agentEndpoint] != 'online'">
-                                        ({{ $root.agentStatusList[agentEndpoint] }}) {{ (agent.name !== '') ? agent.name : agent.url || $t("Current") }}
+                                        ({{ $root.agentStatusList[agentEndpoint] }}) {{ $root.endpointDisplayFunction(agentEndpoint) }}
                                     </option>
                                 </select>
                             </div>
@@ -133,6 +133,7 @@
                         :endpoint="endpoint"
                         :processing="processing"
                         :show-logs="modFeatures"
+                        :service-actions="modFeatures"
                         @start-service="startService"
                         @stop-service="stopService"
                         @restart-service="restartService"
@@ -498,6 +499,7 @@ import {
     defaultComposeOverrideTemplate,
     POLL_INTERVAL_DEFAULT,
 } from "../../../common/util-common";
+import { containerListFromStatus } from "../util-frontend";
 import NetworkInput from "../components/NetworkInput.vue";
 import Confirm, { isDialogOpen } from "../components/Confirm.vue";
 import Container from "../components/Container.vue";
@@ -1107,7 +1109,7 @@ export default {
             this.cancelServiceStatus = this.$root.emitAgentWithTimeout(this.endpoint, "serviceStatusList", [ this.stack.name ], 30000, (res) => {
                 this.cancelServiceStatus = null;
                 if (res.ok) {
-                    this.serviceStatusList = res.serviceStatusList;
+                    this.serviceStatusList = res.containerList ?? containerListFromStatus(res.serviceStatusList);
                 }
                 if (!this.stopServiceStatusTimeout) {
                     this.startServiceStatusTimeout();

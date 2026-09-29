@@ -88,22 +88,25 @@
 
                                 <!-- Agent Display Name -->
                                 <template v-if="$root.agentStatusList[endpoint]">
-                                    <span v-if="endpoint === '' && agentItem.name === ''" class="badge bg-secondary me-2">Current</span>
-                                    <span v-else-if="agentItem.name === ''" :href="agentItem.url" class="me-2">{{ endpoint }}</span>
-                                    <span v-else :href="agentItem.url" class="me-2">{{ agentItem.name }}</span>
+                                    <span v-if="endpoint === ''" class="badge bg-secondary me-2">{{ $t("currentEndpoint") }}</span>
+                                    <span v-else class="me-2">{{ $root.endpointDisplayFunction(endpoint) }}</span>
                                 </template>
 
-                                <!-- Edit Name  -->
-                                <font-awesome-icon v-if="agentItem.name !== ''" class="action" icon="pen-to-square" @click="showEditAgentName(agentItem)" />
+                                <!-- Edit Name. An agent row has no name field when the database cannot store one. -->
+                                <button v-if="endpoint !== '' && agentItem.name !== undefined" type="button" class="btn btn-link p-0 action" :title="$t('editAgentName')" :aria-label="$t('editAgentName')" @click="showEditAgentName(agentItem)">
+                                    <font-awesome-icon icon="pen-to-square" />
+                                </button>
 
                                 <!-- Remove Button -->
-                                <font-awesome-icon v-if="endpoint !== ''" class="ms-2 action text-danger remove-agent" icon="trash" @click="showRemoveAgent(agentItem.url)" />
+                                <button v-if="endpoint !== ''" type="button" class="btn btn-link p-0 ms-2 action text-danger remove-agent" :title="$t('removeAgent')" :aria-label="$t('removeAgent')" @click="showRemoveAgent(agentItem.url)">
+                                    <font-awesome-icon icon="trash" />
+                                </button>
                             </div>
 
                             <!-- Edit Dialog -->
-                            <Confirm ref="editAgentNameDialog" :no-close-on-backdrop="true" :yes-text="$t('Update Name')" :no-text="$t('cancel')" @yes="updateName(editingAgent.url, editingAgent.updatedName)">
+                            <Confirm ref="editAgentNameDialog" :no-close-on-backdrop="true" :yes-text="$t('updateAgentName')" :no-text="$t('cancel')" @yes="updateName(editingAgent.url, editingAgent.updatedName)">
                                 <template v-if="editingAgent">
-                                    <label for="updatedName" class="form-label">Current value: {{ $t(editingAgent.name) }}</label>
+                                    <label for="updatedName" class="form-label">{{ $t("agentName") }}</label>
                                     <input id="updatedName" v-model="editingAgent.updatedName" type="text" class="form-control" optional>
                                 </template>
                             </Confirm>
@@ -134,7 +137,7 @@
                                 </div>
 
                                 <div class="mb-3">
-                                    <label for="name" class="form-label">{{ $t("Friendly Name") }}</label>
+                                    <label for="name" class="form-label">{{ $t("agentName") }}</label>
                                     <input id="name" v-model="agent.name" type="text" class="form-control" optional>
                                 </div>
 
@@ -300,9 +303,9 @@ export default {
             // is replaced wholesale on every "agentList" socket push.
             this.editingAgent = {
                 url: agentItem.url,
-                name: agentItem.name,
+                name: agentItem.name ?? "",
                 // Prefill so confirming without typing keeps the current name
-                updatedName: agentItem.name,
+                updatedName: agentItem.name ?? "",
             };
             this.$refs.editAgentNameDialog.show();
         },
@@ -323,6 +326,7 @@ export default {
                         url: "http://",
                         username: "",
                         password: "",
+                        name: "",
                     };
                 }
 

@@ -284,5 +284,9 @@
     "inUseYes": "In use",
     "inUseNo": "Not used",
     "pruneSkipped": "Items that a new plan kept: {n}",
-    "inUseUnknown": "Unknown"
+    "inUseUnknown": "Unknown",
+    "agentName": "Name",
+    "editAgentName": "Edit name",
+    "updateAgentName": "Save name",
+    "agentUpdatedSuccessfully": "Agent updated"
 }

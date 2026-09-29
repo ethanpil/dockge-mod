@@ -73,6 +73,7 @@
                                     :service-count="serviceCount"
                                     :processing="processing"
                                     :bash-to="bashLink(row.service)"
+                                    :service-actions="serviceActions"
                                     @start="$emit('start-service', row.service)"
                                     @restart="$emit('restart-service', row.service)"
                                     @stop="$emit('stop-service', row.service)"
@@ -101,6 +102,7 @@
                         :service-count="serviceCount"
                         :processing="processing"
                         :bash-to="bashLink(row.service)"
+                        :service-actions="serviceActions"
                         @start="$emit('start-service', row.service)"
                         @restart="$emit('restart-service', row.service)"
                         @stop="$emit('stop-service', row.service)"
@@ -179,6 +181,11 @@ export default {
         },
         /** True when the agent has the service log events */
         showLogs: {
+            type: Boolean,
+            default: false,
+        },
+        /** True when the agent has the start, stop, and restart service events */
+        serviceActions: {
             type: Boolean,
             default: false,
         },

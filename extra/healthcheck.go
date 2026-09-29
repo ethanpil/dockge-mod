@@ -37,8 +37,11 @@ func main() {
 	if len(hostname) == 0 {
 		hostname = os.Getenv("DOCKGE_HOST")
 	}
-	if len(hostname) == 0 {
+	// A wildcard address listens on loopback too, and cannot be dialed as is
+	if len(hostname) == 0 || hostname == "0.0.0.0" || hostname == "::" || hostname == "[::]" {
 		hostname = "127.0.0.1"
+	} else if strings.Contains(hostname, ":") && !strings.HasPrefix(hostname, "[") {
+		hostname = "[" + hostname + "]"
 	}
 
 	port := ""

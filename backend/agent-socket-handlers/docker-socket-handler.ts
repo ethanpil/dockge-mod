@@ -381,10 +381,19 @@ export class DockerSocketHandler extends AgentSocketHandler {
                 }
 
                 const stack = await Stack.getStack(server, stackName);
-                const serviceStatusList = Object.fromEntries(await stack.getServiceStatusList());
+                const containerList = Object.fromEntries(await stack.getServiceStatusList());
+
+                // Dockge 1.5.0 expects one status string per service. The
+                // container details go in a separate field.
+                const serviceStatusList : Record<string, string> = {};
+                for (const [ service, containers ] of Object.entries(containerList)) {
+                    serviceStatusList[service] = (containers[0] as { status? : string } | undefined)?.status ?? "";
+                }
+
                 callbackResult({
                     ok: true,
                     serviceStatusList,
+                    containerList,
                 }, callback);
             } catch (e) {
                 callbackError(e, callback);
