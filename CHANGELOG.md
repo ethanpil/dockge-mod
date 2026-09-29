@@ -8,6 +8,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Eac
 
 ### Security
 
+- Port links and `x-dockge` URLs are links only when they are http or https. The port text can come from an agent. ([8707181])
 - `git status` for the branch badge runs as the owner of the checkout, and **Pull & Redeploy** runs without repository hooks. Repository config (filter drivers, hooks) could run commands as root when a stack page was opened. ([b10d053])
 - One address could lock out every login. Each refused attempt used up the global login limit before the per-address limit was checked. ([3a8a440])
 - The SSL key passphrase is no longer written to the debug log. ([3a8a440])
@@ -102,3 +103,4 @@ First release. Differences from Dockge:
 [3a8a440]: https://github.com/ethanpil/dockge-mod/commit/3a8a440
 [51973af]: https://github.com/ethanpil/dockge-mod/commit/51973af
 [21ff72a]: https://github.com/ethanpil/dockge-mod/commit/21ff72a
+[8707181]: https://github.com/ethanpil/dockge-mod/commit/8707181
