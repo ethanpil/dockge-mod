@@ -59,7 +59,6 @@ export class Database {
         // Patch the database
         await Database.patch();
         await Database.patchMod();
-        await ModSetting.importLegacyFiles(server.config.dataDir);
     }
 
     /**

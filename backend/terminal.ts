@@ -181,12 +181,12 @@ export class Terminal {
         }
     }
 
+    protected exited = false;
+
     /**
      * Exit event handler
      * @param res
      */
-    protected exited = false;
-
     protected exit = (res : {exitCode: number, signal?: number | undefined}) => {
         // A forced exit and a late exit event of the pty must not run this
         // two times. The second run would remove a newer terminal with

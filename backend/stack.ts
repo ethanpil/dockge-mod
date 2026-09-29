@@ -16,7 +16,6 @@ import {
     envsubstYAML,
     EXITED, getCombinedTerminalName, getServiceLogsTerminalName,
     getComposeTerminalName, getContainerExecTerminalName,
-    PROGRESS_TERMINAL_ROWS,
     RUNNING, TERMINAL_ROWS,
     UNKNOWN
 } from "../common/util-common";
@@ -364,20 +363,6 @@ export class Stack {
             log.warn("backup", "Cannot read the files of " + this.name + ": " + errorMessage(e));
             return null;
         }
-    }
-
-    /**
-     * Get the status of the stack from `docker compose ps --format json`
-     */
-    async ps() : Promise<object> {
-        let res = await childProcessAsync.spawn("docker", this.getComposeOptions("ps", "--format", "json"), {
-            cwd: this.path,
-            ...DOCKER_SPAWN_OPTIONS,
-        });
-        if (!res.stdout) {
-            return {};
-        }
-        return JSON.parse(res.stdout.toString());
     }
 
     get isManagedByDockge() : boolean {
@@ -1099,82 +1084,42 @@ export class Stack {
     }
 
     /**
-     * IPs by container ID. Docker can give a container a different address
-     * when it starts again, and a stopped container has no address at all,
-     * so an entry is correct for a short time only. The short life still
-     * keeps most of the 5-second status polls free of inspect processes.
-     */
-    protected static ipCache : Map<string, { ip : string, time : number }> = new Map();
-
-    /** How long an address in ipCache stays good, in milliseconds. */
-    protected static readonly ipCacheTTL = 30000;
-
-    /**
-     * Resolve container IP addresses with a single batched `docker inspect`
-     * for the containers not already cached by ID.
+     * Resolve container IP addresses with one batched `docker inspect`.
      * `docker compose ps` only reports the network name, not the address.
-     * Addresses are best effort: a stopped container simply has none.
+     * The caller caches the result with the service status. Addresses are
+     * best effort: a stopped container has none.
      * @param containers name/id pairs from `docker compose ps`
      */
     static async getContainerIPs(containers : { name : string, id : string }[]) : Promise<Map<string, string>> {
         const map = new Map<string, string>();
-
-        // Runaway backstop; entries are tiny but hosts churn containers
-        if (Stack.ipCache.size > 2000) {
-            Stack.ipCache.clear();
+        if (containers.length === 0) {
+            return map;
         }
 
-        const now = Date.now();
-        const fresh = (id : string) => {
-            const hit = Stack.ipCache.get(id);
-            return hit !== undefined && now - hit.time < Stack.ipCacheTTL;
+        const parse = (out : string) => {
+            for (const line of out.split("\n")) {
+                const [ rawName, rawIPs ] = line.split("\t");
+                if (!rawName) {
+                    continue;
+                }
+                const ip = (rawIPs ?? "").trim().split(/\s+/).filter(Boolean)[0] ?? "";
+                map.set(rawName.replace(/^\//, ""), ip);
+            }
         };
-        const uncached = containers.filter((c) => !c.id || !fresh(c.id));
 
-        if (uncached.length > 0) {
-            const parse = (out : string) => {
-                for (const line of out.split("\n")) {
-                    const [ rawName, rawIPs ] = line.split("\t");
-                    if (!rawName) {
-                        continue;
-                    }
-                    const ip = (rawIPs ?? "").trim().split(/\s+/).filter(Boolean)[0] ?? "";
-                    map.set(rawName.replace(/^\//, ""), ip);
-                }
-            };
+        const format = "{{.Name}}\t{{range .NetworkSettings.Networks}}{{.IPAddress}} {{end}}";
 
-            const format = "{{.Name}}\t{{range .NetworkSettings.Networks}}{{.IPAddress}} {{end}}";
-
-            try {
-                const res = await childProcessAsync.spawn("docker", [ "inspect", "--type", "container", "--format", format, ...uncached.map((c) => c.name) ], DOCKER_SPAWN_OPTIONS);
-                parse(res.stdout?.toString() ?? "");
-            } catch (e) {
-                // A container removed between `ps` and `inspect` makes inspect exit
-                // non-zero, but the surviving containers are still printed.
-                const partial = (e as { stdout ?: string | Buffer })?.stdout;
-                if (partial) {
-                    parse(partial.toString());
-                } else {
-                    // For example, the docker CLI is missing, or the daemon
-                    // does not answer. Without this the IP column shows only
-                    // dashes and gives no reason anywhere.
-                    log.debug("getContainerIPs", "docker inspect failed: " + errorMessage(e));
-                }
-            }
-
-            for (const c of uncached) {
-                if (c.id && map.has(c.name)) {
-                    Stack.ipCache.set(c.id, {
-                        ip: map.get(c.name) ?? "",
-                        time: now,
-                    });
-                }
-            }
-        }
-
-        for (const c of containers) {
-            if (!map.has(c.name) && c.id) {
-                map.set(c.name, Stack.ipCache.get(c.id)?.ip ?? "");
+        try {
+            const res = await childProcessAsync.spawn("docker", [ "inspect", "--type", "container", "--format", format, ...containers.map((c) => c.name) ], DOCKER_SPAWN_OPTIONS);
+            parse(res.stdout?.toString() ?? "");
+        } catch (e) {
+            // A container removed between `ps` and `inspect` makes inspect exit
+            // non-zero, but the surviving containers are still printed.
+            const partial = (e as { stdout ?: string | Buffer })?.stdout;
+            if (partial) {
+                parse(partial.toString());
+            } else {
+                log.debug("getContainerIPs", "docker inspect failed: " + errorMessage(e));
             }
         }
 

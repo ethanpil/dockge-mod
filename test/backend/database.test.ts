@@ -24,8 +24,6 @@ describe("Database", () => {
 
     beforeAll(async () => {
         dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "dockge-db-"));
-        // The override template of an earlier version, in a file
-        fs.writeFileSync(path.join(dataDir, ModSetting.legacyOverrideTemplateFileName), "# my template\n");
         const server = { config: { dataDir } } as unknown as DockgeServer;
         // Without the model autoload. The loader of the models uses a
         // dynamic import that vitest cannot resolve, and the mod settings
@@ -66,11 +64,6 @@ describe("Database", () => {
             "mod_stack_backup",
             "mod_volume_owner",
         ]);
-    });
-
-    it("moves the legacy template file to the table", async () => {
-        expect(await ModSetting.get(ModSetting.COMPOSE_OVERRIDE_TEMPLATE)).toBe("# my template\n");
-        expect(fs.existsSync(path.join(dataDir, ModSetting.legacyOverrideTemplateFileName))).toBe(false);
     });
 
     it("reads, writes, and removes a mod setting", async () => {
