@@ -210,3 +210,21 @@ export function containerListFromStatus(list : Record<string, unknown> | undefin
     }
     return result;
 }
+
+/**
+ * True for an http or https URL. Links built from agent or compose data go
+ * through this, so a javascript: or data: URL cannot become a link.
+ * @param {string} url The URL
+ * @returns {boolean} True when the link is safe to render
+ */
+export function isWebUrl(url : unknown) : boolean {
+    if (typeof url !== "string") {
+        return false;
+    }
+    try {
+        const protocol = new URL(url).protocol;
+        return protocol === "http:" || protocol === "https:";
+    } catch (e) {
+        return false;
+    }
+}

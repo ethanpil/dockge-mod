@@ -516,7 +516,7 @@ import {
     defaultComposeOverrideTemplate,
     POLL_INTERVAL_DEFAULT,
 } from "../../../common/util-common";
-import { containerListFromStatus } from "../util-frontend";
+import { containerListFromStatus, isWebUrl } from "../util-frontend";
 import NetworkInput from "../components/NetworkInput.vue";
 import Confirm, { isDialogOpen } from "../components/Confirm.vue";
 import Container from "../components/Container.vue";
@@ -696,6 +696,10 @@ export default {
 
             let urls = [];
             for (const url of this.envsubstJSONConfig["x-dockge"].urls) {
+                // Only web URLs become links, not javascript: or data:
+                if (!isWebUrl(url)) {
+                    continue;
+                }
                 let display;
                 try {
                     let obj = new URL(url);

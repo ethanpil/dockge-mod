@@ -35,7 +35,7 @@
                         <td class="c-addr mono">
                             <div v-if="row.ip">{{ row.ip }}</div>
                             <div v-for="link in row.portLinks" :key="link.text" class="cell-muted">
-                                <a :href="link.url" target="_blank" rel="noopener" class="port-link">{{ link.text }}</a>
+                                <a v-if="link.url" :href="link.url" target="_blank" rel="noopener" class="port-link">{{ link.text }}</a><span v-else>{{ link.text }}</span>
                             </div>
                             <template v-if="!row.ip && row.portLinks.length === 0">—</template>
                         </td>
@@ -115,7 +115,7 @@
                     <span class="k">{{ $tc("port", 2) }}</span><span class="mono">
                         <template v-if="row.portLinks.length">
                             <div v-for="link in row.portLinks" :key="link.text">
-                                <a :href="link.url" target="_blank" rel="noopener" class="port-link">{{ link.text }}</a>
+                                <a v-if="link.url" :href="link.url" target="_blank" rel="noopener" class="port-link">{{ link.text }}</a><span v-else>{{ link.text }}</span>
                             </div>
                         </template>
                         <template v-else>—</template>
@@ -132,7 +132,7 @@
 
 <script>
 import { parseDockerPort } from "../../../common/util-common";
-import { formatPorts, formatUptime } from "../util-frontend";
+import { formatPorts, formatUptime, isWebUrl } from "../util-frontend";
 import ContainerActions from "./ContainerActions.vue";
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
 
@@ -335,10 +335,14 @@ export default {
                 ? this.stack.primaryHostname
                 : (this.$root.info.primaryHostname || location.hostname);
 
-            return ports.split(", ").map((port) => ({
-                text: port,
-                url: parseDockerPort(port, hostname).url,
-            }));
+            // The ports text can come from an agent. Only web URLs become links.
+            return ports.split(", ").map((port) => {
+                const url = parseDockerPort(port, hostname).url;
+                return {
+                    text: port,
+                    url: isWebUrl(url) ? url : null,
+                };
+            });
         },
 
         /**
