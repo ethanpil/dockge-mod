@@ -6,6 +6,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Eac
 
 ## [Unreleased]
 
+## [1.5.0-mod-38b177a] - 2026-09-29
+
 ### Security
 
 - Port links and `x-dockge` URLs are links only when they are http or https. The port text can come from an agent. ([8707181])
@@ -91,7 +93,8 @@ First release. Differences from Dockge:
 
 - The check for a new Dockge version on GitHub.
 
-[Unreleased]: https://github.com/ethanpil/dockge-mod/compare/1.5.0-mod-c056412...HEAD
+[Unreleased]: https://github.com/ethanpil/dockge-mod/compare/1.5.0-mod-38b177a...HEAD
+[1.5.0-mod-38b177a]: https://github.com/ethanpil/dockge-mod/releases/tag/1.5.0-mod-38b177a
 [1.5.0-mod-c056412]: https://github.com/ethanpil/dockge-mod/releases/tag/1.5.0-mod-c056412
 [9a9f155]: https://github.com/ethanpil/dockge-mod/commit/9a9f155
 [5f93947]: https://github.com/ethanpil/dockge-mod/commit/5f93947
