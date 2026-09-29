@@ -149,8 +149,6 @@ export default {
             this.interactiveTerminalConfig();
         }
 
-        //this.terminal.loadAddon(new WebLinksAddon());
-
         // Bind to a div
         this.terminal.open(this.$refs.terminal);
         this.terminal.focus();
