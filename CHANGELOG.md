@@ -6,6 +6,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Eac
 
 ## [Unreleased]
 
+### Security
+
+- Update socket.io to 4.8.4 and engine.io to 6.6.11. engine.io 6.6.9 could crash the server during a transport upgrade. ([bc22502])
+
+### Changed
+
+- The image is based on Debian 13 (trixie) with its latest updates. It no longer contains npm, curl, gnupg, or unzip, and it takes the docker CLI, compose, and buildx from the official `docker:29-cli` image. A scan finds about 40% fewer vulnerabilities, and 2 critical instead of 16. The password reset command is now `tsx extra/reset-password.ts`. ([d37663b])
+
 ## [1.5.0-mod-2026-09-30-2] - 2026-09-30
 
 ### Fixed
@@ -123,3 +131,5 @@ First release. Differences from Dockge:
 [21ff72a]: https://github.com/ethanpil/dockge-mod/commit/21ff72a
 [8707181]: https://github.com/ethanpil/dockge-mod/commit/8707181
 [98cb6c2]: https://github.com/ethanpil/dockge-mod/commit/98cb6c2
+[bc22502]: https://github.com/ethanpil/dockge-mod/commit/bc22502
+[d37663b]: https://github.com/ethanpil/dockge-mod/commit/d37663b
