@@ -357,39 +357,11 @@ export default defineComponent({
          * @param timeoutMs the time limit in milliseconds
          * @param callback gets the answer or the timeout result
          * @param lateCallback gets an answer after the time limit
-         * @returns a function that stops the wait. The callback then does
-         * not run.
+         * @returns a function that stops the wait. Neither callback runs
+         * after it.
          */
         emitAgentWithTimeout(endpoint : string, eventName : string, args : unknown[], timeoutMs : number, callback : (res) => void, lateCallback? : (res) => void) : () => void {
-            let settled = false;
-
-            const timer = setTimeout(() => {
-                if (settled) {
-                    return;
-                }
-                settled = true;
-                callback({
-                    ok: false,
-                    msg: "requestTimeout",
-                    msgi18n: true,
-                    timeout: true,
-                });
-            }, timeoutMs);
-
-            this.emitAgent(endpoint, eventName, ...args, (res) => {
-                clearTimeout(timer);
-                if (settled) {
-                    lateCallback?.(res);
-                    return;
-                }
-                settled = true;
-                callback(res);
-            });
-
-            return () => {
-                settled = true;
-                clearTimeout(timer);
-            };
+            return this.withTimeout((ack) => this.emitAgent(endpoint, eventName, ...args, ack), timeoutMs, callback, lateCallback);
         },
 
         /**
@@ -400,11 +372,27 @@ export default defineComponent({
          * @param args arguments of the event, without the callback
          * @param timeoutMs the time limit in milliseconds
          * @param callback gets the answer or the timeout result
-         * @returns a function that stops the wait. The callback then does
-         * not run.
+         * @param lateCallback gets an answer that arrives after the time limit
+         * @returns a function that stops the wait. Neither callback runs
+         * after it.
          */
-        emitWithTimeout(eventName : string, args : unknown[], timeoutMs : number, callback : (res) => void) : () => void {
+        emitWithTimeout(eventName : string, args : unknown[], timeoutMs : number, callback : (res) => void, lateCallback? : (res) => void) : () => void {
+            return this.withTimeout((ack) => this.getSocket().emit(eventName, ...args, ack), timeoutMs, callback, lateCallback);
+        },
+
+        /**
+         * The time limit of both emit functions. The callback runs once, with
+         * the answer or with a timeout result. An answer after the time limit
+         * goes to lateCallback. After cancel, nothing runs.
+         * @param send sends the event with the given acknowledgement
+         * @param timeoutMs the time limit in milliseconds
+         * @param callback gets the answer or the timeout result
+         * @param lateCallback gets an answer that arrives after the time limit
+         * @returns the cancel function
+         */
+        withTimeout(send : (ack : (res) => void) => void, timeoutMs : number, callback : (res) => void, lateCallback? : (res) => void) : () => void {
             let settled = false;
+            let cancelled = false;
 
             const timer = setTimeout(() => {
                 if (settled) {
@@ -419,9 +407,13 @@ export default defineComponent({
                 });
             }, timeoutMs);
 
-            this.getSocket().emit(eventName, ...args, (res) => {
+            send((res) => {
                 clearTimeout(timer);
+                if (cancelled) {
+                    return;
+                }
                 if (settled) {
+                    lateCallback?.(res);
                     return;
                 }
                 settled = true;
@@ -430,6 +422,7 @@ export default defineComponent({
 
             return () => {
                 settled = true;
+                cancelled = true;
                 clearTimeout(timer);
             };
         },
