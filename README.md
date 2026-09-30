@@ -30,7 +30,7 @@ Everything Dockge does, plus:
 
 Requirements: Docker 20 or later on Linux, on amd64, arm64, or armv7. Podman with `podman-docker` works for the Dockge features; the new features (event watcher, image checks, Resources page) are tested on Docker only.
 
-The image is [`ethanpil/dockge-mod`](https://hub.docker.com/r/ethanpil/dockge-mod) on Docker Hub. Each release has two tags: `latest` and a fixed version such as `1.5.0-mod-a1b2c3d`. **Settings** > **About** shows the version you run.
+The image is [`ethanpil/dockge-mod`](https://hub.docker.com/r/ethanpil/dockge-mod) on Docker Hub. Each release has two tags: `latest` and a fixed version with the build date, such as `1.5.0-mod-2026-10-01` (a second release on the same day adds `-2`). The fixed tags sort by release date. **Settings** > **About** shows the version you run.
 
 1. Create a directory for your stacks and one for dockge-mod:
 

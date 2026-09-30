@@ -12,7 +12,7 @@ Group related work into one commit, then push. Do not make one large mixed commi
 Keep a Changelog format. Keep entries short, and reference the commit hash where it helps.
 
 - Changelogs are for humans, not machines.
-- Put new entries under `## [Unreleased]`. A release moves them to `## [<tag>] - YYYY-MM-DD`. The tag is the image version, `<package.json version>-mod-<short sha>`.
+- Put new entries under `## [Unreleased]`. A release moves them to `## [<tag>] - YYYY-MM-DD`. The tag is the image version that the publish workflow prints: `<package.json version>-mod-<YYYY-MM-DD>`, with `-2`, `-3` for more releases on one day.
 - The latest changes come first.
 - Group entries by type: `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, `Security`.
   - `Fixed`: the behavior was wrong and is now correct.

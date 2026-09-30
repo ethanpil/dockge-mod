@@ -34,7 +34,15 @@ jobs:
         run: |
           set -eu
           BASE="$(node -p "require('./package.json').version")"
-          VERSION="${BASE}-mod-$(git rev-parse --short HEAD)"
+          # The build date, so the tags sort by release. A second release on
+          # the same day gets a counter: 1.5.0-mod-2026-09-29-2.
+          DATE="$(date -u +%Y-%m-%d)"
+          VERSION="${BASE}-mod-${DATE}"
+          N=2
+          while curl -fsS -o /dev/null "https://hub.docker.com/v2/repositories/ethanpil/dockge-mod/tags/${VERSION}"; do
+            VERSION="${BASE}-mod-${DATE}-${N}"
+            N=$((N + 1))
+          done
           TAGS="ethanpil/dockge-mod:${VERSION}"
           # Only the default branch moves the latest tag
           if [ "${GITHUB_REF}" = "refs/heads/master" ]; then
@@ -43,6 +51,7 @@ jobs:
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
           echo "tags=${TAGS}" >> "$GITHUB_OUTPUT"
           echo "Publishing ${VERSION}"
+          echo "Image version \`${VERSION}\` from commit \`${GITHUB_SHA}\`. Tag that commit with the same name." >> "$GITHUB_STEP_SUMMARY"
           echo "Tags: ${TAGS}"
 
       - name: Set up QEMU
