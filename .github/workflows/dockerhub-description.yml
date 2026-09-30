@@ -23,12 +23,13 @@ jobs:
         with:
           persist-credentials: false
 
-      # The token needs the read/write/delete scope of Docker Hub
+      # Docker Hub only accepts a token with the Read, Write, Delete scope
+      # here. It is a separate secret, so the image push keeps a narrower one.
       - name: Update the Docker Hub description
         uses: peter-evans/dockerhub-description@1b9a80c056b620d92cedb9d9b5a223409c68ddfa # v5.0.0
         with:
           username: ethanpil
-          password: ${{ secrets.DOCKER_HUB_KEY }}
+          password: ${{ secrets.DOCKER_HUB_DESCRIPTION_KEY }}
           repository: ethanpil/dockge-mod
           short-description: Drop-in replacement for Dockge, with update checks, notifications, and backups.
           enable-url-completion: true
