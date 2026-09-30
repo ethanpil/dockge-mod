@@ -6,6 +6,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Eac
 
 ## [Unreleased]
 
+### Fixed
+
+- **Pull & Redeploy** in a checkout owned by another user left root-owned files, and the owner's own git commands then failed. The files now go back to the owner after each pull. ([98cb6c2])
+
 ## [1.5.0-mod-2026-09-30] - 2026-09-30
 
 ### Changed
@@ -115,3 +119,4 @@ First release. Differences from Dockge:
 [51973af]: https://github.com/ethanpil/dockge-mod/commit/51973af
 [21ff72a]: https://github.com/ethanpil/dockge-mod/commit/21ff72a
 [8707181]: https://github.com/ethanpil/dockge-mod/commit/8707181
+[98cb6c2]: https://github.com/ethanpil/dockge-mod/commit/98cb6c2
