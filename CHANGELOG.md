@@ -12,7 +12,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Eac
 
 ### Changed
 
-- The image is based on Debian 13 (trixie) with its latest updates. It no longer contains npm, curl, gnupg, or unzip, and it takes the docker CLI, compose, and buildx from the official `docker:29-cli` image. A scan finds about 40% fewer vulnerabilities, and 2 critical instead of 16. The password reset command is now `tsx extra/reset-password.ts`. ([d37663b])
+- The image is based on Debian 13 (trixie) with its latest updates. It no longer contains npm, curl, gnupg, or unzip, and it takes the docker CLI, compose, and buildx from the official `docker:29-cli` image. The install-only packages of the sqlite3 driver are removed, and tsx 4.23 brings a current esbuild. A Trivy scan finds 291 vulnerabilities instead of 582, and none critical instead of 16; the rest have no fix yet. The password reset command is now `tsx extra/reset-password.ts`. ([d37663b])
 
 ## [1.5.0-mod-2026-09-30-2] - 2026-09-30
 
