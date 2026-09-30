@@ -16,7 +16,13 @@ FROM docker:29-cli AS docker_cli
 #
 # git: stacks that are git checkouts (branch badge, Pull & Redeploy).
 ############################################
-FROM node:22-trixie-slim AS base
+# Node.js publishes Debian 13 images for amd64 and arm64 only. armv7 stays
+# on Debian 12, with its security updates applied by the upgrade below.
+# BuildKit builds only the stage of the target platform.
+FROM node:22-trixie-slim AS node-amd64
+FROM node:22-trixie-slim AS node-arm64
+FROM node:22-bookworm-slim AS node-arm
+FROM node-${TARGETARCH} AS base
 RUN apt-get update \
     && apt-get upgrade --yes \
     && apt-get install --yes --no-install-recommends \
