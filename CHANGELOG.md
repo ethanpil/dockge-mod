@@ -6,13 +6,15 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Eac
 
 ## [Unreleased]
 
+## [1.5.0-mod-2026-09-30-3] - 2026-09-30
+
 ### Security
 
 - Update socket.io to 4.8.4 and engine.io to 6.6.11. engine.io 6.6.9 could crash the server during a transport upgrade. ([bc22502])
 
 ### Changed
 
-- The image is based on Debian 13 (trixie) with its latest updates. It no longer contains npm, curl, gnupg, or unzip, and it takes the docker CLI, compose, and buildx from the official `docker:29-cli` image. The install-only packages of the sqlite3 driver are removed, and tsx 4.23 brings a current esbuild. A Trivy scan finds 291 vulnerabilities instead of 582, and none critical instead of 16; the rest have no fix yet. The password reset command is now `tsx extra/reset-password.ts`. ([d37663b])
+- The image is based on Debian 13 (trixie) with its latest updates on amd64 and arm64, and Debian 12 on armv7, which has no Debian 13 Node.js image. It no longer contains npm, curl, gnupg, or unzip, and it takes the docker CLI, compose, and buildx from the official `docker:29-cli` image. The install-only packages of the sqlite3 driver are removed, and tsx 4.23 brings a current esbuild. A Trivy scan finds 291 vulnerabilities instead of 582, and none critical instead of 16; the rest have no fix yet. The password reset command is now `tsx extra/reset-password.ts`. ([d37663b])
 
 ## [1.5.0-mod-2026-09-30-2] - 2026-09-30
 
@@ -114,7 +116,8 @@ First release. Differences from Dockge:
 
 - The check for a new Dockge version on GitHub.
 
-[Unreleased]: https://github.com/ethanpil/dockge-mod/compare/1.5.0-mod-2026-09-30-2...HEAD
+[Unreleased]: https://github.com/ethanpil/dockge-mod/compare/1.5.0-mod-2026-09-30-3...HEAD
+[1.5.0-mod-2026-09-30-3]: https://github.com/ethanpil/dockge-mod/releases/tag/1.5.0-mod-2026-09-30-3
 [1.5.0-mod-2026-09-30-2]: https://github.com/ethanpil/dockge-mod/releases/tag/1.5.0-mod-2026-09-30-2
 [1.5.0-mod-2026-09-30]: https://github.com/ethanpil/dockge-mod/releases/tag/1.5.0-mod-2026-09-30
 [1.5.0-mod-38b177a]: https://github.com/ethanpil/dockge-mod/releases/tag/1.5.0-mod-38b177a
