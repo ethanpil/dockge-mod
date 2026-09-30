@@ -54,7 +54,7 @@ RUN npm ci --omit=dev
 # itself. At runtime its loader calls node-pre-gyp's find(), which does not
 # load them, so they leave the image. The require checks that the native
 # modules still load.
-RUN find node_modules -depth -type d \( \
+RUN find ./node_modules -depth -type d \( \
         -path "*/node_modules/node-gyp" -o -path "*/node_modules/tar" \
         -o -path "*/node_modules/cacache" -o -path "*/node_modules/make-fetch-happen" \
         -o -path "*/node_modules/http-proxy-agent" -o -path "*/node_modules/@tootallnate/once" \
