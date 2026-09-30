@@ -6,6 +6,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Eac
 
 ## [Unreleased]
 
+### Changed
+
+- Internal cleanup with no change in behavior: the stack page is split up (backups panel, one poll loop, one request guard), the image checks and the socket time limits share their code, and the backend comments are shorter.
+
 ## [1.5.0-mod-2026-09-30-3] - 2026-09-30
 
 ### Security
