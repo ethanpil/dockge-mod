@@ -304,27 +304,13 @@ export class ImageUpdateChecker {
      * @returns The count of the images that the check examined
      */
     async checkStack(stackName : string) : Promise<{ started : boolean, count : number }> {
-        if (this.running) {
-            // The client shows a message. A check that runs is not an error.
-            return {
-                started: false,
-                count: 0,
-            };
-        }
-        this.running = true;
-        try {
-            // A registry that had a problem gets a new try, the same as
-            // in a check of each image
-            this.registry.reset();
-
+        // The client shows a message for a check that already runs
+        return this.exclusive<{ started : boolean, count : number }>({
+            started: false,
+            count: 0,
+        }, async () => {
             const stack = await Stack.getStack(this.server, stackName);
-            const images = new Set(stack.images.filter((image) => {
-                try {
-                    return parseImageRef(image).digest === null;
-                } catch (e) {
-                    return false;
-                }
-            }));
+            const images = new Set(stack.images.filter(ImageUpdateChecker.isCheckable));
 
             log.info("imageUpdate", "Check " + images.size + " images of the stack " + stackName);
 
@@ -346,9 +332,43 @@ export class ImageUpdateChecker {
                 started: true,
                 count: images.size,
             };
+        });
+    }
+
+    /**
+     * Run one check at a time. A registry that had a problem in the last
+     * check gets a new try, and the clients learn when the check ends,
+     * also when it fails before its first image.
+     * @param busy The answer when a check already runs
+     * @param run The check
+     * @returns The answer of the check, or busy
+     */
+    private async exclusive<T>(busy : T, run : () => Promise<T>) : Promise<T> {
+        if (this.running) {
+            return busy;
+        }
+        this.running = true;
+        try {
+            this.registry.reset();
+            return await run();
         } finally {
             this.running = false;
             this.endProgress();
+        }
+    }
+
+    /**
+     * True for an image that the registry can be asked about. A name with a
+     * digest names one image for ever, so there is no tag to compare, and a
+     * name that docker cannot read gets no check.
+     * @param image The image name
+     * @returns True when the image gets a check
+     */
+    static isCheckable(image : string) : boolean {
+        try {
+            return parseImageRef(image).digest === null;
+        } catch (e) {
+            return false;
         }
     }
 
@@ -367,14 +387,7 @@ export class ImageUpdateChecker {
      * @returns True when the check ran, false when one was in progress
      */
     async checkAll(force = false) : Promise<boolean> {
-        if (this.running) {
-            return false;
-        }
-        this.running = true;
-        try {
-            // A registry that had a problem in the last run gets a new try
-            this.registry.reset();
-
+        return this.exclusive<boolean>(false, async () => {
             const { images, complete } = await this.collectImages();
 
             // An image that fails each time waits longer for its next
@@ -411,10 +424,7 @@ export class ImageUpdateChecker {
             ImageUpdateChecker.available = next;
             await this.finishCheck(result.newUpdates);
             return true;
-        } finally {
-            this.running = false;
-            this.endProgress();
-        }
+        });
     }
 
     /**
@@ -437,17 +447,7 @@ export class ImageUpdateChecker {
             if (!stack.composeInfo.ok) {
                 complete = false;
             }
-            for (const image of stack.images) {
-                try {
-                    // A name with a digest names one image for ever. There
-                    // is no tag to compare, thus there is nothing to check.
-                    if (parseImageRef(image).digest !== null) {
-                        continue;
-                    }
-                } catch (e) {
-                    // A name that docker cannot read gets no check
-                    continue;
-                }
+            for (const image of stack.images.filter(ImageUpdateChecker.isCheckable)) {
                 images.add(image);
             }
         }
