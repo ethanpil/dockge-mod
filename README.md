@@ -1,3 +1,5 @@
+<p align="center"><img src="frontend/public/icon.svg" width="120" alt="dockge-mod logo"></p>
+
 # dockge-mod
 
 A drop-in replacement for [Dockge](https://github.com/louislam/dockge) by Louis Lam, with a reworked interface and new features. It uses the same data directory, database, stacks directory, and environment variables, so you can switch an existing Dockge installation to dockge-mod and back without a migration.
@@ -248,6 +250,10 @@ The interface has all the languages of Dockge. Texts for the new features are ma
 ## AI assistance
 
 This fork was developed with help from Claude.
+
+## Credits
+
+The logo is the "cargo ship" icon by Flat Icon Design, from [SVG Repo](https://www.svgrepo.com/), in the public domain.
 
 ## License
 

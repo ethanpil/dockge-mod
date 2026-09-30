@@ -2,9 +2,14 @@
 
 Changes in dockge-mod compared with [Dockge](https://github.com/louislam/dockge). dockge-mod is based on Dockge commit [`f809ae1`](https://github.com/louislam/dockge/commit/f809ae192b571944ad773e9866d3e67064ae8043) and stays compatible with the data, the stacks directory, the environment variables, and the agents of Dockge 1.5.0 and later.
 
-The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Each release is a git tag named after the image version, for example `1.5.0-mod-c056412`. The commit history has the full detail.
+The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Each release is a git tag named after the image version. From October 2026 the version holds the build date, for example `1.5.0-mod-2026-10-01`; the first two releases used the commit hash. The commit history has the full detail.
 
 ## [Unreleased]
+
+### Changed
+
+- New logo: a cargo ship, in the interface, the favicon, and the app icons.
+- Image version tags hold the build date, for example `1.5.0-mod-2026-10-01`, so they sort by release.
 
 ## [1.5.0-mod-38b177a] - 2026-09-29
 
