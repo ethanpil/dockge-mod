@@ -6,6 +6,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Eac
 
 ## [Unreleased]
 
+## [1.5.0-mod-2026-09-30-4] - 2026-09-30
+
 ### Changed
 
 - Internal cleanup with no change in behavior: the stack page is split up (backups panel, one poll loop, one request guard), the image checks and the socket time limits share their code, and the backend comments are shorter.
@@ -120,7 +122,8 @@ First release. Differences from Dockge:
 
 - The check for a new Dockge version on GitHub.
 
-[Unreleased]: https://github.com/ethanpil/dockge-mod/compare/1.5.0-mod-2026-09-30-3...HEAD
+[Unreleased]: https://github.com/ethanpil/dockge-mod/compare/1.5.0-mod-2026-09-30-4...HEAD
+[1.5.0-mod-2026-09-30-4]: https://github.com/ethanpil/dockge-mod/releases/tag/1.5.0-mod-2026-09-30-4
 [1.5.0-mod-2026-09-30-3]: https://github.com/ethanpil/dockge-mod/releases/tag/1.5.0-mod-2026-09-30-3
 [1.5.0-mod-2026-09-30-2]: https://github.com/ethanpil/dockge-mod/releases/tag/1.5.0-mod-2026-09-30-2
 [1.5.0-mod-2026-09-30]: https://github.com/ethanpil/dockge-mod/releases/tag/1.5.0-mod-2026-09-30
