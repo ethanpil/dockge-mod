@@ -1,0 +1,34 @@
+name: Docker Hub Description
+
+# Copy the README and the short description to the Docker Hub page
+on:
+  workflow_dispatch:
+  push:
+    branches: [ master ]
+    paths:
+      - README.md
+      - .github/workflows/dockerhub-description.yml
+
+permissions:
+  contents: read
+
+jobs:
+  description:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      # The token needs the read/write/delete scope of Docker Hub
+      - name: Update the Docker Hub description
+        uses: peter-evans/dockerhub-description@1b9a80c056b620d92cedb9d9b5a223409c68ddfa # v5.0.0
+        with:
+          username: ethanpil
+          password: ${{ secrets.DOCKER_HUB_KEY }}
+          repository: ethanpil/dockge-mod
+          short-description: Drop-in replacement for Dockge, with update checks, notifications, and backups.
+          enable-url-completion: true
