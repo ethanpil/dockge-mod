@@ -6,6 +6,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Eac
 
 ## [Unreleased]
 
+## [1.5.0-mod-2026-09-30] - 2026-09-30
+
 ### Changed
 
 - New logo: a cargo ship, in the interface, the favicon, and the app icons.
@@ -98,7 +100,8 @@ First release. Differences from Dockge:
 
 - The check for a new Dockge version on GitHub.
 
-[Unreleased]: https://github.com/ethanpil/dockge-mod/compare/1.5.0-mod-38b177a...HEAD
+[Unreleased]: https://github.com/ethanpil/dockge-mod/compare/1.5.0-mod-2026-09-30...HEAD
+[1.5.0-mod-2026-09-30]: https://github.com/ethanpil/dockge-mod/releases/tag/1.5.0-mod-2026-09-30
 [1.5.0-mod-38b177a]: https://github.com/ethanpil/dockge-mod/releases/tag/1.5.0-mod-38b177a
 [1.5.0-mod-c056412]: https://github.com/ethanpil/dockge-mod/releases/tag/1.5.0-mod-c056412
 [9a9f155]: https://github.com/ethanpil/dockge-mod/commit/9a9f155
