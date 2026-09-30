@@ -117,34 +117,125 @@ export class Stack {
     }
 
     /**
+     * The owner of the checkout, when this server runs as root and another
+     * user owns the .git entry. Null otherwise.
+     */
+    protected get gitOwner() : { uid : number, gid : number } | null {
+        if (process.getuid?.() !== 0) {
+            return null;
+        }
+        try {
+            const stat = fs.statSync(path.join(this.fullPath, ".git"));
+            if (stat.uid === 0) {
+                return null;
+            }
+            return {
+                uid: stat.uid,
+                gid: stat.gid,
+            };
+        } catch (e) {
+            return null;
+        }
+    }
+
+    /**
      * Spawn options that run git as the owner of the checkout, when this
      * server runs as root and another user owns the checkout. Commands
      * from the repository config then run with that user's rights, not
      * root's.
      */
     protected get gitOwnerOptions() : { uid? : number, gid? : number, env? : NodeJS.ProcessEnv } {
-        if (process.getuid?.() !== 0) {
+        const owner = this.gitOwner;
+        if (!owner) {
             return {};
         }
-        try {
-            const stat = fs.statSync(path.join(this.fullPath, ".git"));
-            if (stat.uid === 0) {
-                return {};
+        return {
+            uid: owner.uid,
+            // Not the root group, which can read root-group files
+            gid: owner.gid === 0 ? 65534 : owner.gid,
+            // root's home is not readable by that user, and git stops
+            // when it cannot read the global config
+            env: {
+                ...process.env,
+                HOME: os.tmpdir(),
+                XDG_CONFIG_HOME: os.tmpdir(),
+            },
+        };
+    }
+
+    /**
+     * Run git as the owner of the checkout and return its output.
+     * @param args The git arguments
+     * @returns The trimmed standard output
+     */
+    protected async gitOutput(...args : string[]) : Promise<string> {
+        const res = await childProcessAsync.spawn("git", [ ...this.gitSafeArgs, ...args ], {
+            ...this.gitOwnerOptions,
+            cwd: this.path,
+            encoding: "utf-8",
+            maxBuffer: 10 * 1024 * 1024,
+            timeout: 30000,
+        });
+        return (res.stdout?.toString() ?? "").trim();
+    }
+
+    /**
+     * A pull runs as root, so the files it writes belong to root, and the
+     * owner's own git commands then fail. Give the .git entry and the files
+     * that the pull changed back to the owner. Only root-owned entries
+     * change, so data that containers wrote in the checkout keeps its owner.
+     * @param owner The owner of the checkout
+     * @param before The commit before the pull, or "" when unknown
+     */
+    protected async restoreGitOwnership(owner : { uid : number, gid : number }, before : string) : Promise<void> {
+        const give = async (target : string) => {
+            try {
+                const stat = await fsAsync.lstat(target);
+                if (stat.uid === 0) {
+                    await fsAsync.lchown(target, owner.uid, owner.gid);
+                }
+            } catch (e) {
+                // Gone since the pull; nothing to give back
             }
-            return {
-                uid: stat.uid,
-                // Not the root group, which can read root-group files
-                gid: stat.gid === 0 ? 65534 : stat.gid,
-                // root's home is not readable by that user, and git stops
-                // when it cannot read the global config
-                env: {
-                    ...process.env,
-                    HOME: os.tmpdir(),
-                    XDG_CONFIG_HOME: os.tmpdir(),
-                },
-            };
-        } catch (e) {
-            return {};
+        };
+
+        const walk = async (dir : string) : Promise<void> => {
+            await give(dir);
+            let entries : fs.Dirent[];
+            try {
+                entries = await fsAsync.readdir(dir, { withFileTypes: true });
+            } catch (e) {
+                return;
+            }
+            for (const entry of entries) {
+                const target = path.join(dir, entry.name);
+                if (entry.isDirectory()) {
+                    await walk(target);
+                } else {
+                    await give(target);
+                }
+            }
+        };
+
+        const gitPath = path.join(this.fullPath, ".git");
+        if ((await fsAsync.lstat(gitPath)).isDirectory()) {
+            await walk(gitPath);
+        } else {
+            await give(gitPath);
+        }
+
+        if (before === "") {
+            return;
+        }
+        const changed = (await this.gitOutput("diff", "--name-only", before, "HEAD")).split("\n").filter((line) => line !== "");
+        const root = path.resolve(this.fullPath);
+        for (const file of changed) {
+            // The new directories of the file too, up to the checkout
+            let target = path.resolve(root, file);
+            while (target.startsWith(root + path.sep)) {
+                await give(target);
+                target = path.dirname(target);
+            }
         }
     }
 
@@ -223,7 +314,18 @@ export class Stack {
             await StackBackup.create(this.name, "pull", current);
         }
 
+        const owner = this.gitOwner;
+        const before = owner ? await this.gitOutput("rev-parse", "HEAD").catch(() => "") : "";
+
         const exitCode = await Terminal.exec(this.server, socket, terminalName, "git", [ ...this.gitSafeArgs, "pull" ], this.path, env);
+
+        // Also after a failed pull, which can write objects and FETCH_HEAD
+        if (owner) {
+            await this.restoreGitOwnership(owner, before).catch((e) => {
+                log.warn("gitPull", "Cannot give the files of " + this.name + " back to their owner: " + errorMessage(e));
+            });
+        }
+
         if (exitCode !== 0) {
             throw new Error("Failed to pull, please check the terminal output for more information.");
         }
