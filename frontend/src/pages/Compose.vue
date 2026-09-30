@@ -310,8 +310,7 @@
                         :override-file-name="overrideFileName"
                         :processing="processing"
                         @close="toggleExpand('backups')"
-                        @busy="processing = $event"
-                        @restored="onBackupRestored"
+                        @restore="restoreBackup"
                     />
 
                     <div v-if="expandedPanel" class="panel-backdrop" @click="toggleExpand(expandedPanel)"></div>
@@ -1223,13 +1222,23 @@ export default {
         },
 
         /**
-         * A restore wrote the files to the disk. Load them, the same as after
-         * a git pull. The containers do not change until a deploy.
+         * Write the files of a backup to the disk, then load them, the same as
+         * after a git pull. The containers do not change until a deploy.
+         * @param {number} id the backup
          * @returns {void}
          */
-        onBackupRestored() {
-            this.expandedPanel = null;
-            this.loadStack();
+        restoreBackup(id) {
+            this.processing = true;
+            this.stackRequest("restoreStackBackup", [ this.stack.name, id ], 30000, (res) => {
+                if (!res.ok) {
+                    this.processing = false;
+                    this.$root.toastRes(res);
+                    return;
+                }
+                this.$root.toastSuccess(this.$t("backupRestored"));
+                this.expandedPanel = null;
+                this.loadStack();
+            });
         },
 
         bindTerminal() {

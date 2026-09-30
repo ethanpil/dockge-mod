@@ -80,10 +80,9 @@ export default {
     },
     emits: [
         "close",
-        // true when a restore starts, false when it fails
-        "busy",
-        // a restore wrote the files to the disk
-        "restored",
+        // the user confirmed a restore of this backup id. The page sends
+        // it, because the panel can close while the restore runs.
+        "restore",
     ],
     data() {
         return {
@@ -172,27 +171,12 @@ export default {
             this.$refs.confirmRestore.show();
         },
 
-        /**
-         * Write the files of the backup to the disk. The containers do not
-         * change until a deploy.
-         * @returns {void}
-         */
         restore() {
             const id = this.toRestore;
             this.toRestore = null;
-            if (id === null) {
-                return;
+            if (id !== null) {
+                this.$emit("restore", id);
             }
-            this.$emit("busy", true);
-            this.request("restoreStackBackup", [ this.stackName, id ], (res) => {
-                if (!res.ok) {
-                    this.$emit("busy", false);
-                    this.$root.toastRes(res);
-                    return;
-                }
-                this.$root.toastSuccess(this.$t("backupRestored"));
-                this.$emit("restored");
-            });
         },
 
         formatTime(createdAt) {
