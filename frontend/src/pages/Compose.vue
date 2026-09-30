@@ -302,45 +302,17 @@
                         </div>
                     </div>
 
-                    <!-- The backups of the stack files. A restore writes
-                         the files to the disk, then the page loads the
-                         stack again. -->
-                    <div v-if="expandedPanel === 'backups'" class="panel pop">
-                        <div class="panel-head">
-                            <span class="panel-title">{{ $t("backups") }}</span>
-                            <span class="panel-note">{{ stack.name }}</span>
-                            <button v-if="backupShown" class="mini-btn expand-btn" @click="backupShown = null">
-                                <font-awesome-icon icon="arrow-left" class="me-1" />{{ $t("backups") }}
-                            </button>
-                            <button class="mini-btn" :class="{ 'expand-btn': !backupShown }" :title="$t('close')" @click="toggleExpand('backups')">
-                                <font-awesome-icon icon="compress" />
-                            </button>
-                        </div>
-                        <div class="panel-fill merged-body">
-                            <div v-if="backupsLoading" class="p-3">
-                                <font-awesome-icon icon="spinner" spin />
-                            </div>
-                            <div v-else-if="backupShown" class="backup-files">
-                                <template v-for="file in backupFiles" :key="file.name">
-                                    <div class="backup-file-name">{{ file.name }}</div>
-                                    <pre class="backup-file">{{ file.content }}</pre>
-                                </template>
-                            </div>
-                            <div v-else-if="backups.length === 0" class="p-3 text-body-secondary">{{ $t("noBackups") }}</div>
-                            <table v-else class="backup-table">
-                                <tbody>
-                                    <tr v-for="backup in backups" :key="backup.id">
-                                        <td class="mono">{{ formatBackupTime(backup.createdAt) }}</td>
-                                        <td>{{ backupReasonText(backup.reason) }}</td>
-                                        <td class="backup-actions">
-                                            <button class="mini-btn me-1" :disabled="processing" @click="showBackup(backup.id)">{{ $t("show") }}</button>
-                                            <button class="mini-btn" :disabled="processing" @click="askRestoreBackup(backup.id)">{{ $t("restore") }}</button>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
+                    <StackBackups
+                        v-if="expandedPanel === 'backups'"
+                        :endpoint="endpoint"
+                        :stack-name="stack.name"
+                        :compose-file-name="stack.composeFileName"
+                        :override-file-name="overrideFileName"
+                        :processing="processing"
+                        @close="toggleExpand('backups')"
+                        @busy="processing = $event"
+                        @restored="onBackupRestored"
+                    />
 
                     <div v-if="expandedPanel" class="panel-backdrop" @click="toggleExpand(expandedPanel)"></div>
                 </div>
@@ -448,11 +420,6 @@
                 {{ $t("deleteStackMsg") }}
             </Confirm>
 
-            <!-- Restore Backup Dialog -->
-            <Confirm ref="confirmRestoreBackup" btn-style="btn-danger" :yes-text="$t('restore')" :no-text="$t('cancel')" @yes="restoreBackup">
-                {{ $t("restoreBackupMsg") }}
-            </Confirm>
-
             <!-- Pull & Redeploy Dialog -->
             <Confirm ref="confirmGitPull" :yes-text="$t('gitPullRedeploy')" :no-text="$t('cancel')" @yes="gitPullStack">
                 {{ $t("gitPullConfirmMsg") }}
@@ -526,10 +493,10 @@ import Terminal from "../components/Terminal.vue";
 import Uptime from "../components/Uptime.vue";
 import ArrayInput from "../components/ArrayInput.vue";
 import StackToolbar from "../components/StackToolbar.vue";
+import StackBackups from "../components/StackBackups.vue";
 import resizablePanels from "../mixins/resizable-panels";
 import mergedConfig from "../mixins/merged-config";
 import dotenv from "dotenv";
-import dayjs from "dayjs";
 import { ref } from "vue";
 
 const template = `
@@ -555,6 +522,7 @@ export default {
         Uptime,
         ArrayInput,
         StackToolbar,
+        StackBackups,
     },
     mixins: [
         resizablePanels,
@@ -647,11 +615,10 @@ export default {
             isEditMode: false,
             submitted: false,
             newContainerName: "",
-            stopServiceStatusTimeout: false,
-            stopDockerStatsTimeout: false,
-            // The functions that stop a poll that waits for its answer
-            cancelServiceStatus: null,
-            cancelDockerStats: null,
+            // True after the page stops its polls
+            pollsStopped: false,
+            // The timer and the cancel function of each poll, by name
+            pollState: {},
             expandedPanel: null,
             editSnapshot: null,
             // Content of an override file that the user deleted. The save
@@ -670,13 +637,6 @@ export default {
             serviceLogTerminalName: "",
             // True while a service log request waits for the answer
             serviceLogsBusy: false,
-            // The backups of the stack, newest first
-            backups: [],
-            backupsLoading: false,
-            // The content of the backup that the overlay shows, or null
-            backupShown: null,
-            // The id of the backup that the restore dialog asks about
-            backupToRestore: null,
         };
     },
     computed: {
@@ -774,32 +734,6 @@ export default {
          */
         gitInfo() {
             return this.stack.gitInfo ?? null;
-        },
-
-        /**
-         * The files of the backup on screen. A file that the backup does
-         * not have is not in the list.
-         * @return {object[]} name and content of each file
-         */
-        backupFiles() {
-            if (!this.backupShown) {
-                return [];
-            }
-            const files = [
-                {
-                    name: this.stack.composeFileName,
-                    content: this.backupShown.composeYAML,
-                },
-                {
-                    name: this.overrideFileName,
-                    content: this.backupShown.composeOverrideYAML,
-                },
-                {
-                    name: ".env",
-                    content: this.backupShown.composeENV,
-                },
-            ];
-            return files.filter((file) => typeof file.content === "string");
         },
 
         /**
@@ -933,12 +867,8 @@ export default {
         "$root.socketIO.loginCount"() {
             // A poll that waited on the old socket gets no answer. The
             // polls start again on the new socket.
-            if (!this.isAdd && !this.stopServiceStatusTimeout) {
-                this.requestServiceStatus();
-            }
-            if (!this.isAdd && !this.stopDockerStatsTimeout) {
-                this.requestDockerStats();
-            }
+            this.requestServiceStatus();
+            this.requestDockerStats();
             this.rejoinLogs();
         },
 
@@ -1102,35 +1032,43 @@ export default {
             this.expandedPanel = (this.expandedPanel === which) ? null : which;
         },
 
-        startServiceStatusTimeout() {
-            clearTimeout(this.serviceStatusTimeout);
-            this.serviceStatusTimeout = setTimeout(async () => {
-                this.requestServiceStatus();
-            }, this.pollIntervalMs);
+        /**
+         * Ask the agent for an event every poll interval. One request runs
+         * at a time, and an answer that never comes ends in a timeout, so a
+         * lost answer does not stop the poll.
+         * @param {string} key the name of the poll
+         * @param {string} event the socket event
+         * @param {Array} args the arguments, without the callback
+         * @param {Function} apply gets the answer or the timeout result
+         * @returns {void}
+         */
+        poll(key, event, args, apply) {
+            if (this.isAdd || this.pollsStopped) {
+                return;
+            }
+            const state = this.pollState[key] ??= {};
+            state.cancel?.();
+            clearTimeout(state.timer);
+
+            state.cancel = this.$root.emitAgentWithTimeout(this.endpoint, event, args, 30000, (res) => {
+                state.cancel = null;
+                apply(res);
+                if (!this.pollsStopped) {
+                    state.timer = setTimeout(() => this.poll(key, event, args, apply), this.pollIntervalMs);
+                }
+            });
         },
 
-        startDockerStatsTimeout() {
-            clearTimeout(this.dockerStatsTimeout);
-            this.dockerStatsTimeout = setTimeout(async () => {
-                this.requestDockerStats();
-            }, this.pollIntervalMs);
+        stopPolls() {
+            this.pollsStopped = true;
+            for (const state of Object.values(this.pollState)) {
+                state.cancel?.();
+                clearTimeout(state.timer);
+            }
         },
 
         requestServiceStatus() {
-            // Do not request if it is add mode
-            if (this.isAdd) {
-                return;
-            }
-
-            // One poll at a time. A second chain sends two requests for
-            // each interval.
-            this.cancelServiceStatus?.();
-            clearTimeout(this.serviceStatusTimeout);
-
-            // An answer that does not come, for example after a loss of
-            // the connection, must not stop the poll for ever
-            this.cancelServiceStatus = this.$root.emitAgentWithTimeout(this.endpoint, "serviceStatusList", [ this.stack.name ], 30000, (res) => {
-                this.cancelServiceStatus = null;
+            this.poll("serviceStatus", "serviceStatusList", [ this.stack.name ], (res) => {
                 if (res.ok) {
                     this.serviceStatusList = res.containerList ?? containerListFromStatus(res.serviceStatusList);
                 } else if (!res.timeout) {
@@ -1138,28 +1076,13 @@ export default {
                     // that docker rejects. Old rows would look current.
                     this.serviceStatusList = {};
                 }
-                if (!this.stopServiceStatusTimeout) {
-                    this.startServiceStatusTimeout();
-                }
             });
         },
 
         requestDockerStats() {
-            // Do not request if it is add mode
-            if (this.isAdd) {
-                return;
-            }
-
-            this.cancelDockerStats?.();
-            clearTimeout(this.dockerStatsTimeout);
-
-            this.cancelDockerStats = this.$root.emitAgentWithTimeout(this.endpoint, "dockerStats", [], 30000, (res) => {
-                this.cancelDockerStats = null;
+            this.poll("dockerStats", "dockerStats", [], (res) => {
                 if (res.ok) {
                     this.dockerStats = res.dockerStats;
-                }
-                if (!this.stopDockerStatsTimeout) {
-                    this.startDockerStatsTimeout();
                 }
             });
         },
@@ -1233,12 +1156,7 @@ export default {
 
         exitAction() {
             console.log("exitAction");
-            this.stopServiceStatusTimeout = true;
-            this.stopDockerStatsTimeout = true;
-            clearTimeout(this.serviceStatusTimeout);
-            clearTimeout(this.dockerStatsTimeout);
-            this.cancelServiceStatus?.();
-            this.cancelDockerStats?.();
+            this.stopPolls();
 
             // Leave Combined Terminal
             console.debug("leaveCombinedTerminal", this.endpoint, this.stack.name);
@@ -1300,106 +1218,18 @@ export default {
             this.$root.emitAgent(this.endpoint, "leaveServiceLogs", this.stack.name, serviceName, () => {});
         },
 
-        /**
-         * Open the backups overlay and get the list from the server.
-         * @returns {void}
-         */
         openBackups() {
-            this.backupShown = null;
-            this.backups = [];
-            this.backupsLoading = true;
             this.expandedPanel = "backups";
-
-            this.$root.emitAgentWithTimeout(this.endpoint, "getStackBackups", [ this.stack.name ], 30000, (res) => {
-                if (this.pageGone) {
-                    return;
-                }
-                this.backupsLoading = false;
-                if (res.ok) {
-                    this.backups = res.backups;
-                } else {
-                    this.$root.toastRes(res);
-                }
-            });
         },
 
         /**
-         * Get the files of one backup and show them.
-         * @param {number} id the backup
+         * A restore wrote the files to the disk. Load them, the same as after
+         * a git pull. The containers do not change until a deploy.
          * @returns {void}
          */
-        showBackup(id) {
-            this.backupsLoading = true;
-
-            this.$root.emitAgentWithTimeout(this.endpoint, "getStackBackup", [ this.stack.name, id ], 30000, (res) => {
-                if (this.pageGone) {
-                    return;
-                }
-                this.backupsLoading = false;
-                if (res.ok) {
-                    this.backupShown = res.backup;
-                } else {
-                    this.$root.toastRes(res);
-                }
-            });
-        },
-
-        /**
-         * Ask before a restore, because it overwrites the files on the disk.
-         * @param {number} id the backup
-         * @returns {void}
-         */
-        askRestoreBackup(id) {
-            this.backupToRestore = id;
-            this.$refs.confirmRestoreBackup.show();
-        },
-
-        /**
-         * Write the files of the backup to the disk, then load the stack
-         * again, the same as after a git pull. The containers do not
-         * change until a deploy.
-         * @returns {void}
-         */
-        restoreBackup() {
-            const id = this.backupToRestore;
-            this.backupToRestore = null;
-            if (id === null) {
-                return;
-            }
-            this.processing = true;
-
-            this.$root.emitAgentWithTimeout(this.endpoint, "restoreStackBackup", [ this.stack.name, id ], 30000, (res) => {
-                if (this.pageGone) {
-                    return;
-                }
-                if (!res.ok) {
-                    this.processing = false;
-                    this.$root.toastRes(res);
-                    return;
-                }
-                this.$root.toastSuccess(this.$t("backupRestored"));
-                this.expandedPanel = null;
-                this.loadStack();
-            });
-        },
-
-        /**
-         * The time of a backup in the local format of the page.
-         * @param {string} createdAt the time from the server
-         * @returns {string}
-         */
-        formatBackupTime(createdAt) {
-            return dayjs(createdAt).format("YYYY-MM-DD HH:mm:ss");
-        },
-
-        /**
-         * The text for a backup reason. An unknown reason shows as it is.
-         * @param {string} reason for example "save"
-         * @returns {string}
-         */
-        backupReasonText(reason) {
-            const key = "backupReason_" + reason;
-            return this.$te(key) ? this.$t(key) : reason;
+        onBackupRestored() {
+            this.expandedPanel = null;
+            this.loadStack();
         },
 
         bindTerminal() {
@@ -1413,14 +1243,8 @@ export default {
          */
         loadStack(callback) {
             this.processing = true;
-            const endpoint = this.endpoint;
-            const name = this.stack.name;
 
             const onAnswer = (res) => {
-                if (this.pageGone) {
-                    this.leaveAfterGone(endpoint, name, res);
-                    return;
-                }
                 this.processing = false;
                 if (res.ok) {
                     this.stack = res.stack;
@@ -1435,7 +1259,32 @@ export default {
 
             // An agent that does not answer left the page empty for ever.
             // A late answer still fills the page.
-            this.$root.emitAgentWithTimeout(endpoint, "getStack", [ name ], 30000, onAnswer, onAnswer);
+            this.stackRequest("getStack", [ this.stack.name ], 30000, onAnswer, this.leaveAfterGone);
+        },
+
+        /**
+         * Send an event to the agent of this stack. The answer, also one that
+         * comes after the time limit, goes to onAnswer while the page exists,
+         * and to onGone after the user left it.
+         * @param {string} event the socket event
+         * @param {Array} args the arguments, without the callback
+         * @param {number} timeoutMs the time limit in milliseconds
+         * @param {Function} onAnswer gets the answer while the page exists
+         * @param {Function} [onGone] gets (res, endpoint, stackName) after
+         * the page is gone
+         * @returns {void}
+         */
+        stackRequest(event, args, timeoutMs, onAnswer, onGone) {
+            const endpoint = this.endpoint;
+            const name = this.stack.name;
+            const handle = (res) => {
+                if (this.pageGone) {
+                    onGone?.(res, endpoint, name);
+                } else {
+                    onAnswer(res);
+                }
+            };
+            this.$root.emitAgentWithTimeout(endpoint, event, args, timeoutMs, handle, handle);
         },
 
         /**
@@ -1463,12 +1312,12 @@ export default {
          * it answers getStack or a stack action. An answer that arrives
          * after the page is gone leaves that terminal again, or its
          * `docker compose logs -f` process runs until the tab closes.
+         * @param {object} res the answer
          * @param {string} endpoint the agent of the request
          * @param {string} name the stack of the request
-         * @param {object} res the answer
          * @returns {void}
          */
-        leaveAfterGone(endpoint, name, res) {
+        leaveAfterGone(res, endpoint, name) {
             if (res.ok && name) {
                 this.$root.emitAgent(endpoint, "leaveCombinedTerminal", name, () => {});
             }
@@ -1510,16 +1359,8 @@ export default {
             // usable while the reply travels
             const sent = this.currentEditState();
 
-            const endpoint = this.stack.endpoint;
-            const name = this.stack.name;
             const onAnswer = (res) => {
-                // The result of a long deploy is worth a toast on any page,
-                // but the page must not pull the user back to this stack
                 this.$root.toastRes(res);
-                if (this.pageGone) {
-                    this.leaveAfterGone(endpoint, name, res);
-                    return;
-                }
                 this.processing = false;
 
                 if (res.ok) {
@@ -1532,7 +1373,12 @@ export default {
             // A deploy with a long pull takes minutes. An agent that does
             // not answer must not close the toolbar for ever, and a late
             // answer still applies.
-            this.$root.emitAgentWithTimeout(endpoint, "deployStack", this.stackSaveArgs(sent), 300000, onAnswer, onAnswer);
+            // The result of a long deploy is worth a toast on any page, but
+            // the page must not pull the user back to this stack
+            this.stackRequest("deployStack", this.stackSaveArgs(sent), 300000, onAnswer, (res, endpoint, name) => {
+                this.$root.toastRes(res);
+                this.leaveAfterGone(res, endpoint, name);
+            });
         },
 
         /**
@@ -1596,19 +1442,10 @@ export default {
          */
         runStackAction(event) {
             this.processing = true;
-            const endpoint = this.endpoint;
-            const name = this.stack.name;
-
-            const onAnswer = (res) => {
-                if (this.pageGone) {
-                    this.leaveAfterGone(endpoint, name, res);
-                    return;
-                }
+            this.stackRequest(event, [ this.stack.name ], 300000, (res) => {
                 this.processing = false;
                 this.$root.toastRes(res);
-            };
-
-            this.$root.emitAgentWithTimeout(endpoint, event, [ name ], 300000, onAnswer, onAnswer);
+            }, this.leaveAfterGone);
         },
 
         startStack() {
@@ -1641,10 +1478,7 @@ export default {
         checkStackUpdates() {
             // An older agent does not answer this event. A shorter limit
             // than a stack action keeps the message near the click.
-            this.$root.emitAgentWithTimeout(this.endpoint, "checkStackImageUpdates", [ this.stack.name ], 60000, (res) => {
-                if (this.pageGone) {
-                    return;
-                }
+            this.stackRequest("checkStackImageUpdates", [ this.stack.name ], 60000, (res) => {
                 if (!res.ok) {
                     this.$root.toastRes(res);
                 } else if (res.started === false) {
@@ -1719,18 +1553,14 @@ export default {
             // A delete runs a down, which can take minutes. The buttons
             // close while it runs, and they open again when no answer
             // comes.
-            const onAnswer = (res) => {
+            // The result of a long action is worth a toast on any page
+            this.stackRequest("deleteStack", [ this.stack.name ], 300000, (res) => {
                 this.$root.toastRes(res);
-                if (this.pageGone) {
-                    return;
-                }
                 this.processing = false;
                 if (res.ok) {
                     this.$router.push("/");
                 }
-            };
-
-            this.$root.emitAgentWithTimeout(this.endpoint, "deleteStack", [ this.stack.name ], 300000, onAnswer, onAnswer);
+            }, this.$root.toastRes);
         },
 
         /**
@@ -2003,23 +1833,13 @@ export default {
         runServiceAction(event, serviceName) {
             this.processing = true;
 
-            // A late answer, after the time limit, gets the same treatment
-            const endpoint = this.endpoint;
-            const name = this.stack.name;
-            const onAnswer = (res) => {
-                if (this.pageGone) {
-                    this.leaveAfterGone(endpoint, name, res);
-                    return;
-                }
+            this.stackRequest(event, [ this.stack.name, serviceName ], 300000, (res) => {
                 this.processing = false;
                 this.$root.toastRes(res);
-
                 if (res.ok) {
-                    this.requestServiceStatus(); // Refresh service status
+                    this.requestServiceStatus();
                 }
-            };
-
-            this.$root.emitAgentWithTimeout(endpoint, event, [ name, serviceName ], 300000, onAnswer, onAnswer);
+            }, this.leaveAfterGone);
         },
 
         startService(serviceName) {
@@ -2353,45 +2173,6 @@ export default {
     margin: 0;
     padding: 1rem;
     color: var(--bs-danger);
-    white-space: pre-wrap;
-}
-
-/* ---------- backups overlay ---------- */
-.backup-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 12.5px;
-
-    td {
-        padding: 0.3rem 0.75rem;
-        border-bottom: 1px solid var(--bs-border-color);
-        vertical-align: middle;
-    }
-
-    .backup-actions {
-        text-align: right;
-        white-space: nowrap;
-    }
-}
-
-.backup-files {
-    padding: 0.75rem;
-}
-
-.backup-file-name {
-    font-size: 11px;
-    font-weight: 600;
-    color: var(--bs-secondary-color);
-    margin-bottom: 0.25rem;
-}
-
-.backup-file {
-    padding: 0.5rem 0.75rem;
-    margin-bottom: 1rem;
-    font-size: 12px;
-    background-color: var(--bs-tertiary-bg);
-    border: 1px solid var(--bs-border-color);
-    border-radius: 4px;
     white-space: pre-wrap;
 }
 
