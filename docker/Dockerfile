@@ -50,6 +50,16 @@ ARG APP_VERSION
 COPY --chown=node:node  ./package.json ./package.json
 COPY --chown=node:node  ./package-lock.json ./package-lock.json
 RUN npm ci --omit=dev
+# The sqlite3 driver uses node-gyp, tar, and their helpers only to install
+# itself. At runtime its loader calls node-pre-gyp's find(), which does not
+# load them, so they leave the image. The require checks that the native
+# modules still load.
+RUN find node_modules -depth -type d \( \
+        -path "*/node_modules/node-gyp" -o -path "*/node_modules/tar" \
+        -o -path "*/node_modules/cacache" -o -path "*/node_modules/make-fetch-happen" \
+        -o -path "*/node_modules/http-proxy-agent" -o -path "*/node_modules/@tootallnate/once" \
+    \) -exec rm -rf {} + \
+    && node -e "require('@louislam/sqlite3'); require('@homebridge/node-pty-prebuilt-multiarch')"
 # The release stage has no npm, so the version is set here
 RUN if [ -n "$APP_VERSION" ]; then npm pkg set version="$APP_VERSION"; fi
 
