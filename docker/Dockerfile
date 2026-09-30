@@ -1,56 +1,57 @@
 ############################################
-# Base
-# Node.js, the docker CLI with the compose and buildx plugins, git, and
-# dumb-init. Upstream publishes this layer as a separate image; building it
-# here removes that dependency.
+# Docker CLI
+# The docker CLI and the compose and buildx plugins, as static binaries
+# from Docker's official image. This avoids Docker's apt repository and
+# the curl, gnupg, and unzip packages that it needed. A rebuild picks up
+# the latest 29.x release.
 #
-# git: stacks that are git checkouts (branch badge, Pull & Redeploy).
 # buildx: `docker compose build` for stacks with a build section.
 ############################################
-FROM node:22-bookworm-slim AS base
-RUN apt update && apt install --yes --no-install-recommends \
-    curl \
-    ca-certificates \
-    gnupg \
-    unzip \
-    git \
-    dumb-init \
-    && install -m 0755 -d /etc/apt/keyrings \
-    && curl -fsSL https://download.docker.com/linux/debian/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg \
-    && chmod a+r /etc/apt/keyrings/docker.gpg \
-    && echo \
-         "deb [arch="$(dpkg --print-architecture)" signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/debian \
-         "$(. /etc/os-release && echo "$VERSION_CODENAME")" stable" | \
-         tee /etc/apt/sources.list.d/docker.list > /dev/null \
-    && apt update \
-    && apt --yes --no-install-recommends install \
-         docker-ce-cli \
-         docker-compose-plugin \
-         docker-buildx-plugin \
+FROM docker:29-cli AS docker_cli
+
+############################################
+# Base
+# Node.js on Debian 13, with git and dumb-init. The upgrade applies the
+# Debian security updates that are newer than the Node.js image.
+#
+# git: stacks that are git checkouts (branch badge, Pull & Redeploy).
+############################################
+FROM node:22-trixie-slim AS base
+RUN apt-get update \
+    && apt-get upgrade --yes \
+    && apt-get install --yes --no-install-recommends \
+        ca-certificates \
+        git \
+        dumb-init \
     && rm -rf /var/lib/apt/lists/*
+COPY --from=docker_cli /usr/local/bin/docker /usr/local/bin/docker
+COPY --from=docker_cli /usr/local/libexec/docker/cli-plugins /usr/local/libexec/docker/cli-plugins
 
 ############################################
 # Healthcheck Binary
 # Go compiles for the target architecture on the build platform, so
 # this stage does not run under emulation.
 ############################################
-FROM --platform=$BUILDPLATFORM golang:1.27-bookworm AS build_healthcheck
+FROM --platform=$BUILDPLATFORM golang:1.27-trixie AS build_healthcheck
 WORKDIR /app
 ARG TARGETOS
 ARG TARGETARCH
 ARG TARGETVARIANT
 COPY ./extra/healthcheck.go ./extra/healthcheck.go
 RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH GOARM=${TARGETVARIANT#v} \
-    go build -o ./extra/healthcheck ./extra/healthcheck.go
+    go build -trimpath -ldflags="-s -w" -o ./extra/healthcheck ./extra/healthcheck.go
 
 ############################################
 # Build
 ############################################
 FROM base AS build
 WORKDIR /app
+ARG APP_VERSION
 COPY --chown=node:node  ./package.json ./package.json
 COPY --chown=node:node  ./package-lock.json ./package-lock.json
 RUN npm ci --omit=dev
+# The release stage has no npm, so the version is set here
+RUN if [ -n "$APP_VERSION" ]; then npm pkg set version="$APP_VERSION"; fi
 
 ############################################
 # Frontend
@@ -60,7 +61,7 @@ RUN npm ci --omit=dev
 # multi-arch build must not recompile it per target under QEMU. This stage only
 # needs Node.js, thus it starts from the plain node image.
 ############################################
-FROM --platform=$BUILDPLATFORM node:22-bookworm-slim AS frontend_build
+FROM --platform=$BUILDPLATFORM node:22-trixie-slim AS frontend_build
 WORKDIR /app
 ARG APP_VERSION
 COPY --chown=node:node  ./package.json ./package.json
@@ -78,16 +79,20 @@ RUN npm run build:frontend
 ############################################
 FROM base AS release
 WORKDIR /app
-ARG APP_VERSION
+# The server never runs npm. Removing it, and corepack, removes their
+# bundled dependencies from the image.
+RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack \
+        /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack
 COPY --chown=node:node --from=build_healthcheck /app/extra/healthcheck /app/extra/healthcheck
 COPY --from=build /app/node_modules /app/node_modules
-# Only what the server needs at runtime
-COPY --chown=node:node ./package.json ./tsconfig.json ./
+# Only what the server needs at runtime. package.json comes from the build
+# stage, which holds the version of the image.
+COPY --chown=node:node --from=build /app/package.json ./package.json
+COPY --chown=node:node ./tsconfig.json ./
 COPY --chown=node:node ./backend ./backend
 COPY --chown=node:node ./common ./common
 COPY --chown=node:node ./extra/reset-password.ts ./extra/reset-password.ts
 COPY --chown=node:node --from=frontend_build /app/frontend-dist /app/frontend-dist
-RUN if [ -n "$APP_VERSION" ]; then npm pkg set version="$APP_VERSION"; fi
 # Dockge has tsx on the PATH. Keep that for compose files and commands that
 # call it, pointing at the version of the lock file.
 RUN mkdir ./data && ln -s /app/node_modules/.bin/tsx /usr/local/bin/tsx

@@ -185,7 +185,7 @@ Stop the container and copy the `data` directory. The database is SQLite in WAL 
 ### Reset the password
 
 ```bash
-docker compose exec dockge-mod npm run reset-password
+docker compose exec dockge-mod tsx extra/reset-password.ts
 ```
 
 ### Reverse proxy
