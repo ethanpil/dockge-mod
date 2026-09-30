@@ -7,9 +7,7 @@ import { Stack } from "./stack";
 import { Notifier } from "./notification";
 import { canonicalRef, DIGEST_REGEX, parseImageRef, RegistryClient, RegistryError } from "./registry";
 
-/**
- * One row of the mod_image_update table, for the interface.
- */
+/** One mod_image_update row, as sent to the client. */
 export interface ImageUpdate {
     image : string;
     localDigest : string | null;
@@ -17,16 +15,16 @@ export interface ImageUpdate {
     updateAvailable : boolean;
     checkedAt : string | null;
     error : string | null;
-    /** How many checks of this image failed, one after the other */
+    /** Consecutive failed checks */
     failures : number;
-    /** The time of the next check, for an image that fails */
+    /** When a failing image is checked next */
     nextCheck : string | null;
 }
 
 /**
  * The digest part of a repo digest such as "nginx@sha256:abc".
  * @param repoDigest The repo digest from docker image inspect
- * @returns The digest, or the full text when it has no @
+ * @returns The digest, or the full text if it has no @
  */
 function digestOf(repoDigest : string) : string {
     const at = repoDigest.indexOf("@");
@@ -34,54 +32,52 @@ function digestOf(repoDigest : string) : string {
 }
 
 /**
- * True when the local image is the image of the registry. A local image
- * can have more than one repo digest, for example one for each tag.
- * @param localRepoDigests The RepoDigests of docker image inspect
- * @param remoteDigest The digest of docker manifest inspect
- * @returns True when one local digest is the remote digest
+ * True if the local image matches the registry. A local image can have
+ * several repo digests, e.g. one per tag.
+ * @param localRepoDigests RepoDigests from docker image inspect
+ * @param remoteDigest The registry digest
+ * @returns True if any local digest equals the remote digest
  */
 export function digestsMatch(localRepoDigests : string[], remoteDigest : string) : boolean {
     return localRepoDigests.some((repoDigest) => digestOf(repoDigest) === remoteDigest);
 }
 
 /**
- * The check for new image versions. It reads the digest of each image of
- * the managed stacks from the registry and compares it with the local
- * image. The results go in the mod_image_update table, and a set in
- * memory gives the stack list its count.
+ * Checks for new image versions by comparing each managed stack image's
+ * registry digest with the local one. Results go to mod_image_update; an
+ * in-memory set feeds the stack list counts.
  */
 export class ImageUpdateChecker {
 
-    /** The time between two checks, in milliseconds */
+    /** Time between checks, in milliseconds */
     static readonly INTERVAL = 6 * 60 * 60 * 1000;
 
-    /** The images with a new version, from the last check */
+    /** Images with a new version, from the last check */
     static available : Set<string> = new Set();
 
-    /** How far the check that runs now is */
+    /** Progress of the running check */
     static progress : { running : boolean, checked : number, total : number } = {
         running: false,
         checked: 0,
         total: 0,
     };
 
-    /** The time between two progress events, in milliseconds */
+    /** Minimum time between progress events, in milliseconds */
     static readonly PROGRESS_INTERVAL = 500;
 
-    /** The longest time between two checks of one image, in milliseconds */
+    /** Maximum backoff for one image, in milliseconds */
     static readonly MAX_BACKOFF = 72 * 60 * 60 * 1000;
 
     /**
-     * True when a check must examine this image now.
+     * True if this image is due for a check now.
      *
-     * The time of the next check comes from the end of the last check,
-     * and the checks run at each interval. The end of a check is always
-     * after the start of the interval, thus a comparison without a
-     * window would make each image wait one more interval.
+     * nextCheck is set from when the last check ended, which is always after
+     * the interval started, so without a tolerance window every image would
+     * wait one extra interval.
      * @param previous The last result of this image, or undefined
-     * @param now The time now
-     * @param force True for a check that the user starts
-     * @returns True when the check examines this image
+     * @param now The current time
+     * @param force True for a user-started check
+     * @returns True if the image should be checked
      */
     static isDue(previous : ImageUpdate | undefined, now : number, force : boolean) : boolean {
         if (force || !previous?.nextCheck) {
@@ -90,9 +86,8 @@ export class ImageUpdateChecker {
 
         const time = new Date(previous.nextCheck).getTime();
 
-        // A value that is not a time, or a time that is too far away
-        // because the clock of the host was wrong, must not stop the
-        // checks of this image for ever.
+        // An invalid time, or one too far ahead (e.g. from a wrong host
+        // clock), must not block checks of this image forever.
         if (!Number.isFinite(time) || time - now > ImageUpdateChecker.MAX_BACKOFF) {
             return true;
         }
@@ -101,10 +96,9 @@ export class ImageUpdateChecker {
     }
 
     /**
-     * How long an image that fails waits for its next check. The time
-     * doubles with each failure, one after the other.
-     * @param failures The count of the failures
-     * @returns The time, in milliseconds
+     * Backoff for a failing image, doubling with each consecutive failure.
+     * @param failures The number of consecutive failures
+     * @returns The wait, in milliseconds
      */
     static backoff(failures : number) : number {
         if (failures < 1) {
@@ -114,7 +108,7 @@ export class ImageUpdateChecker {
         return Math.min(time, ImageUpdateChecker.MAX_BACKOFF);
     }
 
-    /** How many images the check reads from the registry at one time */
+    /** How many registry requests run in parallel */
     static readonly CONCURRENCY = 4;
 
     private server : DockgeServer;
@@ -128,9 +122,8 @@ export class ImageUpdateChecker {
     }
 
     /**
-     * Load the last results from the table, then check at each interval.
-     * The first check comes two minutes after the start, thus the start
-     * of the server stays fast.
+     * Load the last results, then check at each interval. The first check
+     * waits two minutes so server startup stays fast.
      */
     async start() {
         await this.loadAvailable();
@@ -156,10 +149,9 @@ export class ImageUpdateChecker {
     }
 
     /**
-     * Clear the update flag of each image whose local digest now matches the
-     * registry digest of the last check. This makes no registry request.
-     * It runs after a pull, and at the end of a check, because a pull can
-     * happen while a check runs.
+     * Clear the update flag of images whose local digest now matches the last
+     * registry digest, without registry requests. Runs after a pull and at
+     * the end of a check, since a pull can happen during a check.
      * @param images The images to reconcile
      */
     static async afterPull(images : string[]) : Promise<void> {
@@ -185,8 +177,8 @@ export class ImageUpdateChecker {
     }
 
     /**
-     * Reconcile the result of a check with pulls that happened during it,
-     * then send the notification for the images that still have an update.
+     * Account for pulls made during the check, then notify about images
+     * that still have an update.
      * @param newUpdates Images that had no update before this check
      */
     private async finishCheck(newUpdates : string[]) {
@@ -207,7 +199,7 @@ export class ImageUpdateChecker {
 
     /**
      * The results of the last check.
-     * @returns One entry for each image
+     * @returns One entry per image
      */
     static async getAll() : Promise<ImageUpdate[]> {
         const rows = await R.knex("mod_image_update").orderBy("image").select();
@@ -224,10 +216,9 @@ export class ImageUpdateChecker {
     }
 
     /**
-     * The fields of the last check that the next check needs. The read
-     * does not use getAll, thus the answer of the socket API and the
-     * rule of the schedule stay apart.
-     * @returns The last result of each image, by the image name
+     * The fields the scheduler needs from the last check. Kept separate from
+     * getAll so the socket API and the scheduling rules stay decoupled.
+     * @returns The last result of each image, by image name
      */
     protected static async readPrevious() : Promise<Map<string, ImageUpdate>> {
         const rows = await R.knex("mod_image_update").select("image", "update_available", "failures", "next_check");
@@ -248,13 +239,12 @@ export class ImageUpdateChecker {
     }
 
     /**
-     * Check a set of images. The progress goes to the clients while the
-     * check runs.
+     * Check a set of images, sending progress to clients.
      * @param images The images to check
      * @param previous The last result of each image
-     * @param force True for a check that the user starts
-     * @returns The images with a new version, and the images that did
-     * not have one before
+     * @param force True for a user-started check
+     * @returns The images with a new version, and those that did not
+     * have one before
      */
     private async runChecks(images : Set<string>, previous : Map<string, ImageUpdate>, force : boolean) : Promise<{ updated : Set<string>, newUpdates : string[] }> {
         const updated = new Set<string>();
@@ -298,13 +288,12 @@ export class ImageUpdateChecker {
     }
 
     /**
-     * Check the images of one stack. The user starts this check on the
-     * page of the stack, thus it examines each image of that stack.
+     * Check every image of one stack (user-started from the stack page).
      * @param stackName The name of the stack
-     * @returns The count of the images that the check examined
+     * @returns The number of images checked
      */
     async checkStack(stackName : string) : Promise<{ started : boolean, count : number }> {
-        // The client shows a message for a check that already runs
+        // started: false tells the client a check is already running
         return this.exclusive<{ started : boolean, count : number }>({
             started: false,
             count: 0,
@@ -317,8 +306,7 @@ export class ImageUpdateChecker {
             const previous = await ImageUpdateChecker.readPrevious();
             const result = await this.runChecks(images, previous, true);
 
-            // Only the images of this stack change. The images of the
-            // other stacks keep the result of their last check.
+            // Only this stack's images change; others keep their last result
             const next = new Set(ImageUpdateChecker.available);
             for (const image of images) {
                 next.delete(image);
@@ -336,12 +324,11 @@ export class ImageUpdateChecker {
     }
 
     /**
-     * Run one check at a time. A registry that had a problem in the last
-     * check gets a new try, and the clients learn when the check ends,
-     * also when it fails before its first image.
-     * @param busy The answer when a check already runs
+     * Run one check at a time. Resets registry errors from the last check,
+     * and always tells clients when the check ends, even if it fails early.
+     * @param busy The result if a check is already running
      * @param run The check
-     * @returns The answer of the check, or busy
+     * @returns The result of the check, or busy
      */
     private async exclusive<T>(busy : T, run : () => Promise<T>) : Promise<T> {
         if (this.running) {
@@ -358,11 +345,10 @@ export class ImageUpdateChecker {
     }
 
     /**
-     * True for an image that the registry can be asked about. A name with a
-     * digest names one image for ever, so there is no tag to compare, and a
-     * name that docker cannot read gets no check.
+     * True if the image can be checked. A digest-pinned name never changes,
+     * and an unparseable name is skipped.
      * @param image The image name
-     * @returns True when the image gets a check
+     * @returns True if the image gets a check
      */
     static isCheckable(image : string) : boolean {
         try {
@@ -373,9 +359,8 @@ export class ImageUpdateChecker {
     }
 
     /**
-     * Tell the clients that no check runs. This also goes out when a
-     * check failed before its first image, thus a client does not wait
-     * for an end that does not come.
+     * Tell clients no check is running. Also sent when a check fails before
+     * its first image, so clients do not wait forever.
      */
     private endProgress() {
         ImageUpdateChecker.progress.running = false;
@@ -384,26 +369,24 @@ export class ImageUpdateChecker {
 
     /**
      * Check each image of the managed stacks. One check runs at a time.
-     * @returns True when the check ran, false when one was in progress
+     * @returns True if the check ran, false if one was in progress
      */
     async checkAll(force = false) : Promise<boolean> {
         return this.exclusive<boolean>(false, async () => {
             const { images, complete } = await this.collectImages();
 
-            // An image that fails each time waits longer for its next
-            // check. A check that the user starts examines each image.
+            // Failing images back off; a user-started check ignores backoff
             const previous = await ImageUpdateChecker.readPrevious();
             const now = Date.now();
             const due = new Set([ ...images ].filter((image) => ImageUpdateChecker.isDue(previous.get(image), now, force)));
 
             log.info("imageUpdate", "Check " + due.size + " of " + images.size + " images");
 
-            // The new set replaces the old set at the end, thus a stack
-            // list that goes out during the check shows the old result,
-            // not a mix of both.
+            // Swapped in at the end, so a stack list sent mid-check shows
+            // the old result, not a mix.
             const next = new Set<string>();
 
-            // An image that this check leaves out keeps its last result
+            // Images skipped by this check keep their last result
             for (const image of images) {
                 if (!due.has(image) && previous.get(image)?.updateAvailable) {
                     next.add(image);
@@ -415,9 +398,8 @@ export class ImageUpdateChecker {
                 next.add(image);
             }
 
-            // Remove the rows of images that no stack uses now. A list
-            // without images comes from a stacks directory that is not
-            // ready, thus the rows and their counts stay.
+            // Remove rows of images no stack uses. An empty list likely means
+            // the stacks directory is not ready, so keep the rows then.
             if (images.size > 0 && complete) {
                 await R.knex("mod_image_update").whereNotIn("image", [ ...images ]).del();
             }
@@ -428,8 +410,8 @@ export class ImageUpdateChecker {
     }
 
     /**
-     * The images of the managed stacks. An image with a variable in its
-     * name gets the value from the .env file of the stack.
+     * The images of the managed stacks, with variables resolved from each
+     * stack's .env file.
      * @returns The unique image names
      */
     async collectImages() : Promise<{ images : Set<string>, complete : boolean }> {
@@ -442,8 +424,8 @@ export class ImageUpdateChecker {
             if (!stack.isManagedByDockge) {
                 continue;
             }
-            // A compose file that cannot be read now (for example half
-            // written) gives no images, which must not delete its rows
+            // An unreadable compose file (e.g. half written) gives no images,
+            // which must not delete its rows
             if (!stack.composeInfo.ok) {
                 complete = false;
             }
@@ -458,10 +440,10 @@ export class ImageUpdateChecker {
     }
 
     /**
-     * The key of an image in the map of readLocalDigests. Two names of
-     * one image give the same key.
+     * The readLocalDigests map key. Different spellings of one image give
+     * the same key.
      * @param image The image name from a compose file
-     * @returns The key, or the name when docker cannot read it
+     * @returns The key, or the name if it cannot be parsed
      */
     static key(image : string) : string {
         try {
@@ -472,11 +454,10 @@ export class ImageUpdateChecker {
     }
 
     /**
-     * The repo digests of each image that is on this host. One docker
-     * process reads all the images. An image that is not on the host is
-     * not in the map.
+     * The repo digests of the given images on this host, read with one
+     * docker call. Images not on the host are missing from the map.
      * @param images The image names
-     * @returns The repo digests, by the key of the image
+     * @returns The repo digests, by image key
      */
     static async readLocalDigests(images : string[]) : Promise<Map<string, string[]>> {
         const map = new Map<string, string[]>();
@@ -497,21 +478,20 @@ export class ImageUpdateChecker {
                         map.set(ImageUpdateChecker.key(tag), digests);
                     }
                 } catch (e) {
-                    // A line that is not JSON is not an image
+                    // Skip lines that are not JSON
                 }
             }
         };
 
-        // The two dashes end the flags of docker. An image name from a
-        // compose file can start with a dash, and docker would read such
-        // a name as a flag.
+        // "--" ends the flags, so an image name starting with a dash is not
+        // read as a flag.
         const format = "{{json .RepoTags}}\t{{json .RepoDigests}}";
         try {
             const res = await childProcessAsync.spawn("docker", [ "image", "inspect", "--format", format, "--", ...images ], DOCKER_SPAWN_OPTIONS);
             parse(res.stdout?.toString() ?? "");
         } catch (e) {
-            // An image that is not on the host makes docker exit with an
-            // error, but the images that it found are still in the output.
+            // docker exits with an error if any image is missing, but the
+            // output still has the ones it found.
             const partial = (e as { stdout ?: string | Buffer })?.stdout;
             if (partial) {
                 parse(partial.toString());
@@ -526,8 +506,8 @@ export class ImageUpdateChecker {
     /**
      * Check one image and write the result.
      * @param image The image name, with or without a tag
-     * @param repoDigests The repo digests of the image on this host, or
-     * undefined when the image is not on the host
+     * @param repoDigests The local repo digests, or undefined if the
+     * image is not on this host
      * @returns The result
      */
     async check(image : string, repoDigests : string[] | undefined, previous? : ImageUpdate, force = false) : Promise<ImageUpdate> {
@@ -542,37 +522,33 @@ export class ImageUpdateChecker {
             nextCheck: null,
         };
 
-        // True when the image is not on this host, or was skipped after an
-        // error of another image of its registry. The wait does not grow.
+        // Set when the image is not on this host, or was skipped after a
+        // registry-wide error. The backoff does not grow then.
         let keepSchedule = false;
 
         try {
             if (repoDigests === undefined) {
-                // The batch gives the images by their tags. An image
-                // without the tag of the compose file is not in that map,
-                // thus one process reads this image again.
+                // The batch is keyed by local tags, so an image without the
+                // compose file's tag is missing. Look it up by name.
                 const single = await ImageUpdateChecker.readLocalDigests([ image ]);
                 repoDigests = single.get(ImageUpdateChecker.key(image));
             }
 
             if (repoDigests === undefined) {
-                // A stack that never started has no image on the host.
-                // The last result stays, thus the badge does not go away
-                // and no message goes out at the next start.
+                // E.g. a stack that never started. Keep the last result so
+                // the badge stays and no repeat notification goes out.
                 result.error = "The image is not on this host";
                 result.updateAvailable = previous?.updateAvailable ?? false;
                 keepSchedule = true;
             } else if (repoDigests.length === 0) {
-                // A local build has no repo digest, and no registry version
+                // A local build has no repo digest and no registry version
                 result.error = "The image has no registry digest";
             } else {
                 result.localDigest = digestOf(repoDigests[0]);
 
-                // The digest of the index, or of the manifest for an image
-                // without an index. A pull by tag puts this digest in the
-                // RepoDigests, on the classic store and on the containerd
-                // store. The per-platform manifest digest is different,
-                // thus it cannot be the comparison.
+                // The index digest (or manifest digest if there is no index).
+                // A pull by tag stores this one in RepoDigests on both the
+                // classic and containerd stores; the per-platform digest differs.
                 const remoteDigest = await this.registry.getDigest(image);
                 if (!DIGEST_REGEX.test(remoteDigest)) {
                     result.error = "The registry gave no digest";
@@ -581,9 +557,8 @@ export class ImageUpdateChecker {
                     result.updateAvailable = !digestsMatch(repoDigests, remoteDigest);
 
                     if (result.updateAvailable) {
-                        // A check of many images takes time. A pull during
-                        // that time makes the digest of the batch old, and
-                        // the image would show an update that it has.
+                        // A pull during a long check makes the batch digest
+                        // stale, so re-read it before reporting an update.
                         const fresh = (await ImageUpdateChecker.readLocalDigests([ image ])).get(ImageUpdateChecker.key(image));
                         if (fresh !== undefined && fresh.length > 0) {
                             result.localDigest = digestOf(fresh[0]);
@@ -593,10 +568,9 @@ export class ImageUpdateChecker {
                 }
             }
         } catch (e) {
-            // For example, a private registry without credentials, or no
-            // network. The error text goes to the interface. The last
-            // result stays, thus a short outage of the registry does not
-            // remove the badges and does not send the message again.
+            // E.g. a private registry without credentials, or no network.
+            // Keep the last result so a short outage does not clear badges
+            // or repeat the notification.
             result.error = (stderrOf(e) || errorMessage(e) || "Check failed").split("\n")[0].slice(0, 500);
             result.updateAvailable = previous?.updateAvailable ?? false;
             keepSchedule = e instanceof RegistryError && e.skipped;
@@ -604,23 +578,23 @@ export class ImageUpdateChecker {
         }
 
         if (result.error === null) {
-            // The image has an answer, thus the usual time comes back
+            // Success resets the backoff
             result.failures = 0;
             result.nextCheck = null;
         } else if (keepSchedule) {
-            // The image was not tried. The count stays as it was.
+            // Not really tried, so keep the schedule as it was
             result.failures = previous?.failures ?? 0;
             result.nextCheck = previous?.nextCheck ?? null;
         } else {
-            // A check that the user starts must not make the wait longer
+            // A user-started check must not increase the backoff
             result.failures = force
                 ? Math.max(previous?.failures ?? 0, 1)
                 : (previous?.failures ?? 0) + 1;
             result.nextCheck = new Date(Date.now() + ImageUpdateChecker.backoff(result.failures)).toISOString();
         }
 
-        // A failed write must not reject the worker: Promise.all would end the
-        // check while the other workers still run
+        // Do not reject the worker: Promise.all would end the check while
+        // other workers still run
         try {
             await R.knex("mod_image_update").insert({
                 image: result.image,

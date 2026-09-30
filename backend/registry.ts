@@ -4,10 +4,7 @@ import path from "path";
 import { log } from "./log";
 import { CachedCall } from "./utils/cached-call";
 
-/**
- * The media types that a manifest request accepts. A registry gives the
- * index of a multi-platform image, or the manifest of a single image.
- */
+/** Accept both multi-platform indexes and single-image manifests. */
 const ACCEPT_MANIFEST = [
     "application/vnd.oci.image.index.v1+json",
     "application/vnd.docker.distribution.manifest.list.v2+json",
@@ -15,21 +12,18 @@ const ACCEPT_MANIFEST = [
     "application/vnd.docker.distribution.manifest.v2+json",
 ].join(",");
 
-/**
- * The name of this program in the requests. Some registries refuse a
- * request that has no user agent.
- */
+/** Some registries refuse requests without a user agent. */
 const USER_AGENT = "dockge-mod";
 
 /** The API host of Docker Hub */
 export const DOCKER_HUB_HOST = "registry-1.docker.io";
 
-/** The key of Docker Hub in the configuration file. It is an old form. */
+/** The legacy key that config.json uses for Docker Hub */
 export const DOCKER_HUB_CONFIG_KEY = "https://index.docker.io/v1/";
 
 /**
- * The hosts of Docker Hub. Its token service has a different name than
- * its registry, thus the credentials can go from one to the other.
+ * Docker Hub hosts. Its token service has a different host than its
+ * registry, so credentials may be sent between any of these.
  */
 const DOCKER_HUB_HOSTS = new Set([
     DOCKER_HUB_HOST,
@@ -38,7 +32,7 @@ const DOCKER_HUB_HOSTS = new Set([
     "auth.docker.io",
 ]);
 
-/** A digest is a hash algorithm and a hexadecimal value */
+/** A sha256 image digest */
 export const DIGEST_REGEX = /^sha256:[0-9a-f]{64}$/;
 
 /** The characters that docker accepts in a repository name */
@@ -48,31 +42,27 @@ const REPOSITORY_REGEX = /^[a-z0-9]+((\.|_|__|-+)[a-z0-9]+)*(\/[a-z0-9]+((\.|_|_
 const TAG_REGEX = /^[A-Za-z0-9_][A-Za-z0-9._-]{0,127}$/;
 
 /**
- * A host name with an optional port, or an IPv6 address in brackets.
- * The host goes in a URL, thus a character such as # or ? must not be
- * in it. Such a character moves the path of the request.
+ * A host name or bracketed IPv6 address, with an optional port. It goes
+ * into a URL, so characters like # or ? that would change the path are refused.
  */
 const HOST_REGEX = /^(\[[0-9a-fA-F:]+\]|[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?)*)(:[0-9]{1,5})?$/;
 
-/**
- * The parts of an image name.
- */
+/** The parts of an image name. */
 export interface ImageRef {
-    /** The host of the registry, for example ghcr.io */
+    /** e.g. ghcr.io */
     registry : string;
-    /** The path in the registry, for example library/nginx */
+    /** e.g. library/nginx */
     repository : string;
-    /** The tag, for example latest */
+    /** e.g. latest */
     tag : string;
-    /** The digest when the name holds one, for example sha256:abc */
+    /** The digest if the name has one, e.g. sha256:abc */
     digest : string | null;
 }
 
 /**
- * Divide an image name into its parts. The rules are the rules of
- * docker: a first part with a dot, a colon, or the name localhost is a
- * registry. A name without a registry is a name of Docker Hub, and a
- * name without a path gets the library path.
+ * Split an image name using docker's rules: a first segment with a dot,
+ * a colon, or "localhost" is the registry. No registry means Docker Hub,
+ * and a bare name gets the library/ prefix.
  * @param image The image name from a compose file
  * @returns The parts of the name
  */
@@ -86,8 +76,7 @@ export function parseImageRef(image : string) : ImageRef {
     const at = rest.lastIndexOf("@");
     if (at >= 0) {
         const text = rest.slice(at + 1);
-        // A text after @ that is not a digest is part of a bad name. The
-        // name then has no digest, and the checks below refuse it.
+        // A non-digest after @ is left as null; later checks refuse the name.
         digest = DIGEST_REGEX.test(text) ? text : null;
         rest = rest.slice(0, at);
     }
@@ -130,8 +119,8 @@ export function parseImageRef(image : string) : ImageRef {
 }
 
 /**
- * The full name of an image, with the registry and the tag. Two names
- * of one image give the same text, thus a lookup can use it as a key.
+ * The full registry/repository:tag name. Different spellings of one
+ * image give the same text, so it works as a lookup key.
  * @param ref The parts of the name
  * @returns The full name
  */
@@ -139,19 +128,16 @@ export function canonicalRef(ref : ImageRef) : string {
     return ref.registry + "/" + ref.repository + ":" + ref.tag;
 }
 
-/**
- * The scheme and the parameters of a WWW-Authenticate header.
- */
+/** A parsed WWW-Authenticate header. */
 export interface AuthChallenge {
-    /** The scheme in lower case, for example bearer */
+    /** Lowercase scheme, e.g. bearer */
     scheme : string;
-    /** The parameters, with the names in lower case */
+    /** Parameters, with lowercase names */
     params : Record<string, string>;
 }
 
 /**
- * Read a WWW-Authenticate header.
- * An example is: Bearer realm="https://auth.docker.io/token",service="registry.docker.io"
+ * Parse a WWW-Authenticate header, e.g. Bearer realm="https://auth.docker.io/token",service="registry.docker.io"
  * @param header The value of the header
  * @returns The scheme and the parameters, or null for an empty header
  */
@@ -182,11 +168,10 @@ export function parseAuthChallenge(header : string) : AuthChallenge | null {
 }
 
 /**
- * The names of a registry in the configuration file. Docker writes the
- * credentials of Docker Hub with an old key, thus a lookup with the API
- * host finds nothing.
+ * The config.json keys a registry may be stored under. Docker stores Docker
+ * Hub credentials under a legacy key, not the API host.
  * @param registry The host of the registry
- * @returns The keys to examine, in sequence
+ * @returns The keys to try, in order
  */
 export function credentialKeys(registry : string) : string[] {
     if (registry === DOCKER_HUB_HOST) {
@@ -205,12 +190,11 @@ export function credentialKeys(registry : string) : string[] {
 }
 
 /**
- * True when the credentials of a registry can go to a token service.
- * A registry names its own token service in the challenge, thus a
- * registry that is not correct could name the service of an attacker.
+ * True if a registry's credentials may be sent to this token service. The
+ * registry names the service itself, so a hostile one could point elsewhere.
  * @param registry The host of the registry
  * @param realmHost The host of the token service
- * @returns True when the request can hold the credentials
+ * @returns True if the credentials may be sent
  */
 export function realmAcceptsCredential(registry : string, realmHost : string) : boolean {
     // The URL parser lowercases the host and drops the default port
@@ -220,7 +204,7 @@ export function realmAcceptsCredential(registry : string, realmHost : string) : 
     return DOCKER_HUB_HOSTS.has(registry) && DOCKER_HUB_HOSTS.has(realmHost);
 }
 
-/** One entry of the auths object of the configuration file */
+/** One entry of "auths" in config.json */
 export interface DockerAuthEntry {
     auth? : string;
     username? : string;
@@ -228,24 +212,21 @@ export interface DockerAuthEntry {
     identitytoken? : string;
 }
 
-/** The parts of ~/.docker/config.json that this file reads */
+/** The fields of ~/.docker/config.json used here */
 export interface DockerConfig {
     auths? : Record<string, DockerAuthEntry>;
     credsStore? : string;
     credHelpers? : Record<string, string>;
 }
 
-/**
- * The result of a credential lookup. A helper keeps its secret outside
- * the configuration file, thus this process cannot read it.
- */
+/** A credential lookup result. Helper secrets live outside config.json and cannot be read here. */
 export type CredentialLookup =
     | { kind : "none" }
     | { kind : "basic", username : string, password : string }
     | { kind : "helper", helper : string };
 
 /**
- * Find the credentials of a registry in the configuration file.
+ * Find a registry's credentials in config.json.
  * @param config The content of config.json
  * @param registry The host of the registry
  * @returns The credentials, or the name of the helper that holds them
@@ -269,8 +250,7 @@ export function findCredential(config : DockerConfig, registry : string) : Crede
             continue;
         }
 
-        // An identity token is a token of an OAuth exchange. The exchange
-        // is not in this file.
+        // Identity tokens need an OAuth exchange, which is not supported
         if (entry.identitytoken) {
             return {
                 kind: "helper",
@@ -298,7 +278,7 @@ export function findCredential(config : DockerConfig, registry : string) : Crede
             };
         }
 
-        // An entry without a secret comes with a helper that holds it
+        // An entry without a secret means the credsStore helper holds it
         if (config.credsStore) {
             return {
                 kind: "helper",
@@ -314,14 +294,14 @@ export function findCredential(config : DockerConfig, registry : string) : Crede
 
 /**
  * The registry did not give a digest. A registry-wide error (unreachable,
- * rate limited, unsupported authentication) fails the remaining images of
- * that registry for the rest of the check, so one bad registry cannot
- * stall a check or keep hitting a rate limit.
+ * rate limited, unsupported auth) skips that registry's remaining images
+ * for the rest of the check, so one bad registry cannot stall it or keep
+ * hitting a rate limit.
  */
 export class RegistryError extends Error {
     readonly registryWide : boolean;
 
-    /** True when the image was not tried because of an earlier registry-wide error */
+    /** True if not tried because of an earlier registry-wide error */
     readonly skipped : boolean;
 
     constructor(message : string, registryWide = false, skipped = false) {
@@ -332,27 +312,26 @@ export class RegistryError extends Error {
 }
 
 /**
- * Reads the digest of an image from its registry with a HEAD request on
- * the manifest. Docker Hub does not count a HEAD against the pull limit;
- * a GET (what `docker manifest inspect` and `buildx imagetools` do)
- * counts as a pull.
+ * Reads image digests with a HEAD request on the manifest. Docker Hub does
+ * not count a HEAD against the pull limit; a GET (as used by `docker
+ * manifest inspect` and `buildx imagetools`) counts as a pull.
  */
 export class RegistryClient {
 
-    /** How long one request can take, in milliseconds */
+    /** Per-request timeout, in milliseconds */
     static readonly TIMEOUT = 15000;
 
-    /** How long the content of config.json stays in memory */
+    /** How long config.json stays cached */
     static readonly CONFIG_TTL = 5 * 60 * 1000;
 
     private tokens : Map<string, { token : string, expires : number }> = new Map();
 
     private configCache = new CachedCall(() => RegistryClient.readConfig(), RegistryClient.CONFIG_TTL);
 
-    /** Registry-wide errors of the current check, by registry */
+    /** Registry-wide errors in the current check, by registry */
     private failedRegistries : Map<string, string> = new Map();
 
-    /** Start a new check: every registry gets a new try. */
+    /** Start a new check, so every registry is tried again. */
     reset() {
         this.failedRegistries.clear();
         this.tokens.clear();
@@ -360,10 +339,10 @@ export class RegistryClient {
     }
 
     /**
-     * Read the digest that the registry has for the tag of an image.
+     * Get the registry's digest for an image tag.
      * @param image The image name from a compose file
-     * @returns The digest, for example sha256:abc
-     * @throws RegistryError when the registry gives no digest
+     * @returns The digest, e.g. sha256:abc
+     * @throws RegistryError if the registry gives no digest
      */
     async getDigest(image : string) : Promise<string> {
         const ref = parseImageRef(image);
@@ -382,9 +361,8 @@ export class RegistryClient {
             throw new RegistryError("Skipped after an earlier error: " + earlier, false, true);
         }
 
-        // The URL parser gives the host that the request goes to. The
-        // credentials and the token use the same text, thus they cannot
-        // go to a different host than the request.
+        // Make sure the parsed URL host matches the registry name, so the
+        // credentials and token cannot go to a different host.
         const url = new URL("https://" + ref.registry + "/v2/" + ref.repository + "/manifests/" + ref.tag);
         // The URL parser drops the default port, so registry:443 is registry
         const expectedHost = ref.registry.toLowerCase().replace(/:443$/, "");
@@ -403,7 +381,7 @@ export class RegistryClient {
     }
 
     /**
-     * Ask the registry for the digest. The caller checks the name.
+     * Ask the registry for the digest. The caller validates the name.
      * @param ref The parts of the image name
      * @param url The full URL of the manifest
      * @returns The digest
@@ -416,8 +394,7 @@ export class RegistryClient {
             let credential = await this.credential(ref.registry);
 
             // Credential helpers are not supported (their binaries are not in
-            // the image). A public image needs no credentials, so try
-            // anonymously, and report the helper only if that is refused.
+            // the image). Try anonymously, and report the helper only if refused.
             const helper = credential.kind === "helper" ? credential.helper : null;
             if (credential.kind === "helper") {
                 credential = { kind: "none" };
@@ -468,12 +445,12 @@ export class RegistryClient {
     }
 
     /**
-     * Make a HEAD request. A network or certificate failure is
-     * registry-wide. For a private CA, set NODE_EXTRA_CA_CERTS.
+     * HEAD request. Network and certificate failures are registry-wide.
+     * For a private CA, set NODE_EXTRA_CA_CERTS.
      * @param ref The parts of the image name
      * @param url The full URL
      * @param authorization The value of the Authorization header
-     * @returns The answer
+     * @returns The response
      */
     private async head(ref : ImageRef, url : string, authorization? : string) : Promise<Response> {
         const headers : Record<string, string> = {
@@ -496,11 +473,10 @@ export class RegistryClient {
     }
 
     /**
-     * Get a bearer token for one repository. A token stays in memory
-     * until it expires, thus one check of many images of one registry
-     * makes few token requests.
+     * Get a bearer token for one repository. Tokens are cached until they
+     * expire, so checking many images on one registry needs few requests.
      * @param ref The parts of the image name
-     * @param challenge The answer of the registry
+     * @param challenge The registry's auth challenge
      * @param credential The credentials, or none for a public image
      * @returns The token
      */
@@ -516,8 +492,8 @@ export class RegistryClient {
             throw new RegistryError(ref.registry + " gave a realm that is not https", true);
         }
 
-        // The registry names its own token service. A registry that is
-        // not correct must not get the credentials of a different host.
+        // The registry picks the token service, so do not send its
+        // credentials to an unrelated host.
         let sendCredential = credential;
         if (credential.kind === "basic" && !realmAcceptsCredential(ref.registry, realmURL.host)) {
             log.warn("registry", ref.registry + " asks for the credentials at " + realmURL.host + ", thus this request goes without them");
@@ -554,8 +530,7 @@ export class RegistryClient {
 
         let res : Response;
         try {
-            // A token service must not send this request to a different
-            // address, so a redirect is an error
+            // Do not follow redirects, so the credentials cannot be sent elsewhere
             res = await this.fetchWithTimeout(realmURL.toString(), {
                 method: "GET",
                 headers,
@@ -566,7 +541,7 @@ export class RegistryClient {
         }
 
         if (!res.ok) {
-            // Read the body, thus the connection goes back to the pool
+            // Drain the body so the connection returns to the pool
             await res.arrayBuffer().catch(() => undefined);
             throw new RegistryError("The token service of " + ref.registry + " answered with HTTP " + res.status, res.status === 429);
         }
@@ -577,14 +552,14 @@ export class RegistryClient {
             throw new RegistryError("The token service of " + ref.registry + " gave no token", true);
         }
 
-        // A short life keeps the token good for the rest of the check
+        // Default to 60s, and expire 10s early so the token does not lapse mid-request
         const seconds = typeof body?.expires_in === "number" && body.expires_in > 30 ? body.expires_in : 60;
         this.tokens.set(key, {
             token,
             expires: Date.now() + (seconds - 10) * 1000,
         });
 
-        // A large map cannot grow without a limit
+        // Keep the cache bounded
         if (this.tokens.size > 500) {
             this.tokens.clear();
         }
@@ -593,12 +568,12 @@ export class RegistryClient {
     }
 
     /**
-     * A fetch with a time limit. The limit stops a registry that accepts
-     * the connection and then gives no answer.
+     * fetch with a timeout, for registries that accept the connection
+     * but never answer.
      * @param url The full URL
      * @param init The request options
-     * @param drain True to read the body of the answer here
-     * @returns The answer
+     * @param drain True to read and discard the response body here
+     * @returns The response
      */
     private async fetchWithTimeout(url : string, init : RequestInit, drain : boolean) : Promise<Response> {
         const controller = new AbortController();
@@ -608,8 +583,7 @@ export class RegistryClient {
                 ...init,
                 signal: controller.signal,
             });
-            // An answer that nobody reads keeps its connection out of the
-            // pool until the memory of the process goes away
+            // An unread body keeps its connection out of the pool until GC
             if (drain) {
                 await res.arrayBuffer().catch(() => undefined);
             }
@@ -620,17 +594,17 @@ export class RegistryClient {
     }
 
     /**
-     * The credentials of a registry from the configuration file.
+     * A registry's credentials from config.json.
      * @param registry The host of the registry
-     * @returns The credentials, or the name of the helper, or none
+     * @returns The credentials, the helper name, or none
      */
     private async credential(registry : string) : Promise<CredentialLookup> {
         return findCredential(await this.configCache.get(), registry);
     }
 
     /**
-     * Read ~/.docker/config.json. A file that is not there gives an
-     * empty configuration, thus a public image needs no file.
+     * Read ~/.docker/config.json. A missing file gives an empty config,
+     * which is fine for public images.
      * @returns The configuration
      */
     private static async readConfig() : Promise<DockerConfig> {
@@ -639,8 +613,8 @@ export class RegistryClient {
         try {
             return JSON.parse(await fsAsync.readFile(path.join(dir, "config.json"), "utf-8"));
         } catch (e) {
-            // The message of a JSON error holds a part of the file, and
-            // that part can be a credential. Only the name goes in the log.
+            // JSON errors quote part of the file, which may be a credential,
+            // so only log the error code or name.
             const code = (e as NodeJS.ErrnoException)?.code;
             if (code !== "ENOENT") {
                 log.debug("registry", "Cannot read the docker configuration: " + (code ?? (e as Error).name));
@@ -651,7 +625,7 @@ export class RegistryClient {
 }
 
 /**
- * The value of a Basic authorization header.
+ * A Basic authorization header value.
  * @param username The user
  * @param password The password
  * @returns The base64 text

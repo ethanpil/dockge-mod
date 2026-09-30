@@ -11,9 +11,8 @@ import { Terminal } from "../terminal";
 import { getComposeTerminalName } from "../../common/util-common";
 
 /**
- * Put the arguments of a save event in sequence. A client without override
- * support sends four arguments, so the acknowledge function arrives in the
- * position of the override.
+ * Normalize the arguments of a save event. A client without override support
+ * sends four arguments, so the callback arrives in the override position.
  * @param composeOverrideYAML Argument in the override position
  * @param callback Argument in the acknowledge position
  * @returns The two arguments in their correct positions
@@ -32,8 +31,7 @@ function acceptSaveArgs(composeOverrideYAML : unknown, callback : unknown) {
 }
 
 /**
- * Make sure that the content arguments of a save or a validation have the
- * correct types.
+ * Check that the content arguments of a save or validation have the correct types.
  * @param name Name of the stack
  * @param composeYAML Content of the compose file
  * @param composeENV Content of the .env file
@@ -55,13 +53,12 @@ function checkComposeStrings(name : unknown, composeYAML : unknown, composeENV :
 }
 
 /**
- * The images, the volumes, and the networks that a removal must keep.
- * A stack of this server keeps its resources, also when the stack is
- * not running. Docker does not know which stacks this server manages,
- * thus the prune of docker cannot keep them.
+ * Images, volumes, and networks a prune must keep. This server's stacks keep
+ * their resources even when not running; docker does not know which stacks
+ * this server manages, so its own prune cannot keep them.
  *
- * A compose file that this function cannot read stops the removal. A
- * list that is not complete can let a resource of a stack go away.
+ * An unreadable compose file stops the prune, because an incomplete list
+ * could let a stack's resource go away.
  * @param server The server, for the list of the stacks
  * @returns The compose projects and the images of the stacks
  */
@@ -70,9 +67,7 @@ async function protectedResources(server : DockgeServer) : Promise<ProtectedReso
     const images = new Set<string>();
     const repositories = new Set<string>();
 
-    // The list comes from the disk, not from the cache. A compose file
-    // that changed outside of this server must not let a resource of a
-    // stack go away.
+    // Read from disk, not the cache, so compose files changed outside this server are still protected
     const stackList = await Stack.getStackList(server, false);
     for (const stack of stackList.values()) {
         if (!stack.isManagedByDockge) {
@@ -90,9 +85,7 @@ async function protectedResources(server : DockgeServer) : Promise<ProtectedReso
         }
         for (const image of info.images) {
             images.add(image);
-            // The list of docker shows no tag for an image that a pull
-            // with a digest brought in. Such an image needs its
-            // repository for the comparison.
+            // `docker image ls` shows no tag for an image pulled by digest, so compare by repository
             if (image.includes("@")) {
                 repositories.add(refRepository(image));
             }
@@ -110,9 +103,8 @@ async function protectedResources(server : DockgeServer) : Promise<ProtectedReso
 }
 
 /**
- * The answer of an event that runs `docker compose config`. The ok field
- * shows that the event was successful. A configuration error is a normal
- * answer here, and it goes in its own field.
+ * Answer for events that run `docker compose config`. ok means the event
+ * succeeded; a config error is a normal answer and goes in configError.
  * @param result The result of the docker process
  * @returns The answer for the client
  */
@@ -132,8 +124,8 @@ export class DockerSocketHandler extends AgentSocketHandler {
             const { composeOverrideYAML, callback } = acceptSaveArgs(overrideArg, callbackArg);
             try {
                 checkLogin(socket);
-                // Check before the save: a deploy that cannot run must not
-                // change the files under an operation that runs
+                // Check before the save, so a deploy that cannot run does not
+                // change the files under a running operation
                 if (typeof name === "string" && Terminal.getTerminal(getComposeTerminalName(socket.endpoint, name))) {
                     throw new ValidationError("Another operation is already running, please try again later.");
                 }
@@ -325,9 +317,8 @@ export class DockerSocketHandler extends AgentSocketHandler {
             }
         });
 
-        // Pull the git checkout of a stack, then deploy it. This event only
-        // adds a function. The frontend shows the button only when the stack
-        // object holds git data, thus an old agent never gets this event.
+        // Pull the git checkout of a stack, then deploy it. Additive event: the
+        // frontend shows the button only for stacks with git data, so old agents never get it.
         agentSocket.on("gitPullStack", async (stackName : unknown, callback) => {
             try {
                 checkLogin(socket);
@@ -499,8 +490,7 @@ export class DockerSocketHandler extends AgentSocketHandler {
             }
         });
 
-        // The results of the image update check. This event only adds a
-        // function to the socket API.
+        // Image update check results. Additive event.
         agentSocket.on("getImageUpdates", async (callback) => {
             try {
                 checkLogin(socket);
@@ -518,8 +508,7 @@ export class DockerSocketHandler extends AgentSocketHandler {
             try {
                 checkLogin(socket);
                 const started = !server.imageUpdateChecker.isRunning();
-                // A check that the user starts examines each image, also
-                // an image that waits after a failure
+                // A manual check examines every image, also those in a failure backoff
                 server.imageUpdateChecker.checkAll(true).catch((e) => {
                     log.warn("imageUpdate", "Check failed: " + errorMessage(e));
                 });
@@ -584,8 +573,8 @@ export class DockerSocketHandler extends AgentSocketHandler {
             }
         });
 
-        // Put a backup back. The files of the stack change, the
-        // containers do not. A deploy applies the files.
+        // Restore a backup. This changes the stack files, not the containers;
+        // a deploy applies them.
         agentSocket.on("restoreStackBackup", async (stackName : unknown, id : unknown, callback) => {
             try {
                 checkLogin(socket);
@@ -611,7 +600,7 @@ export class DockerSocketHandler extends AgentSocketHandler {
             }
         });
 
-        // The images, the volumes, and the networks of the host
+        // Images, volumes, and networks of the host
         agentSocket.on("getDockerResources", async (kind : unknown, callback) => {
             try {
                 checkLogin(socket);
@@ -646,8 +635,7 @@ export class DockerSocketHandler extends AgentSocketHandler {
             }
         });
 
-        // What a prune removes, and what it keeps. The user reads this
-        // list before the prune runs.
+        // What a prune removes and keeps, for the user to review first
         agentSocket.on("getPrunePlan", async (kind : unknown, callback) => {
             try {
                 checkLogin(socket);
@@ -665,9 +653,8 @@ export class DockerSocketHandler extends AgentSocketHandler {
             }
         });
 
-        // Remove the resources that the user accepted. The client sends
-        // the ids of the plan that it showed, thus a resource that
-        // became free after that moment stays.
+        // Remove the resources the user accepted. The client sends the ids of the
+        // plan it showed, so a resource that became free since then stays.
         agentSocket.on("pruneDockerResources", async (kind : unknown, accepted : unknown, callback) => {
             try {
                 checkLogin(socket);
@@ -689,8 +676,7 @@ export class DockerSocketHandler extends AgentSocketHandler {
             }
         });
 
-        // The log of one service. The answer holds the terminal name,
-        // and the client joins that terminal.
+        // Log of one service. The answer holds the terminal name for the client to join.
         agentSocket.on("serviceLogs", async (stackName : unknown, serviceName : unknown, callback) => {
             try {
                 checkLogin(socket);
@@ -724,8 +710,7 @@ export class DockerSocketHandler extends AgentSocketHandler {
             }
         });
 
-        // The configuration that docker makes from the files of a stack.
-        // This event only adds a function to the socket API.
+        // The config docker builds from the stack files. Additive event.
         agentSocket.on("getComposeConfig", async (stackName : unknown, callback) => {
             try {
                 checkLogin(socket);
@@ -736,10 +721,8 @@ export class DockerSocketHandler extends AgentSocketHandler {
 
                 const stack = await Stack.getStack(server, stackName);
 
-                // The process runs in the stack directory, thus the
-                // directory must exist. The interface shows the button for
-                // a managed stack only, so this refuses a request that
-                // does not come from the interface.
+                // The process runs in the stack directory, so it must exist. The UI
+                // shows this only for managed stacks, so refuse other requests.
                 if (!stack.isManagedByDockge) {
                     throw new ValidationError("stackNotManagedByDockgeMsg");
                 }
@@ -751,8 +734,7 @@ export class DockerSocketHandler extends AgentSocketHandler {
             }
         });
 
-        // Examine editor content with docker, before a save writes it.
-        // This event only adds a function to the socket API.
+        // Validate editor content with docker before a save. Additive event.
         agentSocket.on("validateCompose", async (name : unknown, composeYAML : unknown, composeENV : unknown, composeOverrideYAML : unknown, callback) => {
             try {
                 checkLogin(socket);

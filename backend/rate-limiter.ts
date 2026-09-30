@@ -60,8 +60,8 @@ class KumaRateLimiter {
 }
 
 /**
- * One rate limiter for each key, for example for each client address.
- * One client cannot use the tokens of the other clients.
+ * A separate rate limiter per key (e.g. client address), so one client
+ * cannot use up the tokens of others.
  */
 export class KeyedRateLimiter {
 
@@ -76,11 +76,11 @@ export class KeyedRateLimiter {
     }
 
     /**
-     * Tell if the request can pass.
-     * @param key The client key, for example the address
+     * Should the request be passed through
+     * @param key The client key, e.g. the address
      * @param callback Callback function to call with decision
      * @param {number} num Number of tokens to remove
-     * @returns {Promise<boolean>} True when the request can pass
+     * @returns {Promise<boolean>} True if the request is allowed
      */
     async pass(key : string, callback : KumaRateLimiterCallback, num = 1) {
         const now = Date.now();
@@ -99,9 +99,8 @@ export class KeyedRateLimiter {
     }
 
     /**
-     * Remove the limiters that had no use for ten minutes. When the map
-     * is still too large, remove the oldest entries. A client that can
-     * set its own address cannot make the map grow without a limit.
+     * Drop limiters unused for ten minutes, then the least recently used
+     * ones, so a client that spoofs addresses cannot grow the map forever.
      * @param now The current time
      */
     private prune(now : number) {
@@ -113,7 +112,6 @@ export class KeyedRateLimiter {
                 this.limiters.delete(k);
             }
         }
-        // Remove the keys with the oldest use first
         if (this.limiters.size >= KeyedRateLimiter.MAX_KEYS) {
             const entries = [ ...this.limiters.entries() ].sort((a, b) => a[1].lastUse - b[1].lastUse);
             for (const [ k ] of entries) {
@@ -128,10 +126,7 @@ export class KeyedRateLimiter {
     static readonly MAX_KEYS = 1000;
 }
 
-/**
- * The login limiter counts for each client address. One address cannot
- * lock out the other addresses.
- */
+/** Per-address login limit, so one address cannot lock out the others. */
 export const loginRateLimiter = new KeyedRateLimiter({
     tokensPerInterval: 20,
     interval: "minute",
@@ -139,10 +134,7 @@ export const loginRateLimiter = new KeyedRateLimiter({
     errorMessage: "Too frequently, try again later."
 });
 
-/**
- * The limit for all logins together. A client that can change its
- * address for each request still meets this limit.
- */
+/** Global login limit, which still applies to a client that rotates addresses. */
 export const loginGlobalRateLimiter = new KumaRateLimiter({
     tokensPerInterval: 100,
     interval: "minute",
@@ -150,10 +142,7 @@ export const loginGlobalRateLimiter = new KumaRateLimiter({
     errorMessage: "Too frequently, try again later."
 });
 
-/**
- * The limit for the setup, for each client address. It is separate
- * from the login limit.
- */
+/** Per-address setup limit, separate from the login limit. */
 export const setupRateLimiter = new KeyedRateLimiter({
     tokensPerInterval: 10,
     interval: "minute",

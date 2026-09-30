@@ -29,17 +29,16 @@ import { ImageUpdateChecker } from "./image-update";
 import { parseJSONLines } from "./docker-resources";
 
 /**
- * What the compose file of a stack says about its images and about its
- * project.
+ * Images and project names parsed from a stack's compose file.
  */
 export interface ComposeInfo {
-    /** False when the compose file has an error */
+    /** False if the compose file failed to parse */
     ok : boolean;
-    /** The images that the services name */
+    /** Images named by the services */
     images : string[];
-    /** The names that the project of this stack can have */
+    /** Possible project names for this stack */
     projectNames : string[];
-    /** The names of the images that a build of this stack makes */
+    /** Image names that a build of this stack produces */
     buildImages : string[];
 }
 
@@ -80,45 +79,38 @@ export class Stack {
     }
 
     /**
-     * True if the stack directory is a git checkout. The .git entry can be
-     * a directory, or a file for a worktree or a submodule.
+     * True if the stack directory is a git checkout. .git may be a file
+     * (worktree or submodule).
      */
     get isGitRepo() : boolean {
         return fs.existsSync(path.join(this.path, ".git"));
     }
 
     /**
-     * Arguments that let git use the stack directory if a different
-     * user is its owner. The server runs as root in the container, and
-     * the PUID and PGID variables give the files to a different user.
-     * Git refuses such a directory without this exception. The
-     * application selects the directory itself, thus the exception adds
-     * no new access.
+     * Git args that allow a checkout owned by another user (the server runs
+     * as root, PUID/PGID may own the files). We choose the directory
+     * ourselves, so safe.directory grants no new access.
      *
-     * Git compares the exception with the physical path of the
-     * directory, with forward slashes. Thus the value resolves the
-     * symbolic links, and Windows separators change.
+     * Git matches safe.directory against the real path with forward
+     * slashes, so resolve symlinks and convert Windows separators.
      */
     protected get gitSafeArgs() : string[] {
         let dir = this.fullPath;
         try {
             dir = fs.realpathSync(dir);
         } catch (e) {
-            // The directory can be gone; the logical path then stays
+            // Directory may be gone; keep the logical path
         }
         if (process.platform === "win32") {
             dir = dir.replace(/\\/g, "/");
         }
-        // safe.directory lets root run git in a checkout that another user
-        // owns. Repository config can still run commands (fsmonitor, filter
-        // drivers, hooks), so getGitInfo runs as the owner instead, and a
-        // pull, which the user starts, runs without hooks.
+        // Repo config can still run commands (fsmonitor, filters, hooks), so
+        // getGitInfo runs as the owner and a pull runs without hooks.
         return [ "-c", "safe.directory=" + dir, "-c", "core.fsmonitor=false", "-c", "core.hooksPath=/dev/null" ];
     }
 
     /**
-     * The owner of the checkout, when this server runs as root and another
-     * user owns the .git entry. Null otherwise.
+     * Owner of .git if we run as root and another user owns it, else null.
      */
     protected get gitOwner() : { uid : number, gid : number } | null {
         if (process.getuid?.() !== 0) {
@@ -139,10 +131,8 @@ export class Stack {
     }
 
     /**
-     * Spawn options that run git as the owner of the checkout, when this
-     * server runs as root and another user owns the checkout. Commands
-     * from the repository config then run with that user's rights, not
-     * root's.
+     * Spawn options to run git as the checkout owner, so commands from the
+     * repo config run with that user's rights instead of root's.
      */
     protected get gitOwnerOptions() : { uid? : number, gid? : number, env? : NodeJS.ProcessEnv } {
         const owner = this.gitOwner;
@@ -151,10 +141,9 @@ export class Stack {
         }
         return {
             uid: owner.uid,
-            // Not the root group, which can read root-group files
+            // Avoid the root group, which can read root-group files
             gid: owner.gid === 0 ? 65534 : owner.gid,
-            // root's home is not readable by that user, and git stops
-            // when it cannot read the global config
+            // Git fails if it cannot read the global config in root's home
             env: {
                 ...process.env,
                 HOME: os.tmpdir(),
@@ -180,12 +169,11 @@ export class Stack {
     }
 
     /**
-     * A pull runs as root, so the files it writes belong to root, and the
-     * owner's own git commands then fail. Give the .git entry and the files
-     * that the pull changed back to the owner. Only root-owned entries
-     * change, so data that containers wrote in the checkout keeps its owner.
+     * A pull runs as root and leaves root-owned files that break the owner's
+     * own git commands. Chown .git and the pulled files back to the owner.
+     * Only root-owned entries change, so container data keeps its owner.
      * @param owner The owner of the checkout
-     * @param before The commit before the pull, or "" when unknown
+     * @param before The commit before the pull, or "" if unknown
      */
     protected async restoreGitOwnership(owner : { uid : number, gid : number }, before : string) : Promise<void> {
         const give = async (target : string) => {
@@ -195,7 +183,7 @@ export class Stack {
                     await fsAsync.lchown(target, owner.uid, owner.gid);
                 }
             } catch (e) {
-                // Gone since the pull; nothing to give back
+                // Removed since the pull
             }
         };
 
@@ -230,7 +218,7 @@ export class Stack {
         const changed = (await this.gitOutput("diff", "--name-only", before, "HEAD")).split("\n").filter((line) => line !== "");
         const root = path.resolve(this.fullPath);
         for (const file of changed) {
-            // The new directories of the file too, up to the checkout
+            // Include parent directories up to the checkout root
             let target = path.resolve(root, file);
             while (target.startsWith(root + path.sep)) {
                 await give(target);
@@ -240,14 +228,10 @@ export class Stack {
     }
 
     /**
-     * The git state of the stack directory: the branch, a flag that shows
-     * tracked work that is not committed, and a flag for a detached HEAD.
-     * On a detached HEAD the branch field holds the short commit hash. The
-     * dirty flag does not count untracked files. An override file or a
-     * .env file next to the checkout is the usual condition, not drift.
-     * The result is null if the directory is not a git checkout, or if git
-     * gives an error, for example if git is not installed. The stack
-     * object then looks the same as one from an agent without git support.
+     * Git state of the stack directory. On a detached HEAD, branch is the
+     * short hash. isDirty ignores untracked files, since a local override or
+     * .env file is normal, not drift. Returns null if not a checkout or git
+     * fails, so the stack looks like one from an agent without git support.
      */
     async getGitInfo() : Promise<{ branch : string, isDirty : boolean, isDetached : boolean } | null> {
         if (!this.isGitRepo) {
@@ -258,10 +242,8 @@ export class Stack {
             ...this.gitOwnerOptions,
             cwd: this.path,
             encoding: "utf-8",
-            // The output of a git checkout with many changes can go over
-            // the default limit of 200 KiB. A process that does not end
-            // must not block the page. The same values as
-            // runComposeConfig.
+            // Output can exceed the 200 KiB default, and a hung git must not
+            // block the page. Same values as runComposeConfig.
             maxBuffer: 10 * 1024 * 1024,
             timeout: 30000,
         });
@@ -276,8 +258,7 @@ export class Stack {
             const isDetached = branch === "HEAD";
 
             if (isDetached) {
-                // The short hash tells the user which commit runs. A pull is
-                // not possible here, and the frontend hides the button.
+                // Show which commit runs. The frontend hides Pull here.
                 const shaRes = await git("rev-parse", "--short", "HEAD");
                 branch = (shaRes.stdout?.toString() ?? "").trim() || branch;
             }
@@ -294,11 +275,9 @@ export class Stack {
     }
 
     /**
-     * Run `git pull` in the stack directory. The output goes to the compose
-     * terminal of the stack, so the user can read it on the stack page.
-     * The environment stops each credential question. A question on the
-     * progress terminal can get no answer, and the pull would then never
-     * end.
+     * Run `git pull` in the stack directory, with output in the stack's
+     * compose terminal. Credential prompts are disabled because nobody can
+     * answer them there and the pull would hang.
      */
     async gitPull(socket : DockgeSocket) : Promise<number> {
         const terminalName = getComposeTerminalName(socket.endpoint, this.name);
@@ -308,7 +287,7 @@ export class Stack {
         if (!process.env.GIT_SSH_COMMAND) {
             env.GIT_SSH_COMMAND = "ssh -o BatchMode=yes";
         }
-        // A pull changes the files, thus a copy comes first
+        // Back up first, since the pull changes the files
         const current = await this.currentFiles();
         if (current) {
             await StackBackup.create(this.name, "pull", current);
@@ -333,7 +312,7 @@ export class Stack {
     }
 
     async toJSON(endpoint : string) : Promise<object> {
-        // The git processes run while the settings read goes on
+        // Start git while the settings are read
         const gitInfoPromise = this.getGitInfo();
 
         // Since we have multiple agents now, embed primary hostname in the stack object too.
@@ -372,8 +351,7 @@ export class Stack {
             isManagedByDockge: this.isManagedByDockge,
             composeFileName: this._composeFileName,
             endpoint,
-            // The count of images with a new version. This field only
-            // adds data. A client without the feature ignores it.
+            // Count of images with an update. Additive; older clients ignore it.
             imageUpdates: (this.isManagedByDockge && ImageUpdateChecker.available.size > 0)
                 ? this.images.filter((image) => ImageUpdateChecker.available.has(image)).length
                 : 0,
@@ -383,12 +361,11 @@ export class Stack {
     protected _composeInfo? : ComposeInfo;
 
     /**
-     * What the compose file of this stack says about its images and
-     * about its project. A variable gets its value from the .env file.
+     * Images and project names from the compose file, with .env variables
+     * substituted.
      *
-     * A caller that removes resources must read the ok field. A compose
-     * file with an error gives empty lists, and such a list protects
-     * nothing.
+     * Callers that remove resources must check ok: a broken compose file
+     * gives empty lists, which protect nothing.
      */
     get composeInfo() : ComposeInfo {
         if (this._composeInfo !== undefined) {
@@ -404,8 +381,7 @@ export class Stack {
         this._composeInfo = info;
 
         try {
-            // The same files as docker: global.env first, then the .env
-            // of the stack
+            // Same order as docker: global.env, then the stack's .env
             let env : Record<string, string> = {};
             const globalEnvPath = path.join(this.server.stacksDir, "global.env");
             if (fs.existsSync(globalEnvPath)) {
@@ -417,9 +393,8 @@ export class Stack {
             };
             const doc = yaml.parse(envsubstYAML(this.composeYAML, env));
 
-            // Docker makes the name of the project from the directory.
-            // The compose file and the .env file can give a different
-            // name, and docker puts each name in lower case.
+            // Docker names the project after the directory, unless the
+            // compose file or .env overrides it. Names are lowercased.
             const projects = new Set<string>([ this.name.toLowerCase() ]);
             if (typeof doc?.name === "string" && doc.name.trim() !== "") {
                 projects.add(doc.name.trim().toLowerCase());
@@ -436,8 +411,7 @@ export class Stack {
                         info.images.push(service.image.trim());
                         continue;
                     }
-                    // A service with a build and without an image gets
-                    // the name "<project>-<service>" from docker
+                    // Docker names a built image "<project>-<service>"
                     if (service && service.build !== undefined && service.build !== null) {
                         for (const project of info.projectNames) {
                             info.buildImages.push(project + "-" + serviceName);
@@ -456,16 +430,15 @@ export class Stack {
     }
 
     /**
-     * The images of the services of this stack. A compose file with an
-     * error gives an empty list.
+     * Service images of this stack; empty if the compose file is broken.
      */
     get images() : string[] {
         return this.composeInfo.images;
     }
 
     /**
-     * The content of the files on the disk, for a backup.
-     * @returns The files, or null when the stack has no directory
+     * Read the files on disk for a backup.
+     * @returns The files, or null if the stack has no directory
      */
     protected async currentFiles() : Promise<StackFiles | null> {
         if (!await fileExists(this.path)) {
@@ -473,8 +446,8 @@ export class Stack {
         }
         const current = new Stack(this.server, this.name);
 
-        // A file that the server cannot read must not give a copy with
-        // empty content. A restore of that copy would remove the file.
+        // An unreadable file must not be backed up as empty, or a restore
+        // would wipe it.
         const read = async (file : string, optional : boolean) : Promise<string | null> => {
             try {
                 return await fsAsync.readFile(path.join(this.path, file), "utf-8");
@@ -518,9 +491,8 @@ export class Stack {
         // Check YAML format
         yaml.parse(this.composeYAML);
 
-        // Check the format of the override YAML only when this save carries
-        // content for it. A file that holds only comments is correct, because
-        // docker accepts it.
+        // Only when this save carries override content. A comment-only
+        // file is valid, since docker accepts it.
         if (this.hasOverrideContent()) {
             yaml.parse(this._composeOverrideYAML as string);
         }
@@ -562,8 +534,8 @@ export class Stack {
             try {
                 this._composeOverrideYAML = fs.readFileSync(path.join(this.path, this.composeOverrideFileName), "utf-8");
             } catch (e) {
-                // No file is the usual condition. A different error keeps the
-                // file out of the interface, so the operator must see it.
+                // A missing file is normal. Log other errors, since they hide
+                // the file from the UI.
                 if ((e as NodeJS.ErrnoException)?.code !== "ENOENT") {
                     log.warn("stack", `Cannot read the override file of the stack ${this.name}: ${e}`);
                 }
@@ -574,10 +546,9 @@ export class Stack {
     }
 
     /**
-     * The name of the override file of this stack. Docker examines the
-     * accepted names in sequence and uses the first file that it finds. The
-     * name of the base compose file has no effect on that sequence. When no
-     * file exists, the name for a new file agrees with the base file.
+     * Override file name. Like docker, use the first accepted name that
+     * exists, regardless of the base file name. If none exists, pick a
+     * name that matches the base file.
      */
     get composeOverrideFileName() : string {
         if (this._composeOverrideFileName === undefined) {
@@ -597,8 +568,7 @@ export class Stack {
     }
 
     /**
-     * True when this stack holds override content for the disk. An empty
-     * value is a request to remove the file.
+     * True if there is override content to write. Empty means delete the file.
      */
     protected hasOverrideContent() : boolean {
         return typeof this._composeOverrideYAML === "string" && this._composeOverrideYAML.trim() !== "";
@@ -626,7 +596,7 @@ export class Stack {
     /**
      * Save the stack to the disk
      * @param isAdd
-     * @param reason Why the files change, for the backup
+     * @param reason Backup reason
      */
     async save(isAdd : boolean, reason = "save") {
         this.validate();
@@ -646,7 +616,7 @@ export class Stack {
                 throw new ValidationError("Stack not found");
             }
 
-            // A copy of the files from before the change
+            // Back up the current files
             const current = await this.currentFiles();
             if (current) {
                 await StackBackup.create(this.name, reason, current);
@@ -665,13 +635,11 @@ export class Stack {
             writtenFiles.push(envPath);
         }
 
-        // Write, or remove, the override file. An undefined value means the
-        // save does not carry override data, so the file stays as it is.
+        // Write or remove the override file. Undefined means leave it alone.
         if (this._composeOverrideYAML !== undefined) {
             const overridePath = path.join(dir, this.composeOverrideFileName);
 
-            // A link or a directory with this name is not something that this
-            // application can write or remove safely.
+            // Do not write through or delete a symlink or directory
             if (fs.existsSync(overridePath) && !fs.lstatSync(overridePath).isFile()) {
                 throw new ValidationError("The override file is not a usual file. Examine the stack directory.");
             }
@@ -695,22 +663,19 @@ export class Stack {
     }
 
     /**
-     * Run `docker compose ... config` and collect the result. On a failure
-     * the content holds the error text of docker itself, which also names
-     * problems that a YAML parser cannot see.
-     * @param args The full argument list, with "compose" first
-     * @param cwd The work directory of the process
+     * Run `docker compose ... config`. On failure, content is docker's own
+     * error, which catches more than a YAML parser.
+     * @param args Full argument list, starting with "compose"
+     * @param cwd Working directory
      */
     protected static async runComposeConfig(args : string[], cwd : string) : Promise<{ ok : boolean, content : string }> {
         try {
             const res = await childProcessAsync.spawn("docker", args, {
                 cwd,
                 encoding: "utf-8",
-                // The merged output of a large stack goes over the default
-                // limit of 200 KiB
+                // Large stacks exceed the 200 KiB default
                 maxBuffer: 10 * 1024 * 1024,
-                // Do not keep a process of a docker daemon that does not
-                // answer. The frontend stops its wait after the same time.
+                // Don't hang on an unresponsive daemon; matches the frontend timeout
                 timeout: 30000,
             });
             return {
@@ -726,22 +691,19 @@ export class Stack {
     }
 
     /**
-     * The configuration that docker makes from the compose file, the
-     * override file, and the env files, with `docker compose config`. The
-     * caller must give a stack that this application manages, because the
-     * process runs in the stack directory.
+     * Merged config from `docker compose config`. Only for managed stacks,
+     * since it runs in the stack directory.
      */
     async getComposeConfig() : Promise<{ ok : boolean, content : string }> {
         return Stack.runComposeConfig(this.getComposeOptions("config"), this.path);
     }
 
     /**
-     * Examine editor content with `docker compose config`, before a save
-     * writes it to the stack directory. The content goes to a temporary
-     * directory, thus the files of the stack do not change. The answer
-     * holds the merged configuration, or the error text of docker.
-     * @param server The server, for the location of global.env
-     * @param name Name of the stack, for the project name of docker
+     * Validate unsaved editor content with `docker compose config`, using a
+     * temp directory so the stack files do not change. Returns the merged
+     * config or docker's error.
+     * @param server The server, to find global.env
+     * @param name Stack name, used as the docker project name
      * @param composeYAML Content for the compose file
      * @param composeENV Content for the .env file
      * @param composeOverrideYAML Content for the override file, or null
@@ -754,9 +716,8 @@ export class Stack {
             const envPath = path.join(dir, ".env");
             await fsAsync.writeFile(composePath, composeYAML);
 
-            // The file exists also when the content is empty. The explicit
-            // --env-file below stops the automatic load of the .env of the
-            // stack directory, thus docker uses the editor content only.
+            // Always write it, even if empty: the explicit --env-file below
+            // stops docker from loading the stack's own .env.
             await fsAsync.writeFile(envPath, composeENV);
 
             const args = [ "compose", "-f", composePath ];
@@ -767,12 +728,9 @@ export class Stack {
                 args.push("-f", overridePath);
             }
 
-            // Relative paths of the content, for example env_file or a
-            // bind mount, resolve against the project directory. Use the
-            // stack directory if it exists, so a reference to a file of
-            // the stack stays correct. Docker also takes the project name
-            // from this directory, the same as a deploy. The name check
-            // keeps the path inside the stacks directory.
+            // Relative paths (env_file, bind mounts) and the project name come
+            // from the project directory, so use the stack directory if it
+            // exists, as a deploy would. The name check keeps it inside stacksDir.
             let projectDir = dir;
             if (name.match(/^[a-z0-9_-]+$/)) {
                 const stackDir = path.resolve(server.stacksDir, name);
@@ -782,8 +740,7 @@ export class Stack {
             }
             args.push("--project-directory", projectDir);
 
-            // The same sequence as getComposeOptions: global.env comes
-            // first, then the .env of the stack
+            // Same order as getComposeOptions: global.env, then the stack .env
             const globalEnvPath = path.resolve(server.stacksDir, "global.env");
             if (await fileExists(globalEnvPath)) {
                 args.push("--env-file", globalEnvPath);
@@ -793,9 +750,8 @@ export class Stack {
 
             return await Stack.runComposeConfig(args, dir);
         } finally {
-            // A failure here must not replace the result. Windows can hold
-            // the directory for a short time after the timeout stops the
-            // process.
+            // Don't let cleanup errors mask the result. Windows may hold the
+            // directory briefly after a timeout kills the process.
             try {
                 await fsAsync.rm(dir, {
                     recursive: true,
@@ -874,10 +830,9 @@ export class Stack {
 
         // Use cached stack list?
         if (useCacheForManaged && this.managedStackList.size > 0) {
-            // A copy, so the projects that compose ls adds below do not stay
-            // in the cache. Reset the status: a stack that is no longer in
-            // compose ls (for example after a down outside dockge-mod) must
-            // not keep its old status.
+            // Copy so unmanaged projects added below stay out of the cache.
+            // Reset status so a stack gone from compose ls (e.g. a down
+            // outside dockge-mod) does not keep a stale status.
             stackList = new Map(this.managedStackList);
             for (const stack of stackList.values()) {
                 stack._status = CREATED_FILE;
@@ -921,8 +876,7 @@ export class Stack {
 
             // This stack probably is not managed by Dockge, but we still want to show it
             if (!stack) {
-                // Skip the stack of the manager itself. The name comes from the
-                // directory of its compose file, thus both names can occur.
+                // Skip our own stack; its name depends on the directory
                 if (composeStack.Name === "dockge" || composeStack.Name === "dockge-mod") {
                     continue;
                 }
@@ -954,22 +908,19 @@ export class Stack {
     }
 
     /**
-     * The output of `docker compose ls`, for all callers. The docker
-     * events watcher removes the result after a change of a container.
-     * The time limit covers a watcher that does not run.
+     * Shared `docker compose ls` output. The docker events watcher
+     * invalidates it; the TTL covers a watcher that is not running.
      */
     static composeListCache = new CachedCall(() => Stack.runComposeList(), 10 * 1000);
 
     /**
-     * The service status of each stack, by stack name. The same watcher
-     * removes the results.
+     * Per-stack service status caches, also invalidated by the watcher.
      */
     protected static serviceStatusCaches : Map<string, CachedCall<Map<string, Array<object>>>> = new Map();
 
     /**
-     * Remove the cached results. The next call runs docker again.
-     * @param names The stacks that changed. Without names, each stack
-     * changed.
+     * Drop cached docker results.
+     * @param names The stacks that changed; omit to clear all
      */
     static invalidateCaches(names? : Iterable<string>) {
         Stack.composeListCache.invalidate();
@@ -983,9 +934,8 @@ export class Stack {
     }
 
     /**
-     * Run `docker compose ls`. No output gives an empty list. An output
-     * that is not JSON gives an empty list and a log line.
-     * @returns The projects that docker knows
+     * Run `docker compose ls`. Returns an empty list on no output or bad JSON.
+     * @returns The projects docker knows about
      */
     protected static async runComposeList() : Promise<{ Name : string, Status : string, ConfigFiles : string }[]> {
         const res = await childProcessAsync.spawn("docker", [ "compose", "ls", "--all", "--format", "json" ], DOCKER_SPAWN_OPTIONS);
@@ -1025,8 +975,7 @@ export class Stack {
     static async getStack(server: DockgeServer, stackName: string, skipFSOperations = false) : Promise<Stack> {
         let dir = path.join(server.stacksDir, stackName);
 
-        // Keep the directory in the stacks directory. A name that contains
-        // path parts must not give access to the other directories.
+        // Block path traversal outside the stacks directory
         const relative = path.relative(path.resolve(server.stacksDir), path.resolve(dir));
         if (relative === "" || relative === ".." || relative.startsWith(".." + path.sep) || path.isAbsolute(relative)) {
             throw new ValidationError("Stack not found");
@@ -1122,7 +1071,7 @@ export class Stack {
             throw new Error("Failed to pull, please check the terminal output for more information.");
         }
 
-        // Clear the update badge of the images that the pull brought up to date
+        // Clear the update badge of the pulled images
         await ImageUpdateChecker.afterPull(this.images).catch((e) => {
             log.warn("update", "Cannot refresh the update state of " + this.name + ": " + errorMessage(e));
         });
@@ -1143,8 +1092,7 @@ export class Stack {
     }
 
     /**
-     * Join the log of one service. The terminal runs docker compose logs
-     * for that service only.
+     * Join the log terminal of one service.
      * @param socket The client
      * @param serviceName The service
      * @returns The terminal name, for the client
@@ -1221,10 +1169,9 @@ export class Stack {
     }
 
     /**
-     * Resolve container IP addresses with one batched `docker inspect`.
-     * `docker compose ps` only reports the network name, not the address.
-     * The caller caches the result with the service status. Addresses are
-     * best effort: a stopped container has none.
+     * Get container IPs with one batched `docker inspect`, since
+     * `docker compose ps` has no addresses. Best effort: stopped containers
+     * have none.
      * @param containers name/id pairs from `docker compose ps`
      */
     static async getContainerIPs(containers : { name : string, id : string }[]) : Promise<Map<string, string>> {
@@ -1264,16 +1211,14 @@ export class Stack {
     }
 
     /**
-     * The service status of this stack. Many clients that poll the same
-     * stack share one docker process, and a result stays good until a
-     * container changes.
+     * Service status of this stack, cached so polling clients share one
+     * docker call until a container changes.
      * @returns The containers of each service
      */
     async getServiceStatusList() : Promise<Map<string, Array<object>>> {
         let cache = Stack.serviceStatusCaches.get(this.name);
         if (!cache) {
-            // A client can ask for any name. A name without a directory
-            // and without a compose project gets no cache entry.
+            // Don't create cache entries for arbitrary client-supplied names
             if (!await fileExists(this.path) && !(await Stack.getStatusList()).has(this.name)) {
                 throw new ValidationError("Stack not found");
             }
@@ -1308,8 +1253,7 @@ export class Stack {
                 statusList.get(obj.Service)?.push({
                     status: obj.Health || obj.State,
                     name: obj.Name,
-                    // `Status` is docker's uptime for a person to read. An
-                    // example is "Up 23 minutes".
+                    // Human-readable uptime, e.g. "Up 23 minutes"
                     uptime: obj.Status ?? "",
                     ports: obj.Ports ?? "",
                     ip: "",
@@ -1330,8 +1274,6 @@ export class Stack {
                 }
             }
 
-            // `docker compose ps` reports the network name but not the address, so the
-            // addresses come from a single batched inspect rather than one call each.
             const ipMap = await Stack.getContainerIPs(containers);
             for (const entries of statusList.values()) {
                 for (const entry of entries) {
@@ -1342,7 +1284,7 @@ export class Stack {
 
             return statusList;
         } catch (e) {
-            // A failure must not go in the cache as an empty list
+            // Throw so a failure is not cached as an empty list
             log.error("getServiceStatusList", e);
             throw e;
         }

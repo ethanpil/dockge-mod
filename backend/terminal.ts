@@ -18,14 +18,12 @@ export class Terminal {
     protected static terminalMap : Map<string, Terminal> = new Map();
 
     /**
-     * The last size that each client reported, for each terminal name.
+     * Last size reported by each client, per terminal name.
      *
-     * This map stays outside the terminal objects. A stop and start cycle
-     * closes the terminal and makes a new one with the same name. The map
-     * keeps the sizes, so the new pty does not go back to the default width.
-     *
-     * The pty gets the smallest size of the clients that joined. Thus a wide
-     * client cannot make the text too wide for a narrow client.
+     * Kept outside the terminal objects so a stop/start cycle, which makes a
+     * new terminal with the same name, does not reset the pty to the default
+     * width. The pty uses the smallest joined client size, so a wide client
+     * cannot overflow a narrow one.
      */
     protected static sizeHints : Map<string, Map<string, { rows : number, cols : number }>> = new Map();
 
@@ -43,9 +41,8 @@ export class Terminal {
     protected _rows : number = TERMINAL_ROWS;
     protected _cols : number = TERMINAL_COLS;
 
-    // Size before the first client hint. applyClientSize goes back to it when
-    // no client with a hint is left, so a client that leaves cannot keep its
-    // size on the pty for the next client.
+    // Size before the first client hint. applyClientSize restores it when no
+    // hinted client is left, so a departed client's size does not linger.
     protected defaultRows? : number;
     protected defaultCols? : number;
 
@@ -84,9 +81,9 @@ export class Terminal {
     }
 
     /**
-     * Set both dimensions with one resize. Two separate assignments send two
-     * SIGWINCH signals, and the first has a size that no client asked for,
-     * which makes a full screen program draw a frame it must then discard.
+     * Set both dimensions in one resize. Two assignments would send two
+     * SIGWINCHs, and full-screen programs would draw a frame at a size no
+     * client asked for.
      * @param rows new row count
      * @param cols new column count
      */
@@ -143,9 +140,8 @@ export class Terminal {
             this._ptyProcess = pty.spawn(this.file, this.args, {
                 name: this.name,
                 cwd: this.cwd,
-                // Extra variables merge into the environment of the server.
-                // Without extra variables the child gets the environment of
-                // the server, as before.
+                // Merge extra variables into the server environment. Without
+                // them, the child inherits the server environment as before.
                 env: this.env ? {
                     ...process.env,
                     ...this.env,
@@ -188,9 +184,8 @@ export class Terminal {
      * @param res
      */
     protected exit = (res : {exitCode: number, signal?: number | undefined}) => {
-        // A forced exit and a late exit event of the pty must not run this
-        // two times. The second run would remove a newer terminal with
-        // the same name from the map.
+        // A forced exit plus a late pty exit event must not run this twice,
+        // or the second run could remove a newer terminal with the same name.
         if (this.exited) {
             return;
         }
@@ -228,17 +223,15 @@ export class Terminal {
 
     public leave(socket : DockgeSocket) {
         delete this.socketList[socket.id];
-        // The leaver's constraint no longer applies; a wider remaining
-        // client may get its width back.
+        // Drop the leaver's hint so remaining clients can grow back.
         Terminal.sizeHints.get(this.name)?.delete(socket.id);
         this.applyClientSize();
     }
 
     /**
-     * Record the size a client reported for a terminal name. Works whether or
-     * not the terminal currently exists — for interactive terminals the resize
-     * can arrive while the creation handler is still awaiting, and the hint is
-     * then applied by join().
+     * Record a client's size for a terminal name. Works even if the terminal
+     * does not exist yet (an interactive terminal's resize can arrive before
+     * creation finishes); join() applies the hint later.
      * @param terminalName terminal the size applies to
      * @param socketID reporting client
      * @param rows reported rows
@@ -270,9 +263,8 @@ export class Terminal {
     }
 
     /**
-     * Resize the pty to the minimum size over the currently joined clients
-     * that have reported one. Go back to the size the caller set when no
-     * such client is left.
+     * Resize the pty to the smallest size among joined clients with a hint,
+     * or back to the default size when there are none.
      */
     public applyClientSize() {
         const hints = Terminal.sizeHints.get(this.name);
@@ -363,9 +355,8 @@ export class Terminal {
                 resolve(exitCode);
             });
 
-            // An operation that never ends blocks each later operation of
-            // the stack. A pull of a large image can take a long time,
-            // thus the limit is large.
+            // A hung operation would block every later operation on the stack.
+            // The limit is generous because large image pulls can be slow.
             const limit = setTimeout(() => {
                 if (Terminal.terminalMap.get(terminalName) === terminal) {
                     log.warn("Terminal", "The operation " + terminalName + " did not end in time, stop it");
@@ -374,8 +365,8 @@ export class Terminal {
                     } catch (e) {
                         log.warn("Terminal", "Cannot stop " + terminalName + ": " + errorMessage(e));
                     }
-                    // A process that ignores the first signal gets SIGKILL.
-                    // node-pty on Windows throws for a signal name.
+                    // Escalate to SIGKILL if the first signal is ignored.
+                    // node-pty on Windows throws on a signal name.
                     setTimeout(() => {
                         if (Terminal.terminalMap.get(terminalName) === terminal) {
                             try {
@@ -392,7 +383,7 @@ export class Terminal {
         });
     }
 
-    /** The longest time for one compose operation, in milliseconds */
+    /** Max duration of one compose operation, in milliseconds */
     static readonly EXEC_LIMIT = 60 * 60 * 1000;
 
     public static getTerminalCount() {
@@ -400,9 +391,8 @@ export class Terminal {
     }
 
     /**
-     * Remove a client from each terminal. The disconnect of a socket
-     * calls this, thus an interactive terminal can close when its last
-     * client disconnects.
+     * Remove a client from every terminal. Called on socket disconnect so an
+     * interactive terminal can close when its last client leaves.
      * @param socket The client
      */
     public static leaveAll(socket : DockgeSocket) {
@@ -419,13 +409,10 @@ export class Terminal {
  * Mainly used for container exec
  */
 export class InteractiveTerminal extends Terminal {
-    /**
-     * The time between the disconnect of the last client and the close
-     * of the shell. A short disconnect of the network keeps the shell.
-     */
+    /** Delay from last client disconnect to shell close, to survive brief network drops. */
     public static readonly CLOSE_DELAY = 10 * 1000;
 
-    /** The close delay of this terminal, in milliseconds */
+    /** Close delay for this terminal, in milliseconds */
     protected closeDelay = InteractiveTerminal.CLOSE_DELAY;
 
     protected closeTimer? : NodeJS.Timeout;
@@ -441,10 +428,9 @@ export class InteractiveTerminal extends Terminal {
     }
 
     /**
-     * Remove a client. The shell closes a short time after the last
-     * client disconnects. Without this, the shell of one session stayed
-     * open for the next session, and a different user could not make a
-     * new one.
+     * Remove a client, and close the shell shortly after the last one leaves.
+     * Otherwise the shell stayed open for the next session, which then could
+     * not start a new one.
      * @param socket The client
      */
     public leave(socket : DockgeSocket) {
@@ -460,9 +446,8 @@ export class InteractiveTerminal extends Terminal {
     }
 
     /**
-     * End the shell process. Ctrl+C does not stop a shell. A process
-     * that ignores the first signal gets SIGKILL. If no exit event
-     * comes, the terminal is marked as exited after 10 seconds.
+     * Kill the shell (Ctrl+C does not stop a shell), escalating to SIGKILL.
+     * If no exit event arrives within 10 seconds, mark it exited anyway.
      */
     close() {
         clearInterval(this.keepAliveInterval);
@@ -470,8 +455,7 @@ export class InteractiveTerminal extends Terminal {
         clearTimeout(this.closeTimer);
         this.closeTimer = undefined;
 
-        // Leave the map now, so a join while the shell dies starts a new
-        // shell instead of joining this one
+        // Leave the map now so a join during shutdown starts a new shell
         if (Terminal.terminalMap.get(this.name) === this) {
             Terminal.terminalMap.delete(this.name);
         }
@@ -527,8 +511,7 @@ export class MainTerminal extends InteractiveTerminal {
             shell = "bash";
         }
         super(server, name, shell, [], server.stacksDir);
-        // A reload of the page or a short loss of the network must not
-        // end a command that runs in the host shell
+        // A page reload or brief network drop must not kill a host shell command
         this.closeDelay = 60 * 1000;
     }
 

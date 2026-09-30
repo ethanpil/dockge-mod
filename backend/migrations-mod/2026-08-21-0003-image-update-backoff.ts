@@ -1,9 +1,8 @@
 import type { Knex } from "knex";
 
 /**
- * The count of the failures of an image, and the time of the next
- * check. An image that fails each time, for example a local build or a
- * registry without credentials, gets a longer time between the checks.
+ * Failure count and next check time per image, so images that always
+ * fail (local builds, private registries) are checked less often.
  * @param knex The database
  * @returns The schema change
  */

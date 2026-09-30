@@ -82,42 +82,40 @@ export class DockgeServer {
     needSetup = false;
 
     /**
-     * The host statistics, for all clients. `docker system df` reads the
-     * full image store and the full volume store, thus it must not run
-     * one time for each open tab.
+     * Host stats shared by all clients. `docker system df` scans every image
+     * and volume, so it must not run once per open tab.
      */
     private hostStatsCache = new CachedCall(() => this.collectHostStats(), 60 * 1000);
 
-    /** The last good `docker system df` rows. A slow host keeps its tile. */
+    /** Last good `docker system df` rows, so a slow host keeps its tile */
     private lastDiskUsage? : object[];
 
     /** When lastDiskUsage was read */
     private diskUsageAt = 0;
 
-    /** After a failed `docker system df`, the next try waits until this time */
+    /** After a failed `docker system df`, do not retry before this time */
     private diskUsageRetryAt = 0;
 
-    /** The `docker system df` run in progress */
+    /** The `docker system df` run in flight, if any */
     private diskUsageRefresh? : Promise<void>;
 
     static readonly DISK_USAGE_INTERVAL = 10 * 60 * 1000;
 
     /**
-     * The output of `docker stats`, for all clients. The command blocks
-     * for about a second and reads each container of the host, thus it
-     * must not run one time for each open page.
+     * `docker stats` output shared by all clients. The command blocks for
+     * about a second and reads every container, so it must not run per page.
      */
     private dockerStatsCache = new CachedCall(() => this.collectDockerStats(), 4 * 1000);
 
-    /** The watcher on `docker events` */
+    /** Watcher for `docker events` */
     private dockerEvents? : DockerEvents;
 
-    /** The check for new image versions */
+    /** Checks for new image versions */
     imageUpdateChecker = new ImageUpdateChecker(this);
 
     /**
-     * The containers that got a stop signal, with the time. A die after
-     * a stop is not a crash, thus it sends no notification.
+     * Containers that recently got a stop signal, with the time. A die after
+     * a stop is not a crash, so it sends no notification.
      */
     private stoppedContainers : Map<string, number> = new Map();
 
@@ -394,7 +392,7 @@ export class DockgeServer {
 
         socket.instanceManager.sendAgentList();
 
-        // A client that opens a page during a check must see that check
+        // Show a running check to a client that logs in mid-check
         socket.emitAgent("imageUpdateProgress", { ...ImageUpdateChecker.progress });
 
         // Also connect to other dockge instances
@@ -451,8 +449,7 @@ export class DockgeServer {
                 log.info("server", `Listening on ${this.config.port}`);
             }
 
-            // Run every 10 seconds. The caches answer most of these
-            // runs, thus the cost is small.
+            // Run every 10 seconds. Cheap, since the caches answer most runs.
             Cron("*/10 * * * * *", {
                 protect: true,  // Enabled over-run protection.
             }, () => {
@@ -462,9 +459,8 @@ export class DockgeServer {
                 });
             });
 
-            // A change of a container sends a new stack list at once, and
-            // it removes the cached status. The polls of the clients then
-            // see the change on their next request.
+            // On a container change, clear the cached status and push a new
+            // stack list at once, so client polls see it on the next request.
             this.dockerEvents = new DockerEvents((projects, other, changes) => this.onDockerChange(projects, other, changes));
             this.dockerEvents.start();
 
@@ -472,8 +468,8 @@ export class DockgeServer {
                 log.warn("imageUpdate", "Cannot start the check: " + errorMessage(e));
             });
 
-            // The containers that run now can hold volumes that docker
-            // named itself. The watcher gives no event for them.
+            // Running containers may hold docker-named volumes that the
+            // watcher never reported.
             DockerResources.syncVolumeOwners().catch(() => undefined);
         });
 
@@ -513,32 +509,29 @@ export class DockgeServer {
     }
 
     /**
-     * Send the progress of the image update check to each client with a
-     * login. This event only adds data, thus a client without the
-     * feature ignores it.
+     * Send image update check progress to each logged-in client. The event
+     * is additive, so clients without the feature ignore it.
      */
     sendImageUpdateProgress() {
         for (const rawSocket of this.io.sockets.sockets.values()) {
             const socket = rawSocket as DockgeSocket;
             if (socket.userID) {
-                // The event goes the same way as the stack list, thus a
-                // primary that reads an agent gets the progress of that
-                // agent, with its endpoint.
+                // Routed like the stack list, so a primary viewing an agent
+                // gets that agent's progress tagged with its endpoint.
                 socket.emitAgent("imageUpdateProgress", { ...ImageUpdateChecker.progress });
             }
         }
     }
 
     /**
-     * Send the info event to each client with a login. A settings save
-     * must reach the open pages of the other clients too.
+     * Send the info event to each logged-in client, so a settings save
+     * reaches every open page.
      */
     async sendInfoToAllClients() {
         for (const rawSocket of this.io.sockets.sockets.values()) {
             const socket = rawSocket as DockgeSocket;
             if (socket.userID) {
-                // A failure for one client must not stop the other
-                // clients from getting the new values
+                // One failing client must not block the others
                 try {
                     await this.sendInfo(socket);
                 } catch (e) {
@@ -693,8 +686,8 @@ export class DockgeServer {
         try {
             await this.sendStackListOrThrow(useCache);
         } catch (e) {
-            // Many callers do not wait for this. A daemon that is down must
-            // not give an unhandled rejection for each action.
+            // Many callers do not await this; a down daemon must not cause
+            // an unhandled rejection on every action.
             log.warn("server", "Cannot send the stack list: " + errorMessage(e));
         }
     }
@@ -731,34 +724,30 @@ export class DockgeServer {
     }
 
     /**
-     * A container changed. Remove the cached status and send the stack
-     * list to each client.
+     * Handle a container change: clear cached status and push the stack list.
      * @param projects The compose projects that changed
      * @param other True when a container without a project changed
      */
     onDockerChange(projects : Set<string>, other : boolean, changes : ContainerChange[]) {
-        // The stats cache is not invalidated: its 4 s life is short, and an
-        // invalidation during a run would start a second `docker stats`
+        // Skip the stats cache: its 4 s life is short, and invalidating it
+        // mid-run would start a second `docker stats`
         Stack.invalidateCaches(other ? undefined : projects);
         this.notifyChanges(changes);
         this.sendStackList(true).catch((e) => {
             log.warn("server", "Cannot send the stack list: " + errorMessage(e));
         });
 
-        // A new container can hold a volume that docker named itself.
-        // The server must write the project of that volume now, because
-        // after a down of the stack no container holds the volume and
-        // nothing says which stack made it.
+        // Record the owner of docker-named volumes now: after the stack is
+        // down, no container holds the volume to tell which stack made it.
         if (changes.some((change) => change.action === "create" || change.action === "start")) {
             DockerResources.syncVolumeOwners().catch(() => undefined);
         }
     }
 
     /**
-     * Send a notification for a container that stopped with an error or
-     * became unhealthy. A container that got a stop signal in the last
-     * minute did not crash.
-     * @param changes The changes of the period
+     * Notify when a container exits with an error or becomes unhealthy.
+     * An exit within a minute of a stop signal is not a crash.
+     * @param changes The batched container changes
      */
     notifyChanges(changes : ContainerChange[]) {
         const now = Date.now();
@@ -768,9 +757,9 @@ export class DockgeServer {
             }
         }
 
-        // docker stop gives kill, die, stop. An image with its own stop
-        // signal (nginx: SIGQUIT, postgres: SIGINT) can exit non-zero on
-        // that signal, so a stop in the same batch marks the die as a stop.
+        // docker stop emits kill, die, stop. Images with a custom stop signal
+        // (nginx: SIGQUIT, postgres: SIGINT) can exit non-zero, so a stop in
+        // the same batch marks the die as a stop.
         for (const change of changes) {
             if (change.action === "stop") {
                 this.stoppedContainers.set(change.name, now);
@@ -778,13 +767,13 @@ export class DockgeServer {
         }
 
         for (const change of changes) {
-            // A kill with a different signal, for example HUP, is a reload.
-            // The container continues, thus a later crash must send a message.
+            // A kill with another signal (e.g. HUP) is a reload; the container
+            // keeps running, so a later crash must still notify.
             const stopSignal = change.signal === null || [ "15", "9", "SIGTERM", "SIGKILL" ].includes(change.signal);
             if (change.action === "stop" || (change.action === "kill" && stopSignal)) {
                 this.stoppedContainers.set(change.name, now);
             } else if (change.action === "start") {
-                // A crash after a restart or a redeploy must send a message
+                // A crash after a restart or redeploy must notify
                 this.stoppedContainers.delete(change.name);
             } else if (change.action === "die" && change.exitCode !== null && change.exitCode !== 0 && !this.stoppedContainers.has(change.name)) {
                 Notifier.send("container_exited", "Container exited", "The container " + change.name + " exited with code " + change.exitCode + ".", "exit:" + change.name).catch(() => undefined);
@@ -839,17 +828,12 @@ export class DockgeServer {
     }
 
     /**
-     * Host level statistics for the dashboard.
+     * Host-level stats for the dashboard. Best effort: unreadable sections
+     * are left out and the frontend hides their tiles, so older agents
+     * without this event still work.
      *
-     * This event only adds data, and it does the best that it can. It leaves
-     * out each section that it cannot read, and the frontend then hides the
-     * tile. Thus an older agent without this event still works.
-     *
-     * Memory and load come from /proc. Containers use the kernel of the host,
-     * so these are the values of the host. Note that a virtual machine or an
-     * LXC guest shows its own values, not the values of the machine.
-     *
-     * Disk use comes from `docker system df`.
+     * Memory and load come from /proc, which shows the host kernel's values
+     * (a VM or LXC guest shows its own). Disk use comes from `docker system df`.
      */
     getHostStats() : Promise<object> {
         return this.hostStatsCache.get();
@@ -873,16 +857,14 @@ export class DockgeServer {
             log.debug("hostStats", "Cannot read /proc/meminfo");
         }
 
-        // Windows has no load average and always reports zeros. Every other
-        // platform has one, where zero is a real value for an idle host.
+        // Windows always reports zero load; elsewhere zero is a real idle value.
         if (os.platform() !== "win32") {
             stats.load = os.loadavg().map((n) => n.toFixed(2)).join(" ");
         }
         stats.cpus = os.cpus().length;
 
-        // docker system df walks every volume and container layer, which can
-        // take minutes on a large host. It refreshes in the background every
-        // 10 minutes, so the memory and load tiles never wait for it.
+        // docker system df can take minutes on a large host, so refresh it in
+        // the background every 10 minutes and never make the other tiles wait.
         const now = Date.now();
         if (!this.diskUsageRefresh && now - this.diskUsageAt >= DockgeServer.DISK_USAGE_INTERVAL && now >= this.diskUsageRetryAt) {
             this.diskUsageRefresh = this.refreshDiskUsage().finally(() => {
@@ -907,8 +889,8 @@ export class DockgeServer {
             // The next poll gets the new rows, not the cached stats without them
             this.hostStatsCache.invalidate();
         } catch (e) {
-            // Expected whenever the docker CLI or daemon is unavailable; the
-            // frontend hides the tiles, so this must not spam the error log
+            // Expected when docker is unavailable; the frontend hides the
+            // tiles, so do not spam the error log
             log.debug("hostStats", "docker system df failed: " + errorMessage(e));
             this.diskUsageRetryAt = Date.now() + DockgeServer.DISK_USAGE_INTERVAL;
         }

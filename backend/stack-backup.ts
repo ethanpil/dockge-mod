@@ -9,7 +9,7 @@ export interface StackFiles {
     composeOverrideYAML : string | null;
 }
 
-/** One backup, for the interface. The content is not in the list. */
+/** Backup list entry, without the file content */
 export interface StackBackupInfo {
     id : number;
     stack : string;
@@ -18,26 +18,24 @@ export interface StackBackupInfo {
 }
 
 /**
- * Copies of the files of a stack, in the mod_stack_backup table. A save
- * and an update make a copy before they change the files. A user can
- * put a copy back.
+ * Snapshots of a stack's files in mod_stack_backup, taken before a save
+ * or update changes them, so the user can restore one.
  */
 export class StackBackup {
 
-    /** How many copies stay for one stack */
+    /** Max copies kept per stack */
     static readonly KEEP = 20;
 
     /**
-     * Make a copy, when the files are different from the last copy.
-     * A failure gives a log line, because a backup must not stop a save.
+     * Make a copy if the files differ from the last one. Errors are only
+     * logged, so a failed backup never blocks a save.
      * @param stack The stack name
      * @param reason Why the copy exists, for example "save"
      * @param files The content of the files
      */
     static async create(stack : string, reason : string, files : StackFiles) : Promise<void> {
         try {
-            // The database compares the content with the last copy, thus
-            // the text of the last copy does not come to the server
+            // Compare in the database so the last copy's text is not loaded
             const last = await R.knex("mod_stack_backup").where({ stack }).orderBy("id", "desc").first("id");
             if (last) {
                 const same = await R.knex("mod_stack_backup").where({
@@ -67,7 +65,7 @@ export class StackBackup {
     }
 
     /**
-     * Remove the old copies of a stack, above the limit.
+     * Delete copies beyond the KEEP limit.
      * @param stack The stack name
      */
     static async prune(stack : string) : Promise<void> {
@@ -79,7 +77,7 @@ export class StackBackup {
     }
 
     /**
-     * The copies of a stack, newest first, without the content.
+     * List a stack's copies, newest first, without content.
      * @param stack The stack name
      * @returns The list
      */
@@ -94,7 +92,7 @@ export class StackBackup {
     }
 
     /**
-     * The content of one copy.
+     * Get the content of one copy.
      * @param stack The stack name
      * @param id The id of the copy
      * @returns The files
@@ -115,7 +113,7 @@ export class StackBackup {
     }
 
     /**
-     * Remove all copies of a stack, after a delete of the stack.
+     * Delete all copies of a stack (used when the stack is deleted).
      * @param stack The stack name
      */
     static async removeAll(stack : string) : Promise<void> {

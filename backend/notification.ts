@@ -2,17 +2,15 @@ import { R } from "redbean-node";
 import { log } from "./log";
 import { errorMessage, isOneOf, ValidationError } from "./util-server";
 
-/** The services that can get a notification */
+/** Supported notification services */
 export const NOTIFICATION_TYPES = [ "webhook", "ntfy", "apprise" ] as const;
 export type NotificationType = typeof NOTIFICATION_TYPES[number];
 
-/** The events that can send a notification */
+/** Events that can trigger a notification */
 export const NOTIFICATION_EVENTS = [ "image_update", "container_exited", "container_unhealthy" ] as const;
 export type NotificationEvent = typeof NOTIFICATION_EVENTS[number];
 
-/**
- * One notification target, for the interface and the table.
- */
+/** A notification target, as used by the UI and stored in the table. */
 export interface Notification {
     id? : number;
     name : string;
@@ -23,7 +21,7 @@ export interface Notification {
 }
 
 /**
- * Make the HTTP request for one target.
+ * Build the HTTP request for a target.
  * @param target The target
  * @param event The event name
  * @param title The title
@@ -79,9 +77,9 @@ export function buildRequest(target : Notification, event : string, title : stri
 }
 
 /**
- * Check the fields of a target from the client.
+ * Validate a target sent by the client.
  * @param data The data from the client
- * @returns The target
+ * @returns The validated target
  */
 export function checkNotification(data : unknown) : Notification {
     const obj = (data ?? {}) as Record<string, unknown>;
@@ -109,15 +107,13 @@ export function checkNotification(data : unknown) : Notification {
     };
 }
 
-/**
- * The notifications. The targets are in the mod_notification table.
- */
+/** Sends notifications. Targets live in the mod_notification table. */
 export class Notifier {
 
-    /** The time in which one key sends one notification, in milliseconds */
+    /** Minimum time between two sends with the same key, in milliseconds */
     static readonly COOLDOWN = 5 * 60 * 1000;
 
-    /** The last send time for each key */
+    /** Last send time per key */
     protected static lastSend : Map<string, number> = new Map();
 
     static async list() : Promise<Notification[]> {
@@ -143,8 +139,7 @@ export class Notifier {
     }
 
     /**
-     * Write a target. A target with an id changes, a target without an id
-     * is new.
+     * Save a target: update it if it has an id, else insert it.
      * @param target The target
      * @returns The id
      */
@@ -172,7 +167,7 @@ export class Notifier {
     }
 
     /**
-     * Send one notification to one target, for the test button.
+     * Send one notification to one target (also used by the test button).
      * @param target The target
      */
     static async sendTo(target : Notification, event : string, title : string, message : string) : Promise<void> {
@@ -183,10 +178,10 @@ export class Notifier {
             const res = await fetch(url, {
                 ...init,
                 signal: controller.signal,
-                // A target must not send the request to a different host
+                // Do not let a target redirect the request to another host
                 redirect: "error",
             });
-            // Read the body, thus the connection goes back to the pool
+            // Drain the body so the connection returns to the pool
             await res.arrayBuffer().catch(() => undefined);
             if (!res.ok) {
                 throw new Error("HTTP " + res.status);
@@ -197,12 +192,11 @@ export class Notifier {
     }
 
     /**
-     * Send a notification to each active target of the event.
+     * Send a notification to every active target subscribed to the event.
      * @param event The event
      * @param title The title
      * @param message The message
-     * @param key A key for the cooldown. The same key sends one time in
-     * the cooldown period. No key sends each time.
+     * @param key Cooldown key: sends at most once per COOLDOWN. Omit to always send.
      */
     static async send(event : NotificationEvent, title : string, message : string, key? : string) : Promise<void> {
         if (key !== undefined) {
@@ -212,7 +206,7 @@ export class Notifier {
                 return;
             }
             Notifier.lastSend.set(key, now);
-            // Keep the map small
+            // Prune expired keys so the map stays small
             if (Notifier.lastSend.size > 1000) {
                 for (const [ k, time ] of Notifier.lastSend) {
                     if (now - time >= Notifier.COOLDOWN) {

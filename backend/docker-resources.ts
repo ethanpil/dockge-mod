@@ -12,86 +12,69 @@ export type ResourceKind = typeof RESOURCE_KINDS[number];
 export const PRUNE_KINDS = [ "images", "images-all", "volumes", "networks" ] as const;
 export type PruneKind = typeof PRUNE_KINDS[number];
 
-/** The networks that docker makes itself. A remove is not possible. */
+/** Built-in docker networks, which cannot be removed */
 const PREDEFINED_NETWORKS = new Set([ "bridge", "host", "none" ]);
 
-/** The label that docker compose puts on the resources of a project */
+/** Label that docker compose puts on the resources of a project */
 const PROJECT_LABEL = "com.docker.compose.project";
 
-/** The label that docker puts on a volume that it named itself */
+/** Label that docker puts on a volume it named itself */
 const ANONYMOUS_LABEL = "com.docker.volume.anonymous";
 
-/**
- * One resource that a removal can take.
- */
+/** One resource that a prune can remove. */
 export interface PruneCandidate {
-    /** The text that the remove command uses */
+    /** Argument for the remove command */
     id : string;
-    /** The name for the user */
+    /** Display name */
     name : string;
-    /** More text for the user, for example the size */
+    /** Extra display text, for example the size */
     detail : string;
 }
 
-/**
- * What a removal takes, and how many resources stay.
- */
+/** What a prune removes, and how many resources it keeps. */
 export interface PrunePlan {
     candidates : PruneCandidate[];
-    /** How many resources stay because this server keeps them */
+    /** Count of resources kept because this server protects them */
     kept : number;
 }
 
 /**
- * The resources that a removal must keep. A stack that is not running
- * still needs its images, its volumes, and its networks.
+ * Resources a prune must keep. A stopped stack still needs its images, volumes, and networks.
  */
 export interface ProtectedResources {
-    /** The compose projects of the stacks of this server */
+    /** Compose projects of this server's stacks */
     projects : Set<string>;
-    /** The images that the compose files of those stacks name */
+    /** Images named in those stacks' compose files */
     images : Set<string>;
-    /**
-     * The repositories that a removal must keep without a tag. A compose
-     * file that names an image with a digest, and a compose file that
-     * builds an image, give no tag for a comparison.
-     */
+    /** Repositories to keep regardless of tag: digest-pinned and built images have no tag to compare. */
     repositories : Set<string>;
 }
 
 /**
- * The resources that a container uses now. A container that is stopped
- * counts, because the prune of docker does not keep the network of such
- * a container.
+ * Resources used by any container. Stopped containers count too, because
+ * docker's own prune does not keep their networks.
  */
 export interface ResourcesInUse {
-    /** The short ids of the images */
+    /** Short image ids */
     images : Set<string>;
-    /** The names of the volumes */
+    /** Volume names */
     volumes : Set<string>;
-    /** The names of the networks */
+    /** Network names */
     networks : Set<string>;
 }
 
-/**
- * What a read of the containers found.
- */
+/** Result of a container scan. */
 export interface ContainerScan {
     used : ResourcesInUse;
-    /** The compose project of each volume, from the containers */
+    /** Compose project of each volume, from the containers */
     owners : Map<string, string>;
-    /**
-     * False when docker did not answer for each container. A removal
-     * must not run with such a result, because a resource of a container
-     * that this read missed looks free.
-     */
+    /** False when docker did not answer for every container. Do not prune then: resources of missed containers look free. */
     complete : boolean;
 }
 
 /**
- * True when a name can go to docker as an argument. An image name can
- * hold a registry, a path, a tag, and a digest. A name that starts with
- * a dash is an option.
+ * True when a name is safe to pass to docker as an argument. Image names can
+ * hold a registry, path, tag, and digest; a leading dash would be an option.
  * @param name The name from the client
  * @returns True when the name is safe as an argument
  */
@@ -100,8 +83,7 @@ export function isDockerResourceName(name : string) : boolean {
 }
 
 /**
- * Read the lines of a `--format json` output. Docker gives one object
- * for each line.
+ * Parse `--format json` output, which has one object per line.
  * @param output The output
  * @returns The objects
  */
@@ -118,17 +100,15 @@ export function parseJSONLines(output : string) : Record<string, unknown>[] {
         try {
             list.push(JSON.parse(text));
         } catch (e) {
-            // A warning line is not JSON
+            // Skip non-JSON lines, such as warnings
         }
     }
     return list;
 }
 
 /**
- * The value of one label. An inspect gives the labels as an object. The
- * list of the images gives them as one text, for example "a=1,b=2". A
- * text cannot hold a comma in a value, thus the object is the better
- * source.
+ * Value of one label. Inspect gives labels as an object; `image ls` gives one
+ * "a=1,b=2" string, which cannot hold a comma in a value, so prefer the object.
  * @param labels The labels
  * @param key The name of the label
  * @returns The value, or null when the label is not there
@@ -151,13 +131,8 @@ export function labelValue(labels : unknown, key : string) : string | null {
 }
 
 /**
- * True when docker made the name of this volume. Such a volume comes
- * from an image that asks for a volume, or from a short form in a
- * compose file, and no name of a user is on it.
- *
- * Docker puts a label on such a volume, and its own prune reads that
- * label. The labels come from an inspect, thus a value with a comma
- * cannot give a wrong answer.
+ * True when docker named this volume itself (image VOLUME or compose short
+ * form), so the user never named it. Docker's own prune checks the same label.
  * @param labels The labels of the volume
  * @returns True when docker made the name
  */
@@ -169,8 +144,7 @@ export function isAnonymousVolume(labels : unknown) : boolean {
 }
 
 /**
- * The first characters of an image id, without the algorithm. Docker
- * gives the id in more than one form.
+ * Short image id without the algorithm prefix. Docker gives ids in several forms.
  * @param id The id
  * @returns The short form
  */
@@ -179,10 +153,8 @@ export function shortImageId(id : unknown) : string {
 }
 
 /**
- * True when docker has no name for this image. Docker itself calls such
- * an image dangling, and it makes the same test: the repository and the
- * tag must both be empty. An image with a repository and without a tag
- * comes from a pull with a digest, and it is not dangling.
+ * True when the image is dangling. Same test as docker: repository and tag are
+ * both empty. An image with a repository but no tag was pulled by digest.
  * @param repository The repository of the row
  * @param tag The tag of the row
  * @returns True when the image has no name
@@ -194,9 +166,8 @@ export function isDanglingImage(repository : string, tag : string) : boolean {
 }
 
 /**
- * The repository part of an image name, without the tag and without the
- * digest. The list of docker shows this text in the repository column,
- * thus a comparison with that column is possible.
+ * Repository part of an image name, without tag or digest, as the repository
+ * column of `docker image ls` shows it.
  * @param image The image name from a compose file
  * @returns The repository, or an empty text when the name is empty
  */
@@ -206,8 +177,7 @@ export function refRepository(image : string) : string {
     if (at > 0) {
         rest = rest.slice(0, at);
     }
-    // A colon after the last slash is a tag. A colon before it is the
-    // port of the registry.
+    // A colon after the last slash is a tag; one before it is a registry port.
     const colon = rest.lastIndexOf(":");
     if (colon > rest.lastIndexOf("/")) {
         rest = rest.slice(0, colon);
@@ -237,7 +207,7 @@ export function normalizeRepository(repository : string) : string {
 }
 
 /**
- * Read the output of the container read.
+ * Parse the output of the container scan.
  * @param output The output of docker inspect
  * @returns The resources in use, and the project of each volume
  */
@@ -292,18 +262,14 @@ export function parseContainerScan(output : string) : { used : ResourcesInUse, o
 }
 
 /**
- * The volumes that a removal can take.
- *
- * A volume with a name of a user stays. Such a volume holds the data of
- * that user, and docker itself also keeps it without the --all option.
- * A volume of a container stays. A volume that a stack of this server
- * made stays, also after a down of that stack, because the server wrote
- * the project of that volume while a container of the stack existed.
+ * Volumes a prune can remove. Kept: named volumes (user data; docker also keeps
+ * them without --all), volumes of any container, and volumes of this server's
+ * stacks, also after a down, because the owner table recorded their project.
  * @param rows The volumes of docker
  * @param used The resources that a container uses
  * @param projects The compose projects of this server
- * @param owners The project of each volume, from the table of the server
- * @returns The candidates, and the count of the volumes that stay
+ * @param owners The project of each volume, from the owner table
+ * @returns The candidates and the count kept
  */
 export function selectVolumeCandidates(rows : Record<string, unknown>[], used : ResourcesInUse, projects : Set<string>, owners : Map<string, string>) : PrunePlan {
     const candidates : PruneCandidate[] = [];
@@ -339,15 +305,12 @@ export function selectVolumeCandidates(rows : Record<string, unknown>[], used : 
 }
 
 /**
- * The networks that a removal can take.
- *
- * A network of a container stays, also when the container is stopped.
- * A network of a stack of this server stays, thus a stack that is not
- * running keeps its network. The networks of docker itself stay.
+ * Networks a prune can remove. Kept: networks of any container (also stopped),
+ * networks of this server's stacks (also when not running), and built-in networks.
  * @param rows The networks of docker
  * @param used The resources that a container uses
  * @param projects The compose projects of this server
- * @returns The candidates, and the count of the networks that stay
+ * @returns The candidates and the count kept
  */
 export function selectNetworkCandidates(rows : Record<string, unknown>[], used : ResourcesInUse, projects : Set<string>) : PrunePlan {
     const candidates : PruneCandidate[] = [];
@@ -383,18 +346,14 @@ export function selectNetworkCandidates(rows : Record<string, unknown>[], used :
 }
 
 /**
- * The images that a removal can take.
- *
- * An image of a container stays, also when the container is stopped.
- * An image that a compose file of this server names stays, thus a stack
- * that is down keeps its images. A compose file that names an image
- * with a digest, and a compose file that builds an image, keep the
- * repository of that image, because such a name has no tag.
+ * Images a prune can remove. Kept: images of any container (also stopped) and
+ * images named in this server's compose files (also when the stack is down).
+ * Digest-pinned and built images have no tag, so they match by repository.
  * @param rows The images of docker
  * @param used The resources that a container uses
  * @param resources The images of the compose files of this server
- * @param danglingOnly True to keep each image that has a name
- * @returns The candidates, and the count of the images that stay
+ * @param danglingOnly True to keep every image that has a name
+ * @returns The candidates and the count kept
  */
 export function selectImageCandidates(rows : Record<string, unknown>[], used : ResourcesInUse, resources : ProtectedResources, danglingOnly : boolean) : PrunePlan {
     const canonical = new Set<string>();
@@ -402,7 +361,7 @@ export function selectImageCandidates(rows : Record<string, unknown>[], used : R
         try {
             canonical.add(canonicalRef(parseImageRef(image)));
         } catch (e) {
-            // A name that docker cannot read protects nothing
+            // An unparsable name protects nothing
         }
     }
 
@@ -428,8 +387,7 @@ export function selectImageCandidates(rows : Record<string, unknown>[], used : R
         }
 
         if (!keep && !dangling) {
-            // A compose file can name this repository with a digest, or
-            // it can build the image. Such a name has no tag.
+            // Digest-pinned or built images in a compose file have no tag, so match by repository
             keep = resources.repositories.has(normalizeRepository(repository));
         }
 
@@ -447,8 +405,7 @@ export function selectImageCandidates(rows : Record<string, unknown>[], used : R
         }
 
         candidates.push({
-            // An image without a tag needs its id. A remove of the name
-            // "repository:<none>" cannot work.
+            // Untagged images need the id; "repository:<none>" cannot be removed by name
             id: noTag ? id : name,
             name,
             detail: String(row.Size ?? ""),
@@ -461,15 +418,12 @@ export function selectImageCandidates(rows : Record<string, unknown>[], used : R
     };
 }
 
-/**
- * The images, the volumes, and the networks of the host.
- */
+/** Images, volumes, and networks on the host. */
 export class DockerResources {
 
     /**
-     * List the resources of one kind. The volumes and the networks come
-     * from an inspect, thus their labels are an object. A label value
-     * with a comma cannot give a wrong answer then.
+     * List the resources of one kind. Volumes and networks come from inspect,
+     * so their labels are an object and commas in label values are safe.
      * @param kind The kind
      * @returns The objects of docker, one for each resource
      */
@@ -492,25 +446,22 @@ export class DockerResources {
             return [];
         }
 
-        // An inspect gives one array, or one object for each line. Both
-        // forms come from the docker versions that this server meets.
+        // Depending on the docker version, inspect gives one array or one object per line
         try {
             const data = JSON.parse(text);
             if (Array.isArray(data)) {
                 return data as Record<string, unknown>[];
             }
         } catch (e) {
-            // The output holds one object for each line
+            // One object per line
         }
         return parseJSONLines(text);
     }
 
     /**
-     * List the resources of one kind, and say for each one if a
-     * container uses it. A container that is stopped counts. A read of
-     * the containers that is not complete gives no answer in this field,
-     * thus the interface does not say that a resource is free when the
-     * server does not know.
+     * List the resources of one kind and set inUse when any container (also
+     * stopped) uses it. After an incomplete scan inUse is left out, so the UI
+     * never shows a resource as free when the server does not know.
      * @param kind The kind
      * @returns The objects of docker, each with the field inUse
      */
@@ -535,19 +486,16 @@ export class DockerResources {
             }
         }
 
-        // The projects of the volumes come from the containers that are
-        // there now. A page that lists the volumes keeps that record new.
+        // The scan is fresh, so use it to refresh the volume owner records
         await DockerResources.recordVolumeOwners(scan.owners);
 
         return rows;
     }
 
     /**
-     * Read the containers. A container can go away between the list and
-     * the inspect, and docker then exits with an error. One more try
-     * gives the correct answer on a host that runs short containers.
-     * @returns The resources in use, the project of each volume, and a
-     * flag that says if the read is complete
+     * Scan all containers. A container can go away between ps and inspect,
+     * which makes docker fail; one retry helps on hosts with short-lived containers.
+     * @returns The resources in use, the project of each volume, and whether the scan is complete
      */
     static async scanContainers() : Promise<ContainerScan> {
         const format = "{{.Image}}|{{range .Mounts}}{{.Name}},{{end}}|{{range $k,$v := .NetworkSettings.Networks}}{{$k}},{{end}}|{{index .Config.Labels \"com.docker.compose.project\"}}";
@@ -577,8 +525,7 @@ export class DockerResources {
                 const res = await childProcessAsync.spawn("docker", [ "inspect", "--format", format, "--", ...ids ], DOCKER_SPAWN_OPTIONS);
                 output = res.stdout?.toString() ?? "";
             } catch (e) {
-                // A container that went away gives an error, and the
-                // output still holds the other containers
+                // A removed container gives an error, but stdout still holds the others
                 output = ((e as { stdout ?: string | Buffer })?.stdout ?? "").toString();
                 failed = true;
             }
@@ -602,9 +549,8 @@ export class DockerResources {
     }
 
     /**
-     * Write the project of each volume that a container holds now. A
-     * removal reads this table later, when the container of the stack is
-     * not there.
+     * Record the project of each volume in use now, so a later prune knows the
+     * owner after the stack's containers are gone.
      * @param owners The project of each volume
      */
     static async recordVolumeOwners(owners : Map<string, string>) : Promise<void> {
@@ -629,16 +575,13 @@ export class DockerResources {
     }
 
     /**
-     * Read the containers and write the project of each volume. The
-     * server calls this after a change of a container, thus the record
-     * of a volume exists before the stack of that volume goes down.
-     *
-     * A problem here is not an error for the caller. The next call
-     * writes the records again.
+     * Scan the containers and record the volume owners. Called after container
+     * changes, so the record exists before the stack goes down. Errors are only
+     * logged; the next call writes the records again.
      */
     static async syncVolumeOwners() : Promise<void> {
-        // A deploy or a restart loop gives many event batches. One scan runs
-        // at a time, and the batches that arrive meanwhile share one more.
+        // Deploys and restart loops cause many event batches. Run one scan at a
+        // time; batches that arrive meanwhile share one follow-up scan.
         if (DockerResources.volumeSync) {
             DockerResources.volumeSyncAgain = true;
             return DockerResources.volumeSync;
@@ -663,9 +606,8 @@ export class DockerResources {
     private static volumeSyncAgain = false;
 
     /**
-     * Remove the records of the volumes that are not on the host. A
-     * stack that goes up with a new name leaves a record of the volume
-     * that went away with the stack before it.
+     * Delete owner records of volumes no longer on the host, for example after
+     * a stack comes back under a new name.
      * @param rows The volumes of docker
      */
     static async forgetGoneVolumes(rows : Record<string, unknown>[]) : Promise<void> {
@@ -684,9 +626,8 @@ export class DockerResources {
     }
 
     /**
-     * The project of each volume, from the table and from the containers
-     * that are there now.
-     * @param fromContainers The projects that the container read found
+     * Project of each volume, from the owner table plus the current containers.
+     * @param fromContainers The projects that the container scan found
      * @returns The project of each volume
      */
     static async volumeOwners(fromContainers : Map<string, string>) : Promise<Map<string, string>> {
@@ -697,8 +638,7 @@ export class DockerResources {
                 owners.set(String(row.volume), String(row.project));
             }
         } catch (e) {
-            // Without this table the server does not know which stack
-            // made a volume, thus a removal must not take one.
+            // Without this table we cannot tell which stack made a volume, so do not prune any
             log.warn("dockerResources", "Cannot read the projects of the volumes: " + errorMessage(e));
             throw new Error("Cannot read the projects of the volumes. Try again.");
         }
@@ -709,8 +649,7 @@ export class DockerResources {
     }
 
     /**
-     * What a removal of this kind takes, and how many resources stay.
-     * The user reads this list before the removal runs.
+     * What a prune of this kind removes and keeps. The user reviews it before the prune runs.
      * @param kind The prune operation
      * @param resources The resources that the removal must keep
      * @returns The plan
@@ -718,8 +657,7 @@ export class DockerResources {
     static async planPrune(kind : PruneKind, resources : ProtectedResources) : Promise<PrunePlan> {
         const scan = await DockerResources.scanContainers();
 
-        // A read that is not complete makes a resource of a container
-        // that the read missed look free. A removal must not run then.
+        // An incomplete scan makes resources of missed containers look free, so refuse
         if (!scan.complete) {
             throw new Error("Docker did not answer for each container. Try again.");
         }
@@ -758,21 +696,18 @@ export class DockerResources {
     }
 
     /**
-     * Remove the resources that the user accepted, one after the other.
+     * Remove the resources the user accepted, one by one.
      *
-     * This server does not use the prune command of docker. That command
-     * removes the network of a stack that is stopped, and the images of
-     * a stack that is down. It also gives no list of the resources
-     * before it removes them.
+     * Docker's own prune is not used: it removes networks of stopped stacks and
+     * images of stacks that are down, and shows no list first.
      *
-     * The removal takes only a resource that the user saw and that the
-     * new plan also holds. A resource that became free after the user
-     * read the list stays for the next removal.
+     * Only resources the user saw that are also in a fresh plan are removed.
+     * A resource that became free after the user read the list waits for the next prune.
      * @param kind The prune operation
      * @param resources The resources that the removal must keep
      * @param accepted The ids that the user accepted
-     * @returns The resources that went away, the failures, and the count
-     * of the accepted ids that the new plan does not hold
+     * @returns The removed resources, the failures, and the count of accepted
+     * ids missing from the fresh plan
      */
     static async prune(kind : PruneKind, resources : ProtectedResources, accepted : string[]) : Promise<{ removed : PruneCandidate[], failed : { name : string, error : string }[], skipped : number }> {
         const plan = await DockerResources.planPrune(kind, resources);
@@ -790,8 +725,7 @@ export class DockerResources {
                 await DockerResources.remove(kindOfResource, candidate.id);
                 removed.push(candidate);
             } catch (e) {
-                // A resource that a different process took in the time
-                // between the plan and the remove gives a failure only
+                // Another process may have removed it since the plan; report a failure only
                 const message = (errorMessage(e) || "Cannot remove").split("\n")[0].slice(0, 300);
                 failed.push({
                     name: candidate.name,

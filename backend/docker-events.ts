@@ -2,8 +2,7 @@ import { spawn, ChildProcess } from "child_process";
 import { log } from "./log";
 
 /**
- * The actions of a container that change what the interface shows. A
- * different action, for example exec_create, changes nothing.
+ * Container actions that change what the UI shows. Others, such as exec_create, are ignored.
  */
 const CONTAINER_ACTIONS = new Set([
     "create",
@@ -23,7 +22,7 @@ const CONTAINER_ACTIONS = new Set([
  * A change of a container, from one line of `docker events`.
  */
 export interface ContainerChange {
-    /** The compose project of the container, or null for a different container */
+    /** Compose project of the container, or null when it has none */
     project : string | null;
     /** The docker action, for example "die" or "health_status: unhealthy" */
     action : string;
@@ -36,8 +35,8 @@ export interface ContainerChange {
 }
 
 /**
- * Read one line of `docker events --format '{{json .}}'`. A health change
- * comes as "health_status: healthy".
+ * Parse one line of `docker events --format '{{json .}}'`. Health changes
+ * arrive as "health_status: healthy".
  * @param line One line of the output
  * @returns The change, or null when the line shows no change of a container
  */
@@ -66,18 +65,17 @@ export function parseContainerChange(line : string) : ContainerChange | null {
 }
 
 /**
- * The function that gets the changes of a period.
+ * Handler for one batch of changes.
  * @param projects The compose projects that changed
  * @param other True when a container without a project changed
- * @param changes Each change of the period
+ * @param changes Each change in the batch
  */
 export type ChangeHandler = (projects : Set<string>, other : boolean, changes : ContainerChange[]) => void;
 
 /**
- * A watcher on `docker events`. It calls the handler a short time after
- * a change of a container, with the compose projects that changed. Many
- * events in a short time give one call. The process starts again after
- * an exit, with a pause that grows.
+ * Watches `docker events` and calls the handler shortly after container
+ * changes, with the changed compose projects. A burst of events gives one
+ * call. The process restarts after an exit, with a growing backoff.
  */
 export class DockerEvents {
 
@@ -88,7 +86,7 @@ export class DockerEvents {
     private pause = 1000;
     private stopped = false;
 
-    // The changes since the last call of the handler
+    // Changes since the last handler call
     private changes : ContainerChange[] = [];
 
     /** True when changes were dropped, so every cache must be invalidated */
@@ -139,8 +137,7 @@ export class DockerEvents {
             for (const line of lines) {
                 const change = parseContainerChange(line);
                 if (change) {
-                    // A limit for a period with very many events. The
-                    // dropped changes still invalidate every cache.
+                    // Cap the buffer during event floods; dropped changes still invalidate every cache
                     if (this.changes.length < 1000) {
                         this.changes.push(change);
                     } else {
@@ -168,8 +165,7 @@ export class DockerEvents {
             log.warn("dockerEvents", "Cannot start docker events: " + e.message);
         });
 
-        // A process that cannot start gives an error event and a close
-        // event, but no exit event. The close event comes in each case.
+        // A process that fails to start emits error and close, but no exit, so listen for close
         process.on("close", (code) => {
             if (this.process !== process) {
                 return;
@@ -178,10 +174,8 @@ export class DockerEvents {
             if (this.stopped) {
                 return;
             }
-            // A stream that lived for a while was healthy, thus the next
-            // pause is short again. A stream that ended at once keeps the
-            // pause, thus a daemon that fails does not get one start each
-            // second.
+            // A stream that lived a while was healthy, so reset the backoff. One
+            // that ended at once keeps it, so a failing daemon is not restarted every second.
             if (Date.now() - started > 30 * 1000) {
                 this.pause = 1000;
             }
@@ -195,8 +189,7 @@ export class DockerEvents {
     }
 
     /**
-     * Call the handler after a short time. Events that come in that time
-     * give one call.
+     * Call the handler after a short delay, so a burst of events gives one call.
      */
     private schedule() {
         if (this.timer) {

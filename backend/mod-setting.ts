@@ -1,10 +1,8 @@
 import { R } from "redbean-node";
 
 /**
- * The key and value store of dockge-mod, in the `mod_setting` table.
- * The upstream `setting` table does not change. A value is a text. A
- * key without a row gives null, and an empty value removes the row.
- * There is no cache. Read a value one time, not in a loop.
+ * Key/value store for dockge-mod in the `mod_setting` table, so the
+ * upstream `setting` table stays untouched. Uncached: avoid reading in a loop.
  */
 export class ModSetting {
 
@@ -13,7 +11,7 @@ export class ModSetting {
     /**
      * Read a value.
      * @param key The key
-     * @returns The value, or null when the key has no row
+     * @returns The value, or null if unset
      */
     static async get(key : string) : Promise<string | null> {
         const row = await R.knex("mod_setting").where({ key }).first("value");
@@ -21,7 +19,7 @@ export class ModSetting {
     }
 
     /**
-     * Write a value. A null value or an empty value removes the row.
+     * Write a value. A null or blank value deletes the row.
      * @param key The key
      * @param value The value, or null
      */

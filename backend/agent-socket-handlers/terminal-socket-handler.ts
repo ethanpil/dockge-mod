@@ -131,8 +131,8 @@ export class TerminalSocketHandler extends AgentSocketHandler {
                     throw new ValidationError("Terminal name must be a string.");
                 }
 
-                // Join an output terminal, so a client that reconnects gets
-                // the new output too. A shell is joined by its own event.
+                // Join output terminals so a reconnecting client keeps getting
+                // output. Shells are joined by their own event.
                 const terminal = Terminal.getTerminal(terminalName);
                 if (terminal && !(terminal instanceof InteractiveTerminal)) {
                     terminal.join(socket);
@@ -194,9 +194,9 @@ export class TerminalSocketHandler extends AgentSocketHandler {
                 const safeRows = Math.min(Math.max(Math.round(rows), 5), 512);
                 const safeCols = Math.min(Math.max(Math.round(cols), 20), 1024);
 
-                // Record even when the terminal does not exist yet: interactive
-                // terminals are created behind an await, so the resize can
-                // arrive first, and the hint is applied on join.
+                // Record even if the terminal does not exist yet: interactive
+                // terminals are created after an await, so the resize can
+                // arrive first. The hint is applied on join.
                 Terminal.setSizeHint(terminalName, socket.id, safeRows, safeCols);
 
                 let terminal = Terminal.getTerminal(terminalName);

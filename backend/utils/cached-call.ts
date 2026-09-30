@@ -1,8 +1,7 @@
 /**
- * One result for many callers. A call that runs serves each caller that
- * comes while it runs. A result stays good for a time, or until a call
- * of invalidate(). This keeps the number of docker processes flat when
- * many clients poll at the same time.
+ * Shares one in-flight call and caches its result for `ttl` ms (or until
+ * invalidate()). Keeps the number of docker processes flat when many
+ * clients poll at once.
  */
 export class CachedCall<T> {
 
@@ -11,13 +10,12 @@ export class CachedCall<T> {
     private value? : { time : number, data : T };
     private pending : Promise<T> | null = null;
 
-    // Goes up at each invalidate. A call that started before the change
-    // does not put its result in the cache.
+    // Bumped by invalidate(), so a call started earlier does not cache its result.
     private generation = 0;
 
     /**
-     * @param fn The function that makes the result
-     * @param ttl How long a result stays good, in milliseconds
+     * @param fn Produces the result
+     * @param ttl Cache lifetime in milliseconds
      */
     constructor(fn : () => Promise<T>, ttl : number) {
         this.fn = fn;
@@ -25,8 +23,7 @@ export class CachedCall<T> {
     }
 
     /**
-     * Get the result. A good result comes from the cache. A call that
-     * runs serves this caller too.
+     * Get the cached result, join the in-flight call, or start a new one.
      * @returns The result
      */
     get() : Promise<T> {
@@ -38,8 +35,7 @@ export class CachedCall<T> {
         }
 
         const generation = this.generation;
-        // A failure does not stay in the cache. The next call runs the
-        // function again.
+        // Failures are not cached.
         const call = this.fn().then((data) => {
             if (generation === this.generation) {
                 this.value = {
@@ -58,9 +54,9 @@ export class CachedCall<T> {
     }
 
     /**
-     * Remove the result. The next call runs the function again, also
-     * when a call from before the change still runs. That call serves
-     * its own callers, but its result does not go in the cache.
+     * Drop the cached result. The next get() starts a fresh call even if an
+     * older one is still running; that older call still answers its own
+     * callers but does not fill the cache.
      */
     invalidate() {
         this.generation++;

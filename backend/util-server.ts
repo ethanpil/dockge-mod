@@ -40,9 +40,8 @@ export interface Config extends Arguments {
 }
 
 /**
- * The limits for a docker process that the server waits for. A process
- * that does not end, or an output that is too large, must not stop the
- * server.
+ * Limits for awaited docker processes, so a hung process or huge output
+ * cannot block the server.
  */
 export const DOCKER_SPAWN_OPTIONS = {
     encoding: "utf-8",
@@ -63,7 +62,7 @@ export class ValidationError extends Error {
 }
 
 /**
- * True when the value is one of the list. The list gives the type.
+ * Type guard: true when the value is in the list.
  * @param list The accepted values
  * @param value The value from the client
  * @returns True when the value is in the list
@@ -73,9 +72,8 @@ export function isOneOf<T extends string>(list : readonly T[], value : unknown) 
 }
 
 /**
- * Refuse a service name that cannot go to docker compose as an
- * argument. A name such as --project-directory=/ is an option, and
- * docker would accept it.
+ * Reject a service name that is unsafe as a docker compose argument.
+ * A name like --project-directory=/ would be parsed as an option.
  * @param serviceName The service name from the client
  */
 export function checkServiceName(serviceName : string) {
@@ -85,7 +83,7 @@ export function checkServiceName(serviceName : string) {
 }
 
 /**
- * Refuse a shell that cannot go to docker compose exec as an argument.
+ * Reject a shell that is unsafe as a docker compose exec argument.
  * @param shell The shell from the client
  */
 export function checkShellName(shell : string) {
@@ -100,7 +98,7 @@ export function callbackError(error : unknown, callback : unknown) {
         return;
     }
 
-    // ValidationError extends Error, so this test must come first
+    // ValidationError extends Error, so check it first
     if (error instanceof ValidationError) {
         callback({
             ok: false,
@@ -115,11 +113,8 @@ export function callbackError(error : unknown, callback : unknown) {
             msgi18n: true,
         });
     } else {
-        // A rejection can carry a plain string, for example from
-        // Terminal.exec. The client must get an answer for each error, or
-        // its buttons stay disabled. The log keeps the value for the
-        // operator, because a string that is not a message reads badly in
-        // a toast.
+        // Non-Error rejections (e.g. strings from Terminal.exec) still need a
+        // reply, or the client's buttons stay disabled. Log the raw value too.
         log.debug("console", "Non-error rejection: " + String(error));
         callback({
             ok: false,
@@ -153,11 +148,10 @@ export async function doubleCheckPassword(socket : DockgeSocket, currentPassword
 }
 
 /**
- * The stderr text of a failed child process, or undefined if the error
- * carries none. The text from the tool itself gives the reason. The
- * message of the error object only says that the process failed.
+ * The stderr of a failed child process, if any. It holds the real reason;
+ * the error message only says the process failed.
  * @param error The rejection value of a spawn
- * @returns The stderr text, without space at the ends
+ * @returns The trimmed stderr text
  */
 export function stderrOf(error : unknown) : string | undefined {
     const stderr = (error as { stderr ?: string | Buffer })?.stderr?.toString().trim();
@@ -165,8 +159,7 @@ export function stderrOf(error : unknown) : string | undefined {
 }
 
 /**
- * The message of an error value. An Error object gives its message, and a
- * different value gives its string form.
+ * The message of an Error, or the string form of any other value.
  * @param error The value from a catch
  * @returns A message for a person to read
  */

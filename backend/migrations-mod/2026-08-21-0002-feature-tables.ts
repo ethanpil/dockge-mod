@@ -1,9 +1,8 @@
 import type { Knex } from "knex";
 
 /**
- * The tables of the image update check, the notifications, and the
- * stack backups. Each table has the mod_ prefix. Dockge does not read
- * these tables.
+ * Tables for image update checks, notifications and stack backups.
+ * The mod_ prefix keeps them apart from Dockge, which ignores them.
  * @param knex The database
  * @returns The schema change
  */
@@ -23,7 +22,7 @@ export async function up(knex: Knex): Promise<void> {
         table.string("name", 200).notNullable();
         table.string("type", 50).notNullable();
         table.string("url", 2000).notNullable();
-        // A JSON list of the event names
+        // JSON array of event names
         table.text("events").notNullable();
         table.boolean("active").notNullable().defaultTo(true);
     });

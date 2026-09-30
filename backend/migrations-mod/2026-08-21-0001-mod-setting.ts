@@ -1,8 +1,8 @@
 import type { Knex } from "knex";
 
 /**
- * The key and value table of dockge-mod. The upstream `setting` table
- * stays as it is. Dockge does not read this table.
+ * Key/value table for dockge-mod. Kept separate from the upstream
+ * `setting` table; Dockge ignores it.
  * @param knex The database
  * @returns The schema change
  */

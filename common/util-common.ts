@@ -97,8 +97,7 @@ export function statusColor(status : number) : string {
     }
 }
 
-// The time between the status polls of a stack page, in seconds. The
-// server answers most polls from a cache, thus the time is not a setting.
+// Stack page poll interval in seconds. Not a setting because most polls hit a cache.
 export const POLL_INTERVAL_DEFAULT = 5;
 
 export const isDev = process.env.NODE_ENV === "development";
@@ -119,9 +118,8 @@ export const acceptedComposeFileNames = [
 ];
 
 /**
- * The names of the override file, in the sequence that docker uses. Docker
- * uses the first file that it finds. The name of the base compose file has
- * no effect on this sequence.
+ * Override file names in docker's lookup order; docker uses the first one
+ * that exists, whatever the base compose file is called.
  */
 export const acceptedComposeOverrideFileNames = [
     "compose.override.yml",
@@ -131,9 +129,8 @@ export const acceptedComposeOverrideFileNames = [
 ];
 
 /**
- * The content of a new override file, when the settings hold no other text.
- * Docker accepts a file that holds only comments, thus the template needs no
- * empty map.
+ * Default content of a new override file. Docker accepts a comment-only
+ * file, so no empty map is needed.
  */
 export const defaultComposeOverrideTemplate = `# This file merges with the compose file of the stack.
 # Put your changes here. An update of the base file keeps them.
@@ -147,9 +144,8 @@ export const defaultComposeOverrideTemplate = `# This file merges with the compo
 `;
 
 /**
- * Make the name of a new override file from the name of the base file.
- * Docker accepts each of the accepted names, but a name that agrees with
- * the base file is more clear to the user.
+ * Name a new override file after the base file (e.g. compose.yml ->
+ * compose.override.yml), which is clearer than a fixed name.
  * @param composeFileName Name of the base compose file
  * @returns Name for a new override file
  */
@@ -245,9 +241,8 @@ export function getCryptoRandomInt(min: number, max: number):number {
 }
 
 /**
- * True when a service name can go to docker compose as an argument. A
- * name that starts with a dash is an option, not a name. Docker accepts
- * letters, digits, and the characters _ . - in a service name.
+ * Check that a client-supplied service name is safe to pass to docker compose.
+ * Rejects a leading dash so the name cannot be read as an option.
  * @param name The service name from the client
  * @returns True when the name is safe as an argument
  */
@@ -256,8 +251,8 @@ export function isComposeServiceName(name : string) : boolean {
 }
 
 /**
- * True when a shell name can go to docker compose exec as an argument.
- * A path such as /bin/bash is correct. An option or a space is not.
+ * Check that a client-supplied shell (e.g. /bin/bash) is safe to pass to
+ * docker compose exec: no options, no spaces.
  * @param shell The shell from the client
  * @returns True when the shell is safe as an argument
  */
@@ -274,15 +269,14 @@ export function getCombinedTerminalName(endpoint : string, stack : string) {
 }
 
 /**
- * The terminal with the log of one service of a stack.
- * @param endpoint The agent endpoint, or an empty text
+ * Terminal name for the logs of one service in a stack.
+ * @param endpoint The agent endpoint, or ""
  * @param stack The stack name
  * @param service The service name
  * @returns The terminal name
  */
 export function getServiceLogsTerminalName(endpoint : string, stack : string, service : string) {
-    // A stack name and a service name can hold a dash. A different
-    // separator keeps the names apart.
+    // ":" instead of "-" because stack and service names can contain dashes.
     return "service-logs:" + endpoint + ":" + stack + ":" + service;
 }
 
@@ -474,9 +468,7 @@ export function envsubst(string : string, variables : LooseObject) : string {
 export function envsubstYAML(content : string, env : DotenvParseOutput) : string {
     const doc = yaml.parseDocument(content);
 
-    // A document with an error cannot go to toString. Without this, the
-    // caller gets a different, less clear error, or a text that hides the
-    // problem of the raw content.
+    // toString() on a broken document fails with a less clear error, or hides the problem.
     if (doc.errors.length > 0) {
         throw doc.errors[0];
     }
@@ -625,13 +617,11 @@ export function parseDockerSize(size : string) : number {
 }
 
 /**
- * Tell if a compose field holds a simple list that the form can edit. A map,
- * or a list of objects (the long syntax), must go to the YAML editor. Note
- * that typeof null is "object", so a blank list item is not a simple value.
- *
- * The list editors and the add button of their parent both use this, because
- * an add button over an editor that cannot show the list writes an item that
- * the user cannot see or remove.
+ * Tell if a compose field is a simple list the form can edit. Maps and
+ * long-syntax object lists need the YAML editor (typeof null is "object",
+ * so a blank item also counts as complex). The list editors and their add
+ * buttons share this check so an add button never writes an item the
+ * editor cannot show.
  * @param {*} value the field value
  * @returns {boolean} true when the form can edit the list
  */

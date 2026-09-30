@@ -1,18 +1,16 @@
 /*
- * Parse and serialize a .env file for the row editor. These functions
- * hold no state, thus a test can examine them without the component.
+ * Parse and serialize a .env file for the row editor. Kept stateless so
+ * it can be tested without the component.
  */
 
-// The characters of a key that docker and dotenv accept. A digit can
-// start a key in an env file. One constant, so the check of the key
-// field and the parser cannot come apart.
+// Key characters docker and dotenv accept (a leading digit is allowed).
+// Shared so the key field check and the parser cannot drift apart.
 const KEY_PATTERN = "[A-Za-z0-9_][A-Za-z0-9_.-]*";
 
-// A different key does not go in the file, and the row shows a message
+// Keys that fail this are dropped from the file and flagged in the row
 const KEY_REGEX = new RegExp("^" + KEY_PATTERN + "$");
 
-// A pair line: an optional export prefix, a key, and the value after
-// the first "=" character
+// Optional "export " prefix, key, and everything after the first "="
 const PAIR_REGEX = new RegExp("^((?:export\\s+)?)(" + KEY_PATTERN + ")=(.*)$");
 
 export interface EnvPair {
@@ -31,27 +29,26 @@ export type EnvEntry = EnvPair | EnvRaw;
 
 export interface EnvFile {
     entries : EnvEntry[];
-    // The line end of the file: "\n", or "\r\n" for a file from Windows
+    // "\n", or "\r\n" for a Windows file
     eol : string;
-    // True when the file ends with a line end
     finalNewline : boolean;
 }
 
 /**
- * True when a key can go in the file.
+ * Check if a key is valid for a .env file.
  * @param key the key text
- * @returns true when docker accepts the key
+ * @returns true if docker accepts the key
  */
 export function isEnvKey(key : string) : boolean {
     return KEY_REGEX.test(key);
 }
 
 /**
- * Divide the text into pairs and other lines. A value in quotes that
- * continues on more lines stays one raw block, because the fields cannot
- * show it correctly. Comments and other lines keep their positions.
+ * Split the text into key/value pairs and raw lines, keeping order.
+ * A multi-line quoted value stays one raw block, since the row fields
+ * cannot show it.
  * @param text the .env text
- * @returns the entries, the line end, and the final line end flag
+ * @returns the entries, line ending, and final newline flag
  */
 export function parseEnvFile(text : string) : EnvFile {
     const file : EnvFile = {
@@ -66,8 +63,7 @@ export function parseEnvFile(text : string) : EnvFile {
 
     const lines = text.split(/\r?\n/);
 
-    // The split gives one empty last item for a text with a final line
-    // end. The serialization adds the line end back.
+    // Drop the empty item after a final newline; serialize adds it back
     if (file.finalNewline) {
         lines.pop();
     }
@@ -79,8 +75,7 @@ export function parseEnvFile(text : string) : EnvFile {
             const value = match[3];
             const quote = value[0];
 
-            // An open quote without its end on the same line: the value
-            // continues on the lines below
+            // Unclosed quote: the value continues on the next lines
             if ((quote === "\"" || quote === "'") && !value.slice(1).includes(quote)) {
                 const block = [ lines[i] ];
                 while (i + 1 < lines.length) {
@@ -115,9 +110,9 @@ export function parseEnvFile(text : string) : EnvFile {
 }
 
 /**
- * Make the .env text from the entries. A pair with a bad key gives no
- * line, because docker refuses a file that holds one.
- * @param file the entries, the line end, and the final line end flag
+ * Build the .env text. Pairs with invalid keys are skipped, since docker
+ * rejects a file that contains one.
+ * @param file the entries, line ending, and final newline flag
  * @returns the .env text
  */
 export function serializeEnvFile(file : EnvFile) : string {

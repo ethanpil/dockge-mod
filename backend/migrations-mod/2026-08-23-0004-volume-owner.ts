@@ -1,13 +1,11 @@
 import type { Knex } from "knex";
 
 /**
- * The stack that a volume belongs to.
+ * Records which stack owns each volume.
  *
- * Docker makes an anonymous volume itself, and it puts no compose label
- * on that volume. After `docker compose down` the volume keeps its data
- * and no container holds it, thus nothing says which stack made it. The
- * server writes this table while a container of the stack exists, thus
- * a removal of the unused volumes can keep the volume later.
+ * Anonymous volumes get no compose label, so after `docker compose down`
+ * nothing links them to their stack. We record the owner while a container
+ * still exists, so a later prune of unused volumes can spare them.
  * @param knex The database
  * @returns The schema change
  */
