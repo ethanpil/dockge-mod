@@ -6,12 +6,10 @@
              event. -->
         <input v-if="isSelectMode" type="checkbox" class="form-check-input select-box me-2" :checked="isSelected(selectKey)" :disabled="!stack.isManagedByDockge" tabindex="-1" />
         <Uptime :stack="stack" :dot="true" class="me-2" />
-        <div class="title">
-            <span>{{ stackName }}</span>
-        </div>
+        <span class="title">{{ stackName }}</span>
         <!-- An agent of upstream dockge does not send imageUpdates -->
         <span v-if="stack.imageUpdates > 0" class="update-badge" :title="$t('updateAvailableCount', { n: stack.imageUpdates })" role="img" :aria-label="$t('updateAvailableCount', { n: stack.imageUpdates })">
-            <font-awesome-icon icon="arrow-up" />
+            <font-awesome-icon icon="arrow-up" /> {{ stack.imageUpdates }}
         </span>
     </router-link>
 </template>
@@ -160,8 +158,10 @@ export default {
 .update-badge {
     margin-left: auto;
     padding-left: 0.4rem;
-    font-size: 11px;
-    color: var(--bs-info);
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--bs-warning-text-emphasis);
+    white-space: nowrap;
     flex: 0 0 auto;
 }
 </style>

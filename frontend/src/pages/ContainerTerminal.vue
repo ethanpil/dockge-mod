@@ -1,7 +1,7 @@
 <template>
     <transition name="slide-fade" appear>
         <div>
-            <h1 class="fs-3 mb-3">{{ $t("terminal") }} - {{ serviceName }} ({{ stackName }})</h1>
+            <h1 class="fs-4 mb-3">{{ $t("terminal") }}: {{ serviceName }} <span class="text-body-secondary">({{ stackName }})</span></h1>
 
             <div class="mb-3">
                 <router-link :to="stackURL" class="btn btn-sm btn-normal me-2">

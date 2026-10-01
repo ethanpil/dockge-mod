@@ -65,8 +65,8 @@
                             <!-- Actions are service-scoped (docker compose has no per-replica
                              stop), so they render once per service, on its first row. -->
                             <div v-if="row.first" class="act-row">
-                                <button v-if="showLogs" type="button" class="mini-btn" :title="$t('serviceLogs')" :disabled="processing" @click="$emit('service-logs', row.service)">
-                                    <font-awesome-icon icon="file-lines" />
+                                <button v-if="showLogs" type="button" class="mini-btn" :disabled="processing" @click="$emit('service-logs', row.service)">
+                                    {{ $t("serviceLogs") }}
                                 </button>
                                 <ContainerActions
                                     :status="row.status"
@@ -93,8 +93,8 @@
                     <span class="status-dot" :class="'dot-' + row.color"></span>
                     <strong class="text-truncate">{{ row.service }}</strong>
                     <span class="badge state-badge" :class="stateBadgeClass(row.status)">{{ row.status }}</span>
-                    <button v-if="row.first && showLogs" type="button" class="mini-btn ms-auto" :title="$t('serviceLogs')" :disabled="processing" @click="$emit('service-logs', row.service)">
-                        <font-awesome-icon icon="file-lines" />
+                    <button v-if="row.first && showLogs" type="button" class="mini-btn ms-auto" :disabled="processing" @click="$emit('service-logs', row.service)">
+                        {{ $t("serviceLogs") }}
                     </button>
                     <ContainerActions
                         v-if="row.first"
@@ -134,7 +134,6 @@
 import { parseDockerPort } from "../../../common/util-common";
 import { formatPorts, formatUptime, isWebUrl } from "../util-frontend";
 import ContainerActions from "./ContainerActions.vue";
-import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
 
 /**
  * The containers of a stack in view mode: a dense table, or stacked
@@ -144,7 +143,6 @@ import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
 export default {
     components: {
         ContainerActions,
-        FontAwesomeIcon,
     },
     props: {
         /** The services of the compose file */
@@ -408,7 +406,7 @@ export default {
 }
 
 .cell-sub {
-    font-size: 11px;
+    font-size: 12px;
     color: var(--bs-secondary-color);
 }
 
@@ -429,36 +427,35 @@ export default {
 .ctable {
     width: 100%;
     border-collapse: collapse;
-    font-size: 12.5px;
+    font-size: 13px;
 
     th {
         text-align: left;
-        font-size: 10.5px;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.04em;
+        font-size: 12px;
+        font-weight: 500;
         color: var(--bs-secondary-color);
-        padding: 0.28rem 0.5rem;
-        border-bottom: 1px solid var(--bs-border-color);
+        padding: 0.5rem 0.75rem;
         white-space: nowrap;
     }
 
     td {
-        padding: 0.28rem 0.5rem;
-        border-bottom: 1px solid var(--bs-border-color);
+        padding: 0.55rem 0.75rem;
+        border-top: 1px solid var(--bs-border-color);
         vertical-align: middle;
     }
 
-    tbody tr:last-child td {
-        border-bottom: 0;
+    th:first-child,
+    td:first-child {
+        padding-left: 1rem;
     }
 
-    tbody tr:nth-child(even) {
-        background-color: var(--bs-tertiary-bg);
+    th:last-child,
+    td:last-child {
+        padding-right: 1rem;
     }
 
     tbody tr:hover {
-        background-color: var(--bs-secondary-bg);
+        background-color: var(--bs-tertiary-bg);
     }
 
     th.c-num,
@@ -477,7 +474,7 @@ export default {
     // Stacked cells: two short lines are narrower than one long line
     .c-num div,
     .c-addr div {
-        line-height: 1.25;
+        line-height: 1.3;
     }
 }
 
@@ -516,7 +513,7 @@ export default {
 
 /* ---------- mobile cards ---------- */
 .mcard {
-    padding: 0.45rem 0.5rem;
+    padding: 0.75rem 1rem;
     border-bottom: 1px solid var(--bs-border-color);
 
     &:last-child {
@@ -532,7 +529,7 @@ export default {
 }
 
 .mcard-img {
-    font-size: 11px;
+    font-size: 12px;
     margin: 0.1rem 0 0.25rem 1.05rem;
 }
 
@@ -540,7 +537,7 @@ export default {
     display: grid;
     grid-template-columns: auto 1fr;
     gap: 0.1rem 0.7rem;
-    font-size: 11.5px;
+    font-size: 12px;
     margin-left: 1.05rem;
     overflow-wrap: anywhere;
 

@@ -1,13 +1,26 @@
 @import "vars.scss";
 @import "bootstrap/scss/bootstrap";
 
-#app {
-    font-family: BlinkMacSystemFont, segoe ui, Roboto, helvetica neue, Arial, noto sans, sans-serif, apple color emoji, segoe ui emoji, segoe ui symbol, noto color emoji;
+// Surfaces that Bootstrap has no token for. A panel sits on --app-surface,
+// a control on --app-raised, and an input on --app-input-bg.
+:root,
+[data-bs-theme="light"] {
+    --app-surface: #fff;
+    --app-raised: #fff;
+    --app-input-bg: #fff;
+    --app-code-bg: #11151b;
+}
+
+[data-bs-theme="dark"] {
+    --app-surface: #161b22;
+    --app-raised: #1c222b;
+    --app-input-bg: #0f1217;
 }
 
 // Scrollbar (self-themes via Bootstrap CSS vars)
 ::-webkit-scrollbar {
     width: 10px;
+    height: 10px;
 }
 
 ::-webkit-scrollbar-thumb {
@@ -21,13 +34,22 @@
 
 .modal {
     backdrop-filter: blur(3px);
+    --bs-modal-bg: var(--app-surface);
+    --bs-modal-border-radius: 10px;
 }
 
-// The app's universal card primitive — stock Bootstrap card look.
+.dropdown-menu {
+    --bs-dropdown-bg: var(--app-raised);
+    --bs-dropdown-border-radius: 8px;
+    --bs-dropdown-font-size: 13px;
+    box-shadow: 0 8px 24px rgb(0 0 0 / 18%);
+}
+
+// The app's universal card primitive
 .shadow-box {
-    background-color: var(--bs-body-bg);
+    background-color: var(--app-surface);
     border: 1px solid var(--bs-border-color);
-    border-radius: var(--bs-border-radius);
+    border-radius: 8px;
     padding: 0.25rem;
 
     &.big-padding {
@@ -35,46 +57,59 @@
     }
 }
 
-// Legacy class names used throughout templates — alias to stock buttons.
+// The neutral button. Templates use .btn-normal and .btn-secondary for it.
 .btn-normal {
     @extend .btn-secondary;
 }
 
-/* ---------- dense panel chrome (stack page, home) ---------- */
+.btn-normal,
+.btn-secondary {
+    --bs-btn-color: var(--bs-body-color);
+    --bs-btn-bg: var(--app-raised);
+    --bs-btn-border-color: var(--bs-border-color);
+    --bs-btn-hover-color: var(--bs-body-color);
+    --bs-btn-hover-bg: var(--bs-secondary-bg);
+    --bs-btn-hover-border-color: var(--bs-border-color);
+    --bs-btn-active-color: var(--bs-body-color);
+    --bs-btn-active-bg: var(--bs-secondary-bg);
+    --bs-btn-active-border-color: var(--bs-border-color);
+    --bs-btn-disabled-color: var(--bs-secondary-color);
+    --bs-btn-disabled-bg: var(--app-raised);
+    --bs-btn-disabled-border-color: var(--bs-border-color);
+}
+
+/* ---------- panel chrome (stack page, home, resources) ---------- */
 .panel {
-    background-color: var(--bs-body-bg);
+    background-color: var(--app-surface);
     border: 1px solid var(--bs-border-color);
-    border-radius: 4px;
+    border-radius: 8px;
     display: flex;
     flex-direction: column;
-    margin-bottom: 0.5rem;
+    margin-bottom: 1rem;
 }
 
 .panel-head {
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    padding: 0.3rem 0.5rem;
-    background-color: var(--bs-tertiary-bg);
+    min-height: 40px;
+    padding: 0.3rem 0.75rem 0.3rem 1rem;
     border-bottom: 1px solid var(--bs-border-color);
-    border-radius: 4px 4px 0 0;
+    border-radius: 8px 8px 0 0;
 }
 
 .panel-title {
-    font-size: 11px;
+    font-size: 13px;
     font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: var(--bs-secondary-color);
 }
 
 .panel-note {
-    font-size: 11px;
+    font-size: 12px;
     color: var(--bs-secondary-color);
 }
 
 .panel-body {
-    padding: 0.5rem;
+    padding: 1rem;
 }
 
 // Small outline control used in panel headers and field labels
@@ -82,20 +117,26 @@
     border: 1px solid var(--bs-border-color);
     background: transparent;
     color: var(--bs-secondary-color);
-    border-radius: 3px;
-    font-size: 10.5px;
+    border-radius: 6px;
+    font-size: 12px;
     line-height: 1.4;
-    padding: 0.15rem 0.4rem;
-    min-height: 24px;
+    padding: 0.15rem 0.6rem;
+    min-height: 26px;
     cursor: pointer;
 
-    &:hover {
+    &:hover:not(:disabled) {
         color: var(--bs-body-color);
+        background-color: var(--bs-tertiary-bg);
+    }
+
+    &:disabled {
+        opacity: 0.6;
+        cursor: default;
     }
 }
 
 .mono {
-    font-family: ui-monospace, "JetBrains Mono", Menlo, Consolas, monospace;
+    font-family: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
     font-variant-numeric: tabular-nums;
     font-size: 0.92em;
 }
@@ -121,9 +162,45 @@
 }
 
 .state-badge {
-    font-size: 10.5px;
+    font-size: 12px;
     font-weight: 600;
-    border-radius: 2px;
+    border-radius: 4px;
+}
+
+// Dense data table inside a panel
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+
+    th {
+        text-align: left;
+        font-size: 12px;
+        font-weight: 500;
+        color: var(--bs-secondary-color);
+        padding: 0.5rem 0.75rem;
+        white-space: nowrap;
+    }
+
+    td {
+        padding: 0.55rem 0.75rem;
+        border-top: 1px solid var(--bs-border-color);
+        vertical-align: middle;
+    }
+
+    th:first-child,
+    td:first-child {
+        padding-left: 1rem;
+    }
+
+    th:last-child,
+    td:last-child {
+        padding-right: 1rem;
+    }
+
+    tbody tr:hover {
+        background-color: var(--bs-tertiary-bg);
+    }
 }
 
 /*
@@ -169,21 +246,14 @@
         overflow-y: auto;
     }
 
-    @media (max-width: 770px) {
-        &.scrollbar {
-            height: calc(100% - 97px);
-        }
-    }
-
     .item {
         display: flex;
         align-items: center;
-        min-height: 40px;
-        height: auto;
+        min-height: 36px;
         text-decoration: none;
-        border-radius: var(--bs-border-radius);
+        border-radius: 6px;
         width: 100%;
-        padding: 2px 8px;
+        padding: 2px 10px;
         color: var(--bs-body-color);
 
         &.disabled {
@@ -196,21 +266,7 @@
 
         &.active {
             background-color: var(--bs-primary-bg-subtle);
-        }
-
-        .title {
-            display: inline-block;
-            margin-top: -4px;
-        }
-    }
-
-    // A narrow window gives the list a narrow column. Smaller rows keep more
-    // of each stack name on screen and give the page more width.
-    @media (max-width: 1079.98px) {
-        .item {
-            min-height: 32px;
-            padding: 1px 6px;
-            font-size: 13px;
+            font-weight: 500;
         }
     }
 }
@@ -248,8 +304,8 @@ h5.settings-subheading::after {
 // CodeMirror editors keep the dracula (dark) theme in both app themes.
 .editor-box {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 14px;
-    background-color: #282a36;
+    font-size: 13px;
+    background-color: var(--app-code-bg);
     color: #f8f8f2;
 }
 
@@ -308,7 +364,7 @@ code {
 }
 
 .cm-selectionBackground {
-    background-color: #44475a !important;
+    background-color: #2c3a52 !important;
 }
 
 .cm-focused {

@@ -1,7 +1,7 @@
 <template>
     <transition name="slide-fade" appear>
         <div v-if="!processing">
-            <h1 class="fs-3 mb-3">{{ $t("console") }}</h1>
+            <h1 class="fs-4 mb-3">{{ $t("console") }}</h1>
 
             <Terminal v-if="enableConsole" class="terminal" :rows="20" mode="mainTerminal" name="console" :endpoint="endpoint"></Terminal>
 

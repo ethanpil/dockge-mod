@@ -1,51 +1,47 @@
 <template>
-    <div class="shadow-box mb-3" :style="boxStyle">
+    <div class="shadow-box stack-box mb-3" :style="boxStyle">
         <div class="list-header">
             <div class="header-top">
+                <div class="search-wrapper">
+                    <font-awesome-icon v-if="searchText == ''" icon="search" class="search-icon" />
+                    <button v-else type="button" class="search-icon search-clear" :aria-label="$t('clear')" @click="clearSearchText">
+                        <font-awesome-icon icon="times" />
+                    </button>
+                    <input v-model="searchText" class="search-input" autocomplete="off" :placeholder="$t('searchStacks')" :aria-label="$t('searchStacks')" />
+                </div>
+
                 <button
-                    class="btn btn-sm btn-outline-secondary me-2" :class="{ 'active': selectMode }" type="button" :disabled="bulkRunning"
+                    class="btn btn-sm btn-normal" :class="{ 'active': selectMode }" type="button" :disabled="bulkRunning"
                     @click="selectMode = !selectMode"
                 >
                     {{ $t("select") }}
                 </button>
-
-                <div class="search-wrapper">
-                    <a v-if="searchText == ''" class="search-icon">
-                        <font-awesome-icon icon="search" />
-                    </a>
-                    <a v-if="searchText != ''" class="search-icon" style="cursor: pointer" @click="clearSearchText">
-                        <font-awesome-icon icon="times" />
-                    </a>
-                    <form>
-                        <input v-model="searchText" class="form-control form-control-sm search-input" autocomplete="off" />
-                    </form>
-                </div>
             </div>
 
             <!-- The status filter and the search text apply together -->
-            <div class="header-filter">
-                <label class="filter-label" for="stackStatusFilter">{{ $t("filterStatus") }}</label>
-                <select id="stackStatusFilter" v-model="filterState.status" class="form-select form-select-sm filter-select">
-                    <option :value="null">{{ $t("filterAll") }}</option>
-                    <option value="active">{{ $t("active") }}</option>
-                    <option value="exited">{{ $t("exited") }}</option>
-                    <option value="inactive">{{ $t("inactive") }}</option>
-                </select>
+            <div class="header-filter" role="group" :aria-label="$t('filterStatus')">
+                <button
+                    v-for="option in statusOptions" :key="option.value ?? 'all'" type="button" class="chip"
+                    :class="{ active: filterState.status === option.value }" :aria-pressed="filterState.status === option.value"
+                    @click="filterState.status = option.value"
+                >
+                    {{ option.label }} <span class="chip-count">{{ option.count }}</span>
+                </button>
             </div>
 
             <!-- Bulk actions. The backend has one event for one stack, thus
                  the actions run one stack after the other. -->
             <div v-if="selectMode" class="selection-controls">
                 <div class="selection-row">
-                    <button class="btn btn-sm btn-outline-secondary" type="button" :disabled="bulkRunning" @click="selectVisible">{{ $t("selectAll") }}</button>
-                    <button class="btn btn-sm btn-outline-secondary" type="button" :disabled="bulkRunning || selectedStackCount === 0" @click="selectedStacks = {}">{{ $t("clear") }}</button>
                     <span v-if="bulkRunning" class="selection-note">
                         <font-awesome-icon icon="spinner" spin class="me-1" />{{ $t("bulkProgress", { n: bulkDone, m: bulkTotal }) }}
                     </span>
                     <span v-else class="selection-note">{{ $t("selectedStackCount", [ selectedStackCount ]) }}</span>
+                    <button class="link-btn" type="button" :disabled="bulkRunning" @click="selectVisible">{{ $t("selectAll") }}</button>
+                    <button class="link-btn" type="button" :disabled="bulkRunning || selectedStackCount === 0" @click="selectedStacks = {}">{{ $t("clear") }}</button>
                 </div>
-                <div class="selection-row">
-                    <button class="btn btn-sm btn-primary" type="button" :disabled="bulkDisabled" @click="runBulk('startStack')">
+                <div class="selection-grid">
+                    <button class="btn btn-sm btn-normal" type="button" :disabled="bulkDisabled" @click="runBulk('startStack')">
                         <font-awesome-icon icon="play" class="me-1" />{{ $t("startStack") }}
                     </button>
                     <button class="btn btn-sm btn-normal" type="button" :disabled="bulkDisabled" @click="askBulk('stopStack')">
@@ -60,14 +56,14 @@
                 </div>
             </div>
         </div>
-        <div ref="stackList" class="stack-list" :class="{ scrollbar: scrollbar }" :style="stackListStyle">
-            <div v-if="agentStackList.length === 0" class="text-center mt-3">
+        <div ref="stackList" class="stack-list" :class="{ scrollbar: scrollbar }">
+            <div v-if="agentStackList.length === 0" class="text-center my-3">
                 <span v-if="filtersActive" class="text-body-secondary">{{ $t("noStackMatch") }}</span>
                 <router-link v-else to="/compose">{{ $t("addFirstStackMsg") }}</router-link>
             </div>
             <div v-for="(agent, agentIndex) in agentStackList" :key="agentIndex" class="stack-list-inner">
                 <div
-                    v-if="$root.agentCount > 1" class="p-2 agent-select"
+                    v-if="$root.agentCount > 1" class="agent-select"
                     @click="closedAgents.set(agent.endpoint, !closedAgents.get(agent.endpoint))"
                 >
                     <span class="me-1">
@@ -243,20 +239,35 @@ export default {
             return result;
         },
 
-        stackListStyle() {
-            //let listHeaderHeight = 107;
-            let listHeaderHeight = 48;
-
-            // The filter row
-            listHeaderHeight += 36;
-
-            if (this.selectMode) {
-                listHeaderHeight += 74;
-            }
-
-            return {
-                "height": `calc(100% - ${listHeaderHeight}px)`
+        /**
+         * The status filter buttons, each with the count of its stacks.
+         * @returns {object[]} value, label and count of each button
+         */
+        statusOptions() {
+            const counts = {
+                active: 0,
+                exited: 0,
+                inactive: 0,
             };
+            const stacks = Object.values(this.$root.completeStackList);
+            for (const stack of stacks) {
+                const name = statusNameShort(stack.status);
+                if (name in counts) {
+                    counts[name]++;
+                }
+            }
+            return [
+                {
+                    value: null,
+                    label: this.$t("filterAll"),
+                    count: stacks.length,
+                },
+                ...Object.keys(counts).map((name) => ({
+                    value: name,
+                    label: this.$t(name),
+                    count: counts[name],
+                })),
+            ];
         },
 
         selectedStackCount() {
@@ -311,10 +322,10 @@ export default {
          * @returns {void}
          */
         onScroll() {
-            if (window.top.scrollY <= 133) {
+            if (window.top.scrollY <= 110) {
                 this.windowTop = window.top.scrollY;
             } else {
-                this.windowTop = 133;
+                this.windowTop = 110;
             }
         },
 
@@ -411,137 +422,166 @@ export default {
 </script>
 
 <style lang="scss" scoped>
-.shadow-box {
+.stack-box {
     height: calc(100vh - 150px);
     position: sticky;
     top: 10px;
-    // ~10% smaller than the body size; inherited by the rows and the header.
-    font-size: 0.9rem;
-}
-
-.small-padding {
-    padding-left: 5px !important;
-    padding-right: 5px !important;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
 }
 
 .list-header {
-    background-color: var(--bs-tertiary-bg);
+    flex: 0 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    padding: 0.75rem;
     border-bottom: 1px solid var(--bs-border-color);
-    border-radius: calc(var(--bs-border-radius) - 1px) calc(var(--bs-border-radius) - 1px) 0 0;
-    // Cancels the .shadow-box padding so the header spans the full box width.
-    margin: -0.25rem;
-    margin-bottom: 0.5rem;
-    padding: 0.4rem 0.5rem;
+}
+
+.stack-list {
+    flex: 1 1 auto;
+    min-height: 0;
+    padding: 0.5rem;
 }
 
 .header-top {
     display: flex;
-    justify-content: space-between;
     align-items: center;
-}
-
-.header-filter {
-    display: flex;
-    align-items: center;
-    gap: 0.4rem;
-    margin-top: 0.4rem;
-}
-
-.filter-label {
-    font-size: 11px;
-    color: var(--bs-secondary-color);
-    white-space: nowrap;
-}
-
-.filter-select {
-    font-size: 12px;
-    padding-top: 0.15rem;
-    padding-bottom: 0.15rem;
+    gap: 0.5rem;
 }
 
 .search-wrapper {
     display: flex;
     align-items: center;
-    // Fill the header rather than sitting at its right edge.
+    gap: 0.4rem;
     flex: 1 1 auto;
     min-width: 0;
+    height: 31px;
+    padding: 0 0.6rem;
+    border: 1px solid var(--bs-border-color);
+    border-radius: 6px;
+    background-color: var(--app-input-bg);
 
-    form {
-        flex: 1 1 auto;
-        min-width: 0;
+    &:focus-within {
+        border-color: var(--bs-primary);
     }
 }
 
 .search-icon {
-    padding: 0 8px 0 2px;
+    flex: 0 0 auto;
+    font-size: 12px;
     color: var(--bs-secondary-color);
+}
 
-    // Clear filter button (X)
-    svg[data-icon="times"] {
-        cursor: pointer;
+.search-clear {
+    padding: 0;
+    border: 0;
+    background: transparent;
 
-        &:hover {
-            opacity: 0.5;
-        }
+    &:hover {
+        color: var(--bs-body-color);
     }
 }
 
 .search-input {
-    width: 100%;
+    flex: 1 1 auto;
+    min-width: 0;
+    border: 0;
+    outline: 0;
+    background: transparent;
+    color: var(--bs-body-color);
+    font-size: 13px;
 }
 
-.stack-item {
-    width: 100%;
-}
-
-.tags {
-    margin-top: 4px;
-    padding-left: 67px;
+.header-filter {
     display: flex;
     flex-wrap: wrap;
-    gap: 0;
+    gap: 0.35rem;
 }
 
-.bottom-style {
-    padding-left: 67px;
-    margin-top: 5px;
+.chip {
+    height: 26px;
+    padding: 0 0.6rem;
+    border: 1px solid var(--bs-border-color);
+    border-radius: 13px;
+    background: transparent;
+    color: var(--bs-secondary-color);
+    font-size: 12px;
+    font-weight: 500;
+    white-space: nowrap;
+
+    &:hover {
+        color: var(--bs-body-color);
+    }
+
+    &.active {
+        color: var(--bs-primary-text-emphasis);
+        background-color: var(--bs-primary-bg-subtle);
+        border-color: var(--bs-primary-border-subtle);
+    }
+}
+
+.chip-count {
+    font-variant-numeric: tabular-nums;
 }
 
 .selection-controls {
-    margin-top: 0.4rem;
     display: flex;
     flex-direction: column;
-    gap: 0.3rem;
-
-    .btn {
-        padding: 0.1rem 0.45rem;
-        font-size: 11.5px;
-    }
+    gap: 0.5rem;
+    padding-top: 0.6rem;
+    border-top: 1px solid var(--bs-border-color);
 }
 
 .selection-row {
     display: flex;
     align-items: center;
-    flex-wrap: wrap;
-    gap: 0.3rem;
+    gap: 0.5rem;
 }
 
 .selection-note {
-    font-size: 11.5px;
-    color: var(--bs-secondary-color);
-    margin-left: auto;
+    font-size: 12px;
+    font-weight: 600;
+    margin-right: auto;
     white-space: nowrap;
+}
+
+.link-btn {
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--bs-link-color);
+    font-size: 12px;
+
+    &:disabled {
+        color: var(--bs-secondary-color);
+    }
+}
+
+.selection-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.35rem;
 }
 
 .agent-select {
     cursor: pointer;
-    font-size: 14px;
-    font-weight: 500;
+    font-size: 12px;
+    font-weight: 600;
     color: var(--bs-secondary-color);
-    padding-left: 10px;
-    padding-right: 10px;
+    padding: 0.4rem 0.6rem;
     display: flex;
     align-items: center;
     user-select: none;
+}
+
+@media (max-width: 767.98px) {
+    .stack-box {
+        position: static;
+        height: auto !important;
+        max-height: 50vh;
+    }
 }
 </style>

@@ -1,3 +1,33 @@
-// Stock Bootstrap 5.3 tokens - no overrides.
-// Only the page-transition easing remains.
+// Bootstrap 5.3 tokens for the app theme. main.scss imports this file
+// before Bootstrap, so these values replace the Bootstrap defaults.
+$font-family-sans-serif: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji";
+$font-family-monospace: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+$font-size-base: 0.875rem;
+$headings-font-weight: 600;
+$btn-font-weight: 500;
+
+$primary: #2b6be0;
+
+// Light theme
+$body-bg: #f5f6f8;
+$body-color: #1a1f27;
+$body-secondary-color: #5b6573;
+$body-secondary-bg: #e3e7ec;
+$body-tertiary-bg: #eceff3;
+$border-color: #dfe3e8;
+
+// Dark theme
+$body-bg-dark: #0f1217;
+$body-color-dark: #e6e9ee;
+$body-secondary-color-dark: #9aa4b2;
+$body-secondary-bg-dark: #232b38;
+$body-tertiary-bg-dark: #1c222b;
+$border-color-dark: #2a313c;
+$link-color-dark: #8ab4ff;
+$link-hover-color-dark: #b3ceff;
+
+// Inputs sit on their own surface, see --app-input-bg in main.scss
+$input-bg: var(--app-input-bg);
+
+// Page-transition easing
 $easing-in: cubic-bezier(0.54, 0.78, 0.55, 0.97);

@@ -3,7 +3,7 @@
         <div class="form">
             <form @submit.prevent="submit">
                 <div>
-                    <object width="64" height="64" data="/icon.svg" />
+                    <img src="/icon.svg" width="64" height="64" alt="" />
                     <div style="font-size: 28px; font-weight: bold; margin-top: 5px;">
                         dockge-mod
                     </div>
@@ -109,9 +109,12 @@ export default {
 
 .form {
     width: 100%;
-    max-width: 330px;
-    padding: 15px;
+    max-width: 360px;
+    padding: 1.5rem;
     margin: auto;
     text-align: center;
+    background-color: var(--app-surface);
+    border: 1px solid var(--bs-border-color);
+    border-radius: 10px;
 }
 </style>

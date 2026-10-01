@@ -43,25 +43,20 @@ export default {
 
         className() {
             // Remap the shared status colours for presentation only, leaving
-            // common/util-common.ts untouched:
-            //   primary -> success  so that "active" reads green, not blue.
-            //   dark    -> subtle   because `bg-dark` is near-black in light mode
-            //                       and near-invisible in dark mode, which made the
-            //                       least important state the loudest badge.
-            const variant = {
-                primary: "bg-success",
-                dark: "bg-secondary-subtle text-secondary-emphasis border",
-            }[this.color] ?? `bg-${this.color}`;
-
-            return `badge rounded-pill ${variant}`;
+            // common/util-common.ts untouched: primary -> success, so that
+            // "active" reads green, and dark -> secondary, which is muted.
+            const color = this.dotColor;
+            return `badge rounded-pill status-pill bg-${color}-subtle text-${color}-emphasis`;
         },
     },
 };
 </script>
 
 <style scoped>
-.badge {
-    min-width: 62px;
+.status-pill {
+    font-size: 12px;
+    font-weight: 600;
+    padding: 0.35em 0.8em;
 }
 
 /* .status-dot / .dot-* are global (main.scss) */

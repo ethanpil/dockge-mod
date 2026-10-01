@@ -1,41 +1,38 @@
 <template>
     <div class="container-actions">
-        <div v-if="hasActions" class="dropdown">
+        <router-link v-if="running" class="mini-btn shell-btn" :to="bashTo">{{ $t("shell") }}</router-link>
+        <div v-if="multi" class="dropdown">
             <button
-                class="btn btn-secondary btn-sm dropdown-toggle actions-btn"
+                class="mini-btn"
                 data-bs-toggle="dropdown"
                 data-bs-boundary="viewport"
                 aria-expanded="false"
+                :title="$t('actions')"
+                :aria-label="$t('actions')"
                 @mousedown="useFixedMenu"
                 @keydown="useFixedMenu"
             >
-                {{ $t("actions") }}
+                <font-awesome-icon icon="ellipsis" />
             </button>
             <ul class="dropdown-menu dropdown-menu-end">
-                <li v-if="running">
-                    <router-link class="dropdown-item" :to="bashTo">
-                        <font-awesome-icon icon="terminal" fixed-width class="me-2" /> Bash
-                    </router-link>
-                </li>
-                <li v-if="running && multi"><hr class="dropdown-divider"></li>
-                <li v-if="!running && multi">
+                <li v-if="!running">
                     <button class="dropdown-item" :disabled="processing" @click="$emit('start')">
                         <font-awesome-icon icon="play" fixed-width class="me-2" /> {{ $t("startStack") }}
                     </button>
                 </li>
-                <li v-if="restartable && multi">
+                <li v-if="restartable">
                     <button class="dropdown-item" :disabled="processing" @click="$emit('restart')">
                         <font-awesome-icon icon="rotate" fixed-width class="me-2" /> {{ $t("restartStack") }}
                     </button>
                 </li>
-                <li v-if="restartable && multi">
+                <li v-if="restartable">
                     <button class="dropdown-item" :disabled="processing" @click="$emit('stop')">
                         <font-awesome-icon icon="stop" fixed-width class="me-2" /> {{ $t("stopStack") }}
                     </button>
                 </li>
             </ul>
         </div>
-        <span v-else class="text-body-secondary">—</span>
+        <span v-if="!hasActions" class="text-body-secondary">—</span>
     </div>
 </template>
 
@@ -44,7 +41,7 @@ import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome";
 import { Dropdown } from "bootstrap";
 
 /**
- * The per-container Actions menu, shared by the desktop table and the mobile
+ * The shell link and the actions menu of a container, shared by the desktop table and the mobile
  * cards so the two cannot drift apart. The visibility rules mirror the
  * original per-service card buttons exactly, including "unhealthy": a running
  * container with a failing healthcheck must keep Restart and Stop — they are
@@ -126,10 +123,15 @@ export default {
 </script>
 
 <style scoped lang="scss">
-.actions-btn {
-    padding: 0.05rem 0.4rem;
-    font-size: 11.5px;
-    border-radius: 2px;
-    white-space: nowrap;
+.container-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+
+.shell-btn {
+    display: inline-flex;
+    align-items: center;
+    text-decoration: none;
 }
 </style>

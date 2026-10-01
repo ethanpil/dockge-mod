@@ -1,23 +1,27 @@
 <template>
     <transition name="slide-fade" appear>
         <div>
-            <div class="title-row mb-2">
-                <h1 v-if="isAdd" class="fs-4 mb-0">{{ $t("compose") }}</h1>
-                <template v-else>
-                    <Uptime :stack="globalStack" :pill="true" />
-                    <h1 class="fs-4 mb-0 title-name">{{ stack.name }}</h1>
-                    <!-- Outside the title, which truncates with an ellipsis -->
-                    <span v-if="isDirty" class="dirty-dot" :title="$t('unsavedChanges')" role="img" :aria-label="$t('unsavedChanges')">&#9679;</span>
-                    <span v-if="$root.agentCount > 1 && endpoint !== ''" class="agent-name">
-                        ({{ endpointDisplay }})
-                    </span>
-                    <!-- Git state of the stack directory. Only a stack from
-                         an agent with git support carries this data. -->
-                    <span v-if="gitInfo" class="git-badge" :title="gitInfo.isDirty ? $t('gitDirtyMsg') : ''">
-                        <font-awesome-icon icon="code-branch" class="me-1" />{{ gitInfo.branch }}<template v-if="gitInfo.isDirty"> &#9679;</template>
-                    </span>
-                    <span v-if="!isEditMode && serviceCount > 0" class="panel-note d-none d-sm-inline">{{ serviceCount }} {{ $tc("container", serviceCount) }}</span>
-                </template>
+            <div class="page-head">
+                <div class="title-row">
+                    <h1 v-if="isAdd" class="page-title">{{ $t("newStack") }}</h1>
+                    <template v-else>
+                        <h1 class="page-title title-name">{{ stack.name }}</h1>
+                        <!-- Outside the title, which truncates with an ellipsis -->
+                        <span v-if="isDirty" class="dirty-dot" :title="$t('unsavedChanges')" role="img" :aria-label="$t('unsavedChanges')">&#9679;</span>
+                        <Uptime :stack="globalStack" :pill="true" />
+                        <span v-if="$root.agentCount > 1 && endpoint !== ''" class="agent-name">
+                            {{ endpointDisplay }}
+                        </span>
+                        <!-- Git state of the stack directory. Only a stack from
+                             an agent with git support carries this data. -->
+                        <span v-if="gitInfo" class="git-badge mono" :title="gitInfo.isDirty ? $t('gitDirtyMsg') : ''">
+                            <font-awesome-icon icon="code-branch" class="me-1" />{{ gitInfo.branch }}<template v-if="gitInfo.isDirty"> &#9679;</template>
+                        </span>
+                        <span v-if="!isEditMode && serviceCount > 0" class="panel-note d-none d-sm-inline">{{ serviceCount }} {{ $tc("container", serviceCount) }}</span>
+                        <!-- URLs -->
+                        <a v-for="(urlItem, index) in urls" :key="index" target="_blank" rel="noopener" :href="urlItem.url" class="url-link mono">{{ urlItem.display }}</a>
+                    </template>
+                </div>
 
                 <StackToolbar
                     v-if="stack.isManagedByDockge"
@@ -49,13 +53,6 @@
                 />
             </div>
 
-            <!-- URLs -->
-            <div v-if="urls.length > 0" class="mb-3">
-                <a v-for="(urlItem, index) in urls" :key="index" target="_blank" :href="urlItem.url" class="text-decoration-none">
-                    <span class="badge bg-secondary me-2">{{ urlItem.display }}</span>
-                </a>
-            </div>
-
             <!-- Progress Terminal -->
             <transition name="slide-fade" appear>
                 <Terminal
@@ -70,7 +67,7 @@
             </transition>
 
             <div v-if="stack.isManagedByDockge" class="row">
-                <div class="col-12" :class="{ 'view-col': !isEditMode }">
+                <div class="col-12" :class="isEditMode ? 'col-xl-6' : 'view-col'">
                     <!-- General -->
                     <div v-if="isAdd" class="panel">
                         <div class="panel-head"><span class="panel-title">{{ $t("general") }}</span></div>
@@ -98,14 +95,15 @@
                     <div v-if="isEditMode" class="panel">
                         <div class="panel-head"><span class="panel-title">{{ $tc("container", 2) }}</span></div>
                         <div class="panel-body">
-                            <div class="input-group input-group-sm mb-2">
+                            <div class="input-group input-group-sm mb-3">
                                 <input
                                     v-model="newContainerName"
                                     :placeholder="$t(`New Container Name...`)"
+                                    :aria-label="$t(`New Container Name...`)"
                                     class="form-control"
                                     @keyup.enter="addContainer"
                                 />
-                                <button class="btn btn-primary" @click="addContainer">
+                                <button class="btn btn-normal" @click="addContainer">
                                     {{ $t("addContainer") }}
                                 </button>
                             </div>
@@ -139,17 +137,14 @@
                         @service-logs="openServiceLogs"
                     />
 
-                    <!-- General -->
+                    <!-- URLs -->
                     <div v-if="isEditMode" class="panel">
-                        <div class="panel-head"><span class="panel-title">{{ $t("extra") }}</span></div>
+                        <div class="panel-head">
+                            <span class="panel-title">{{ $tc("url", 2) }}</span>
+                            <span class="panel-note">{{ $t("urlsNote") }}</span>
+                        </div>
                         <div class="panel-body">
-                            <!-- URLs -->
-                            <div class="mb-2">
-                                <label class="form-label">
-                                    {{ $tc("url", 2) }}
-                                </label>
-                                <ArrayInput name="urls" :display-name="$t('url')" placeholder="https://" object-type="x-dockge" />
-                            </div>
+                            <ArrayInput name="urls" :display-name="$t('url')" placeholder="https://" object-type="x-dockge" />
                         </div>
                     </div>
 
@@ -158,7 +153,7 @@
                     <div v-show="!isEditMode" ref="split" class="panel-split" :class="{ 'h-fixed': panelHeights.files }" :style="[{ '--split-left': splitLeft + '%' }, panelVar('files')]">
                         <div class="panel split-a" :class="{ pop: expandedPanel === 'yaml', 'split-solo': !hasOverride, 'split-gone': hasOverride && splitLeft === 0 }">
                             <div class="panel-head head-grow">
-                                <span class="panel-title">{{ stack.composeFileName }}</span>
+                                <span class="panel-title mono">{{ stack.composeFileName }}</span>
                                 <!-- An upstream dockge agent does not have the
                                      getComposeConfig event, and it also does
                                      not send the override field. The timer in
@@ -201,7 +196,7 @@
 
                         <div v-if="hasOverride" class="panel split-b" :class="{ pop: expandedPanel === 'override', 'split-gone': splitLeft === 100 }">
                             <div class="panel-head">
-                                <span class="panel-title">{{ overrideFileName }}</span>
+                                <span class="panel-title mono">{{ overrideFileName }}</span>
                                 <button class="mini-btn expand-btn" :title="expandedPanel === 'override' ? $t('collapse') : $t('expand')" @click="toggleExpand('override')">
                                     <font-awesome-icon :icon="expandedPanel === 'override' ? 'compress' : 'expand'" />
                                 </button>
@@ -315,11 +310,11 @@
 
                     <div v-if="expandedPanel" class="panel-backdrop" @click="toggleExpand(expandedPanel)"></div>
                 </div>
-                <div v-if="isEditMode" class="col-12">
+                <div v-if="isEditMode" class="col-12 col-xl-6">
                     <!-- YAML editor -->
                     <div class="panel">
                         <div class="panel-head">
-                            <span class="panel-title">{{ stack.composeFileName }}</span>
+                            <span class="panel-title mono">{{ stack.composeFileName }}</span>
                             <span v-if="yamlError" class="panel-note text-danger">{{ yamlError }}</span>
                         </div>
                         <div class="editor-box edit-mode" :class="{ 'h-fixed': panelHeights.editYaml }" :style="panelVar('editYaml')">
@@ -342,7 +337,7 @@
                          without override support shows no panel. -->
                     <div v-if="hasOverride" class="panel">
                         <div class="panel-head">
-                            <span class="panel-title">{{ overrideFileName }}</span>
+                            <span class="panel-title mono">{{ overrideFileName }}</span>
                             <button class="mini-btn expand-btn" @click="$refs.confirmDeleteOverride.show()">
                                 {{ $t("deleteOverride") }}
                             </button>
@@ -360,7 +355,7 @@
                     </div>
                     <div v-else-if="overrideSupported && !isAdd" class="panel">
                         <div class="panel-head">
-                            <span class="panel-title">{{ overrideFileName }}</span>
+                            <span class="panel-title mono">{{ overrideFileName }}</span>
                             <button class="mini-btn expand-btn" @click="createOverride">
                                 {{ $t("createOverride") }}
                             </button>
@@ -372,7 +367,7 @@
                          comments and special lines. -->
                     <div class="panel">
                         <div class="panel-head head-grow">
-                            <span class="panel-title">.env</span>
+                            <span class="panel-title mono">.env</span>
                             <button class="mini-btn" @click="envEditorText = !envEditorText">
                                 {{ envEditorText ? $t("envRowsView") : $t("envTextView") }}
                             </button>
@@ -1881,18 +1876,40 @@ export default {
     font-size: 12px;
     color: var(--bs-secondary-color);
     border: 1px solid var(--bs-border-color);
-    border-radius: 4px;
-    padding: 0.05rem 0.4rem;
+    border-radius: 12px;
+    padding: 0.1rem 0.6rem;
     white-space: nowrap;
     flex: 0 0 auto;
 }
 
-/* ---------- compact title + toolbar row ---------- */
+.url-link {
+    font-size: 13px;
+    text-decoration: none;
+
+    &:hover {
+        text-decoration: underline;
+    }
+}
+
+/* ---------- title row, then the toolbar row ---------- */
+.page-head {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+
 .title-row {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: 0.4rem 0.75rem;
     flex-wrap: wrap;
+}
+
+.page-title {
+    margin: 0;
+    font-size: 24px;
+    font-weight: 600;
 }
 
 .title-name {
@@ -1905,7 +1922,7 @@ export default {
 /* Edit-mode editors inside panels: give them room to work in */
 .panel .editor-box {
     min-height: 300px;
-    border-radius: 0 0 4px 4px;
+    border-radius: 0 0 8px 8px;
 }
 
 /* ---------- view mode: flex column that fills the viewport ---------- */
@@ -1929,7 +1946,7 @@ export default {
     gap: 0.5rem;
     align-items: stretch;
     min-height: 300px;
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.25rem;
 
     .panel {
         min-width: 0;
@@ -2062,7 +2079,7 @@ export default {
     align-items: center;
     justify-content: center;
     height: 10px;
-    margin-bottom: 0.4rem;
+    margin-bottom: 0.25rem;
     cursor: row-resize;
     color: var(--bs-border-color);
     font-size: 10px;
@@ -2078,6 +2095,7 @@ export default {
 .logs-panel {
     flex: 2 1 0;
     min-height: 260px;
+    margin-bottom: 0.25rem;
     overflow: hidden;
 
     // The panels above take their full height on a narrow window, thus this
@@ -2096,7 +2114,7 @@ export default {
     // Terminal.vue renders its own shadow-box; flatten it inside a panel.
     :deep(.shadow-box) {
         border: 0;
-        border-radius: 0 0 4px 4px;
+        border-radius: 0 0 8px 8px;
         height: 100%;
         flex: 1 1 auto;
         padding: 0.25rem;
@@ -2109,9 +2127,9 @@ export default {
 
 .editor-fill {
     overflow: auto;
-    border-radius: 0 0 4px 4px;
-    // Dracula editor background, so the gutter area matches while scrolling.
-    background-color: #282a36;
+    border-radius: 0 0 8px 8px;
+    // The editor background, so the gutter area matches while scrolling.
+    background-color: var(--app-code-bg);
 
     :deep(.cm-editor) {
         height: 100%;

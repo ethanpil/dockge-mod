@@ -1,6 +1,6 @@
 <template>
     <div>
-        <h1 v-show="show" class="fs-3 mb-3">
+        <h1 v-show="show" class="page-title mb-3">
             {{ $t("Settings") }}
         </h1>
 
@@ -169,6 +169,11 @@ export default {
 </script>
 
 <style lang="scss" scoped>
+.page-title {
+    font-size: 24px;
+    font-weight: 600;
+}
+
 .shadow-box-settings {
     padding: 1rem;
     min-height: calc(100vh - 155px);
@@ -207,9 +212,7 @@ footer {
 
     .active .menu-item {
         background: var(--bs-primary-bg-subtle);
-        border-left: 3px solid var(--bs-primary);
-        border-top-left-radius: 0;
-        border-bottom-left-radius: 0;
+        font-weight: 500;
     }
 }
 
@@ -218,7 +221,7 @@ footer {
         border-bottom: 1px solid var(--bs-border-color);
         margin-bottom: 0.75rem;
         padding: 0.25rem 1em 0.75rem;
-        font-size: 1.25rem;
+        font-size: 1.15rem;
         font-weight: 600;
     }
 }

@@ -43,7 +43,7 @@
                     {{ $t("primaryHostname") }}
                 </label>
 
-                <div class="input-group mb-3">
+                <div class="input-group mb-1">
                     <input
                         v-model="settings.primaryHostname"
                         class="form-control"
@@ -54,7 +54,7 @@
                     </button>
                 </div>
 
-                <div class="form-text"></div>
+                <div class="form-text">{{ $t("primaryHostnameNote") }}</div>
             </div>
 
             <!-- Save Button -->

@@ -210,10 +210,10 @@ export default {
 .backup-table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 12.5px;
+    font-size: 13px;
 
     td {
-        padding: 0.3rem 0.75rem;
+        padding: 0.5rem 1rem;
         border-bottom: 1px solid var(--bs-border-color);
         vertical-align: middle;
     }
@@ -229,7 +229,7 @@ export default {
 }
 
 .backup-file-name {
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 600;
     color: var(--bs-secondary-color);
     margin-bottom: 0.25rem;

@@ -81,7 +81,7 @@ export default defineComponent({
          */
         updateThemeColorMeta() {
             if (this.theme === "dark") {
-                document.querySelector("#theme-color").setAttribute("content", "#212529");
+                document.querySelector("#theme-color").setAttribute("content", "#161b22");
             } else {
                 document.querySelector("#theme-color").setAttribute("content", "#ffffff");
             }

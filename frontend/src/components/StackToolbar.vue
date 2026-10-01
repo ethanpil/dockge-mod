@@ -1,23 +1,12 @@
 <template>
-    <div class="toolbar ms-auto">
-        <div class="btn-group btn-group-sm me-2" role="group">
-            <button v-if="isEditMode" class="btn btn-primary" :disabled="processing" @click="$emit('deploy')">
+    <div class="toolbar">
+        <template v-if="isEditMode">
+            <button class="btn btn-primary" :disabled="processing" @click="$emit('deploy')">
                 <font-awesome-icon icon="rocket" class="me-1" />
                 {{ $t("deployStack") }}
             </button>
 
-            <!-- Examine the editor content with docker, before a
-                 save writes it. The guard is approximate: it
-                 tests override support. An agent without the
-                 event does not answer, and the timer of the
-                 overlay then ends the wait. -->
-            <button v-if="isEditMode && (isAdd || overrideSupported)" class="btn btn-normal" :disabled="processing || mergedConfigLoading" :title="$t('validateConfigNote')" @click="$emit('validate')">
-                <font-awesome-icon icon="check-double" class="me-1" />
-                {{ $t("validateConfig") }}
-            </button>
-
             <button
-                v-if="isEditMode"
                 class="btn"
                 :class="isDirty ? 'btn-success' : 'btn-normal'"
                 :disabled="processing || (!isDirty && !isAdd)"
@@ -27,83 +16,86 @@
                 {{ $t("saveStackDraft") }}<template v-if="isDirty"> &#9679;</template>
             </button>
 
-            <button v-if="!isEditMode" class="btn btn-secondary" :disabled="processing" @click="$emit('edit')">
+            <!-- Examine the editor content with docker, before a
+                 save writes it. The guard is approximate: it
+                 tests override support. An agent without the
+                 event does not answer, and the timer of the
+                 overlay then ends the wait. -->
+            <button v-if="isAdd || overrideSupported" class="btn btn-normal" :disabled="processing || mergedConfigLoading" :title="$t('validateConfigNote')" @click="$emit('validate')">
+                <font-awesome-icon icon="check-double" class="me-1" />
+                {{ $t("validateConfig") }}
+            </button>
+
+            <button v-if="!isAdd" class="btn btn-normal ms-auto" :disabled="processing" @click="$emit('discard')">{{ $t("discardStack") }}</button>
+        </template>
+
+        <template v-else>
+            <!-- The main action: start a stack that is down, edit one that runs -->
+            <button class="btn" :class="active ? 'btn-primary' : 'btn-normal'" :disabled="processing" @click="$emit('edit')">
                 <font-awesome-icon icon="pen" class="me-1" />
                 {{ $t("editStack") }}
             </button>
 
-            <button v-if="!isEditMode && !active" class="btn btn-primary" :disabled="processing" @click="$emit('start')">
-                <font-awesome-icon icon="play" class="me-1" />
-                {{ $t("startStack") }}
-            </button>
+            <div class="btn-group" role="group">
+                <button v-if="!active" class="btn btn-primary" :disabled="processing" @click="$emit('start')">
+                    <font-awesome-icon icon="play" class="me-1" />
+                    {{ $t("startStack") }}
+                </button>
 
-            <button v-if="!isEditMode && active" class="btn btn-normal" :disabled="processing" @click="$emit('restart')">
-                <font-awesome-icon icon="rotate" class="me-1" />
-                {{ $t("restartStack") }}
-            </button>
+                <button v-if="active" class="btn btn-normal" :disabled="processing" @click="$emit('restart')">
+                    <font-awesome-icon icon="rotate" class="me-1" />
+                    {{ $t("restartStack") }}
+                </button>
 
-            <button v-if="!isEditMode" class="btn btn-normal" :disabled="processing" @click="$emit('update')">
-                <font-awesome-icon icon="cloud-arrow-down" class="me-1" />
-                {{ $t("updateStack") }}
-            </button>
+                <button v-if="active" class="btn btn-normal" :disabled="processing" @click="$emit('stop')">
+                    <font-awesome-icon icon="stop" class="me-1" />
+                    {{ $t("stopStack") }}
+                </button>
 
-            <!-- Not a button. The update check found an image with a new
-                 version. -->
-            <span v-if="!isEditMode && imageUpdates > 0" class="btn btn-normal update-pill" :title="$t('updateAvailableCount', { n: imageUpdates })">
-                <font-awesome-icon icon="arrow-up" class="me-1" />
-                {{ $t("updateAvailable") }}
-            </span>
+                <button class="btn btn-normal" :disabled="processing" :title="$t('downStackNote')" @click="$emit('down')">
+                    {{ $t("downStack") }}
+                </button>
+            </div>
 
-            <!-- Only an agent of dockge-mod checks the images of one
-                 stack. The button stays quiet while a check runs. -->
-            <button
-                v-if="!isEditMode && !isAdd && showBackups"
-                class="btn btn-normal"
-                :disabled="checkRunning"
-                :title="$t('checkUpdatesForStack')"
-                :aria-label="$t('checkUpdatesForStack')"
-                @click="$emit('check-updates')"
-            >
-                <font-awesome-icon :icon="checkRunning ? 'spinner' : 'arrows-rotate'" :spin="checkRunning" />
-            </button>
+            <div class="btn-group" role="group">
+                <button class="btn btn-normal" :disabled="processing" :title="$t('updateStackNote')" @click="$emit('update')">
+                    <font-awesome-icon icon="cloud-arrow-down" class="me-1" />
+                    {{ $t("updateStack") }}
+                    <!-- The update check found an image with a new version -->
+                    <span v-if="imageUpdates > 0" class="update-count" :title="$t('updateAvailableCount', { n: imageUpdates })">{{ imageUpdates }}</span>
+                </button>
+
+                <!-- Only an agent of dockge-mod checks the images of one
+                     stack. The button stays quiet while a check runs. -->
+                <button
+                    v-if="!isAdd && showBackups"
+                    class="btn btn-normal"
+                    :disabled="checkRunning"
+                    :title="$t('checkUpdatesForStack')"
+                    @click="$emit('check-updates')"
+                >
+                    <font-awesome-icon :icon="checkRunning ? 'spinner' : 'arrows-rotate'" :spin="checkRunning" class="me-1" />
+                    {{ $t("checkUpdates") }}
+                </button>
+            </div>
 
             <!-- A detached HEAD cannot pull, thus no button for it -->
-            <button v-if="!isEditMode && gitInfo && !gitInfo.isDetached" class="btn btn-normal" :disabled="processing" @click="$emit('git-pull')">
+            <button v-if="gitInfo && !gitInfo.isDetached" class="btn btn-normal" :disabled="processing" @click="$emit('git-pull')">
                 <font-awesome-icon icon="code-branch" class="me-1" />
                 {{ $t("gitPullRedeploy") }}
             </button>
 
-            <button v-if="!isEditMode && active" class="btn btn-normal" :disabled="processing" @click="$emit('stop')">
-                <font-awesome-icon icon="stop" class="me-1" />
-                {{ $t("stopStack") }}
-            </button>
-
             <!-- Only an agent of dockge-mod keeps backups -->
-            <button v-if="!isEditMode && !isAdd && showBackups" class="btn btn-normal" :disabled="processing" @click="$emit('backups')">
+            <button v-if="!isAdd && showBackups" class="btn btn-normal" :disabled="processing" @click="$emit('backups')">
                 <font-awesome-icon icon="box-archive" class="me-1" />
                 {{ $t("backups") }}
             </button>
 
-            <!-- The down menu is a view mode action, the same as the
-                 other stack actions -->
-            <button v-if="!isEditMode" type="button" class="btn btn-normal dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" aria-expanded="false" :disabled="processing">
-                <span class="visually-hidden">{{ $t("downStack") }}</span>
+            <button class="btn btn-outline-danger ms-auto" :disabled="processing" @click="$emit('delete')">
+                <font-awesome-icon icon="trash" class="me-1" />
+                {{ $t("deleteStack") }}
             </button>
-            <ul v-if="!isEditMode" class="dropdown-menu dropdown-menu-end">
-                <li>
-                    <button type="button" class="dropdown-item" :disabled="processing" @click="$emit('down')">
-                        <font-awesome-icon icon="stop" class="me-1" />
-                        {{ $t("downStack") }}
-                    </button>
-                </li>
-            </ul>
-        </div>
-
-        <button v-if="isEditMode && !isAdd" class="btn btn-sm btn-normal" :disabled="processing" @click="$emit('discard')">{{ $t("discardStack") }}</button>
-        <button v-if="!isEditMode" class="btn btn-sm btn-outline-danger" :disabled="processing" @click="$emit('delete')">
-            <font-awesome-icon icon="trash" class="me-1" />
-            {{ $t("deleteStack") }}
-        </button>
+        </template>
     </div>
 </template>
 
@@ -195,19 +187,26 @@ export default {
 .toolbar {
     display: flex;
     align-items: center;
-    gap: 0.25rem;
+    gap: 0.5rem;
     flex-wrap: wrap;
 
     .btn {
-        padding: 0.15rem 0.5rem;
-        font-size: 12px;
+        padding: 0.3rem 0.75rem;
+        font-size: 13px;
+        white-space: nowrap;
     }
+}
 
-    // A pill in the button group. It is not a button.
-    .update-pill {
-        cursor: default;
-        color: var(--bs-info);
-        pointer-events: auto;
-    }
+// The count of images with a new version, inside the Update button
+.update-count {
+    display: inline-block;
+    min-width: 1.4em;
+    margin-left: 0.3rem;
+    padding: 0 0.4em;
+    border-radius: 9px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--bs-warning-text-emphasis);
+    background-color: var(--bs-warning-bg-subtle);
 }
 </style>

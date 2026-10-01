@@ -13,6 +13,9 @@ import Toast, { POSITION, useToast } from "vue-toastification";
 import "@xterm/xterm/lib/xterm.js";
 
 // CSS
+import "@fontsource/ibm-plex-sans/400.css";
+import "@fontsource/ibm-plex-sans/500.css";
+import "@fontsource/ibm-plex-sans/600.css";
 import "@fontsource/jetbrains-mono";
 import "vue-toastification/dist/index.css";
 import "@xterm/xterm/css/xterm.css";

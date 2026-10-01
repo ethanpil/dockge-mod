@@ -2,8 +2,8 @@
     <transition name="slide-fade" appear>
         <div>
             <div class="d-flex align-items-center gap-3 mb-3 flex-wrap">
-                <h1 class="fs-3 mb-0">{{ $t("resources") }}</h1>
-                <select v-if="$root.agentCount > 1" class="form-select w-auto" :value="endpoint" @change="changeEndpoint($event.target.value)">
+                <h1 class="page-title">{{ $t("resources") }}</h1>
+                <select v-if="$root.agentCount > 1" class="form-select w-auto" :aria-label="$tc('dockgeAgent', 1)" :value="endpoint" @change="changeEndpoint($event.target.value)">
                     <option v-for="(agent, agentEndpoint) in $root.agentList" :key="agentEndpoint" :value="agentEndpoint">
                         {{ $root.endpointDisplayFunction(agentEndpoint) }}
                     </option>
@@ -11,21 +11,22 @@
             </div>
 
             <!-- Images -->
-            <div class="shadow-box section">
-                <div class="section-head">
-                    <span class="section-title">{{ $t("images") }}</span>
-                    <button class="btn btn-normal btn-sm" type="button" :disabled="busy.images" @click="load('images')">
+            <div class="panel">
+                <div class="panel-head">
+                    <span class="panel-title">{{ $t("images") }}</span>
+                    <span class="panel-note me-auto">{{ resources.images.length }}</span>
+                    <button class="mini-btn" type="button" :disabled="busy.images" :title="$t('refresh')" :aria-label="$t('refresh')" @click="load('images')">
                         <font-awesome-icon :icon="busy.images ? 'spinner' : 'rotate'" :spin="busy.images" />
                     </button>
-                    <button class="btn btn-normal btn-sm" type="button" :disabled="busy.images" @click="ask('prune', 'images')">
+                    <button class="mini-btn" type="button" :disabled="busy.images" :title="$t('pruneDanglingImagesNote')" @click="ask('prune', 'images')">
                         {{ $t("pruneDanglingImages") }}
                     </button>
-                    <button class="btn btn-outline-danger btn-sm" type="button" :disabled="busy.images" @click="ask('prune', 'images-all')">
+                    <button class="mini-btn text-danger" type="button" :disabled="busy.images" :title="$t('pruneUnusedImagesNote')" @click="ask('prune', 'images-all')">
                         {{ $t("pruneUnusedImages") }}
                     </button>
                 </div>
                 <div class="table-responsive">
-                    <table class="table table-sm mb-0">
+                    <table class="data-table">
                         <thead>
                             <tr>
                                 <th>{{ $t("image") }}</th>
@@ -41,17 +42,17 @@
                                 <td colspan="6" class="note">{{ busy.images ? $t("loading") : $t("noResources") }}</td>
                             </tr>
                             <tr v-for="img in resources.images" :key="img.ID + img.Repository + img.Tag">
-                                <td>{{ img.Repository }}:{{ img.Tag }}</td>
-                                <td><code>{{ shortId(img.ID) }}</code></td>
+                                <td class="mono">{{ img.Repository }}:{{ img.Tag }}</td>
+                                <td class="mono note">{{ shortId(img.ID) }}</td>
                                 <td>{{ img.Size }}</td>
                                 <td>{{ img.CreatedSince }}</td>
                                 <td>
-                                    <span class="badge use-badge" :class="useClass(img.inUse)">
+                                    <span class="badge state-badge" :class="useClass(img.inUse)">
                                         {{ useText(img.inUse) }}
                                     </span>
                                 </td>
                                 <td class="text-end">
-                                    <button class="btn btn-outline-danger btn-sm" type="button" :disabled="busy.images" @click="ask('remove', 'images', imageName(img))">
+                                    <button class="mini-btn text-danger" type="button" :disabled="busy.images" @click="ask('remove', 'images', imageName(img))">
                                         {{ $t("remove") }}
                                     </button>
                                 </td>
@@ -62,19 +63,19 @@
             </div>
 
             <!-- Volumes -->
-            <div class="shadow-box section">
-                <div class="section-head">
-                    <span class="section-title">{{ $t("volumes") }}</span>
-                    <button class="btn btn-normal btn-sm" type="button" :disabled="busy.volumes" @click="load('volumes')">
+            <div class="panel">
+                <div class="panel-head">
+                    <span class="panel-title">{{ $t("volumes") }}</span>
+                    <span class="panel-note me-auto">{{ resources.volumes.length }}</span>
+                    <button class="mini-btn" type="button" :disabled="busy.volumes" :title="$t('refresh')" :aria-label="$t('refresh')" @click="load('volumes')">
                         <font-awesome-icon :icon="busy.volumes ? 'spinner' : 'rotate'" :spin="busy.volumes" />
                     </button>
-                    <button class="btn btn-outline-danger btn-sm" type="button" :disabled="busy.volumes" @click="ask('prune', 'volumes')">
+                    <button class="mini-btn text-danger" type="button" :disabled="busy.volumes" :title="$t('pruneVolumesNote')" @click="ask('prune', 'volumes')">
                         {{ $t("pruneAnonymousVolumes") }}
                     </button>
                 </div>
-                <div class="note mb-2">{{ $t("pruneVolumesNote") }}</div>
                 <div class="table-responsive">
-                    <table class="table table-sm mb-0">
+                    <table class="data-table">
                         <thead>
                             <tr>
                                 <th>{{ $t("name") }}</th>
@@ -88,17 +89,17 @@
                                 <td colspan="4" class="note">{{ busy.volumes ? $t("loading") : $t("noResources") }}</td>
                             </tr>
                             <tr v-for="vol in resources.volumes" :key="vol.Name">
-                                <td>{{ vol.Name }}</td>
+                                <td class="mono">{{ vol.Name }}</td>
                                 <td>{{ vol.Driver }}</td>
                                 <td>
-                                    <span class="badge use-badge" :class="useClass(vol.inUse)">
+                                    <span class="badge state-badge" :class="useClass(vol.inUse)">
                                         {{ useText(vol.inUse) }}
                                     </span>
                                 </td>
                                 <td class="text-end">
                                     <!-- Docker refuses to remove a volume that
                                          a container uses -->
-                                    <button v-if="vol.inUse === false" class="btn btn-outline-danger btn-sm" type="button" :disabled="busy.volumes" @click="ask('remove', 'volumes', vol.Name)">
+                                    <button v-if="vol.inUse === false" class="mini-btn text-danger" type="button" :disabled="busy.volumes" @click="ask('remove', 'volumes', vol.Name)">
                                         {{ $t("remove") }}
                                     </button>
                                 </td>
@@ -109,19 +110,19 @@
             </div>
 
             <!-- Networks -->
-            <div class="shadow-box section">
-                <div class="section-head">
-                    <span class="section-title">{{ $t("networks") }}</span>
-                    <button class="btn btn-normal btn-sm" type="button" :disabled="busy.networks" @click="load('networks')">
+            <div class="panel">
+                <div class="panel-head">
+                    <span class="panel-title">{{ $t("networks") }}</span>
+                    <span class="panel-note me-auto">{{ resources.networks.length }}</span>
+                    <button class="mini-btn" type="button" :disabled="busy.networks" :title="$t('refresh')" :aria-label="$t('refresh')" @click="load('networks')">
                         <font-awesome-icon :icon="busy.networks ? 'spinner' : 'rotate'" :spin="busy.networks" />
                     </button>
-                    <button class="btn btn-outline-danger btn-sm" type="button" :disabled="busy.networks" @click="ask('prune', 'networks')">
+                    <button class="mini-btn text-danger" type="button" :disabled="busy.networks" :title="$t('pruneNetworksNote')" @click="ask('prune', 'networks')">
                         {{ $t("pruneUnusedNetworks") }}
                     </button>
                 </div>
-                <div class="note mb-2">{{ $t("pruneNetworksNote") }}</div>
                 <div class="table-responsive">
-                    <table class="table table-sm mb-0">
+                    <table class="data-table">
                         <thead>
                             <tr>
                                 <th>{{ $t("name") }}</th>
@@ -136,11 +137,11 @@
                                 <td colspan="5" class="note">{{ busy.networks ? $t("loading") : $t("noResources") }}</td>
                             </tr>
                             <tr v-for="net in resources.networks" :key="net.ID">
-                                <td>{{ net.Name }}</td>
+                                <td class="mono">{{ net.Name }}</td>
                                 <td>{{ net.Driver }}</td>
                                 <td>{{ net.Scope }}</td>
                                 <td>
-                                    <span class="badge use-badge" :class="useClass(net.inUse)">
+                                    <span class="badge state-badge" :class="useClass(net.inUse)">
                                         {{ useText(net.inUse) }}
                                     </span>
                                 </td>
@@ -148,7 +149,7 @@
                                     <!-- Docker refuses to remove a network of a
                                          container, and the networks of docker
                                          itself -->
-                                    <button v-if="!isDefaultNetwork(net.Name) && net.inUse === false" class="btn btn-outline-danger btn-sm" type="button" :disabled="busy.networks" @click="ask('remove', 'networks', net.Name)">
+                                    <button v-if="!isDefaultNetwork(net.Name) && net.inUse === false" class="mini-btn text-danger" type="button" :disabled="busy.networks" @click="ask('remove', 'networks', net.Name)">
                                         {{ $t("remove") }}
                                     </button>
                                 </td>
@@ -159,20 +160,20 @@
             </div>
 
             <!-- Image updates -->
-            <div class="shadow-box section">
-                <div class="section-head">
-                    <span class="section-title">{{ $t("imageUpdates") }}</span>
-                    <button class="btn btn-normal btn-sm" type="button" :disabled="busy.updates" @click="loadUpdates">
+            <div class="panel">
+                <div class="panel-head">
+                    <span class="panel-title">{{ $t("imageUpdates") }}</span>
+                    <span class="panel-note me-auto"><template v-if="checkRunning">{{ $t("checkProgress", { n: progress.checked, m: progress.total }) }}</template></span>
+                    <button class="mini-btn" type="button" :disabled="busy.updates" :title="$t('refresh')" :aria-label="$t('refresh')" @click="loadUpdates">
                         <font-awesome-icon :icon="busy.updates ? 'spinner' : 'rotate'" :spin="busy.updates" />
                     </button>
-                    <button class="btn btn-primary btn-sm" type="button" :disabled="busy.updates || checkBusy" @click="checkNow">
+                    <button class="mini-btn" type="button" :disabled="busy.updates || checkBusy" @click="checkNow">
                         <font-awesome-icon v-if="checkBusy" icon="spinner" spin class="me-1" />
                         {{ $t("checkNow") }}
                     </button>
-                    <span v-if="checkRunning" class="note">{{ $t("checkProgress", { n: progress.checked, m: progress.total }) }}</span>
                 </div>
                 <div class="table-responsive">
-                    <table class="table table-sm mb-0">
+                    <table class="data-table">
                         <thead>
                             <tr>
                                 <th>{{ $t("image") }}</th>
@@ -186,9 +187,9 @@
                                 <td colspan="4" class="note">{{ busy.updates ? $t("loading") : $t("noResources") }}</td>
                             </tr>
                             <tr v-for="row in imageUpdates" :key="row.image">
-                                <td>{{ row.image }}</td>
+                                <td class="mono">{{ row.image }}</td>
                                 <td>
-                                    <span class="badge" :class="row.updateAvailable ? 'bg-warning text-dark' : 'bg-success'">
+                                    <span class="badge state-badge" :class="row.updateAvailable ? 'bg-warning-subtle text-warning-emphasis' : 'bg-success-subtle text-success-emphasis'">
                                         {{ row.updateAvailable ? $t("updateAvailable") : $t("upToDate") }}
                                     </span>
                                 </td>
@@ -207,7 +208,7 @@
 
             <Confirm
                 ref="confirm" btn-style="btn-danger" :busy="confirmBusy" no-on-dismiss
-                :yes-text="$t('yes')" :no-text="$t('cancel')" @yes="run" @no="dialogOpen = false"
+                :yes-text="$t('remove')" :no-text="$t('cancel')" @yes="run" @no="dialogOpen = false"
             >
                 <span v-if="pending && pending.action === 'remove'">{{ $t("removeResourceMsg", [ pending.name ]) }}</span>
                 <template v-else-if="pending">
@@ -612,9 +613,9 @@ export default {
          */
         useClass(inUse) {
             if (inUse === undefined) {
-                return "bg-warning";
+                return "bg-warning-subtle text-warning-emphasis";
             }
-            return inUse ? "bg-success" : "bg-secondary";
+            return inUse ? "bg-success-subtle text-success-emphasis" : "bg-secondary-subtle text-secondary-emphasis";
         },
 
         /**
@@ -698,26 +699,14 @@ export default {
 </script>
 
 <style scoped>
-.section {
-    margin-bottom: 1rem;
-}
-
-.section-head {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-    margin-bottom: 0.5rem;
-}
-
-.section-title {
+.page-title {
+    margin: 0;
+    font-size: 24px;
     font-weight: 600;
-    font-size: 1.1rem;
-    margin-right: auto;
 }
 
 .note {
-    font-size: 0.9em;
+    font-size: 12px;
     color: var(--bs-secondary-color);
 }
 
@@ -732,10 +721,5 @@ td, th {
     padding-left: 1.2rem;
     margin-bottom: 0.5rem;
     overflow-wrap: anywhere;
-}
-
-.use-badge {
-    font-weight: 500;
-    white-space: nowrap;
 }
 </style>

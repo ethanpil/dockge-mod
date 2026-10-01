@@ -194,13 +194,13 @@ export default {
 
 <style scoped lang="scss">
 .env-editor {
-    padding: 0.5rem;
+    padding: 1rem;
 }
 
 .env-pair {
     border: 1px solid var(--bs-border-color);
-    border-radius: 4px;
-    padding: 0.4rem 0.5rem;
+    border-radius: 6px;
+    padding: 0.5rem 0.6rem;
     margin-bottom: 0.5rem;
 }
 
@@ -216,10 +216,8 @@ export default {
 
 .env-label {
     flex: 0 0 3.2rem;
-    font-size: 10.5px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
+    font-size: 12px;
+    font-weight: 500;
     color: var(--bs-secondary-color);
 }
 

@@ -1,71 +1,70 @@
 <template>
     <transition name="slide-fade" appear>
         <div v-if="$route.name === 'DashboardHome'">
+            <div class="page-head">
+                <h1 class="page-title">{{ $t("home") }}</h1>
+                <!-- Windows sends no load average, but it still has a CPU count -->
+                <span v-if="hostStats.load || hostStats.cpus" class="panel-note mono"><template v-if="hostStats.load">{{ $t("hostLoad", { load: hostStats.load }) }}</template><template v-if="hostStats.load && hostStats.cpus"> · </template><template v-if="hostStats.cpus">{{ $t("hostCpus", { n: hostStats.cpus }) }}</template></span>
+            </div>
+
             <!-- Stat tiles -->
-            <div class="panel">
-                <div class="panel-head">
-                    <span class="panel-title">{{ $t("home") }}</span>
-                    <!-- Windows sends no load average, but it still has a CPU count -->
-                    <span v-if="hostStats.load || hostStats.cpus" class="panel-note mono"><template v-if="hostStats.load">{{ $t("hostLoad", { load: hostStats.load }) }}</template><template v-if="hostStats.load && hostStats.cpus"> · </template><template v-if="hostStats.cpus">{{ $t("hostCpus", { n: hostStats.cpus }) }}</template></span>
+            <div class="tiles">
+                <div class="tile">
+                    <div class="tile-label">{{ $t("active") }}</div>
+                    <div class="tile-value text-success">{{ activeNum }}</div>
+                    <div class="tile-sub">{{ $tc("stacksCount", activeNum) }}</div>
                 </div>
-                <div class="tiles">
-                    <div class="tile">
-                        <div class="tile-label">{{ $t("active") }}</div>
-                        <div class="tile-value text-success">{{ activeNum }}</div>
-                        <div class="tile-sub">{{ $tc("stacksCount", activeNum) }}</div>
+                <div class="tile">
+                    <div class="tile-label">{{ $t("exited") }}</div>
+                    <div class="tile-value" :class="exitedNum > 0 ? 'text-danger' : ''">{{ exitedNum }}</div>
+                    <div class="tile-sub">{{ $tc("stacksCount", exitedNum) }}</div>
+                </div>
+                <div class="tile">
+                    <div class="tile-label">{{ $t("inactive") }}</div>
+                    <div class="tile-value text-secondary">{{ inactiveNum }}</div>
+                    <div class="tile-sub">{{ $tc("stacksCount", inactiveNum) }}</div>
+                </div>
+                <div v-if="dfContainers" class="tile">
+                    <div class="tile-label">{{ $tc("container", 2) }}</div>
+                    <div class="tile-value">{{ dfContainers.Active }}<span class="tile-dim"> / {{ dfContainers.TotalCount }}</span></div>
+                    <div class="tile-sub">{{ $t("runningTotal") }}</div>
+                </div>
+                <div v-if="hostStats.mem" class="tile">
+                    <div class="tile-label">{{ $t("memory") }}</div>
+                    <div class="tile-value">{{ formatBytes(hostStats.mem.used) }}<span class="tile-dim"> / {{ formatBytes(hostStats.mem.total) }}</span></div>
+                    <div class="tile-meter">
+                        <div class="tile-meter-fill" :class="memPercent > 85 ? 'bg-danger' : 'bg-success'" :style="{ width: memPercent + '%' }"></div>
                     </div>
-                    <div class="tile">
-                        <div class="tile-label">{{ $t("exited") }}</div>
-                        <div class="tile-value" :class="exitedNum > 0 ? 'text-danger' : ''">{{ exitedNum }}</div>
-                        <div class="tile-sub">{{ $tc("stacksCount", exitedNum) }}</div>
-                    </div>
-                    <div class="tile">
-                        <div class="tile-label">{{ $t("inactive") }}</div>
-                        <div class="tile-value text-secondary">{{ inactiveNum }}</div>
-                        <div class="tile-sub">{{ $tc("stacksCount", inactiveNum) }}</div>
-                    </div>
-                    <div v-if="dfContainers" class="tile">
-                        <div class="tile-label">{{ $tc("container", 2) }}</div>
-                        <div class="tile-value">{{ dfContainers.Active }}<span class="tile-dim"> / {{ dfContainers.TotalCount }}</span></div>
-                        <div class="tile-sub">{{ $t("runningTotal") }}</div>
-                    </div>
-                    <div v-if="hostStats.mem" class="tile">
-                        <div class="tile-label">{{ $t("memory") }}</div>
-                        <div class="tile-value">{{ formatBytes(hostStats.mem.used) }}<span class="tile-dim"> / {{ formatBytes(hostStats.mem.total) }}</span></div>
-                        <div class="tile-meter">
-                            <div class="tile-meter-fill" :class="memPercent > 85 ? 'bg-danger' : 'bg-success'" :style="{ width: memPercent + '%' }"></div>
-                        </div>
-                    </div>
-                    <div v-if="dockerDiskTotal" class="tile">
-                        <div class="tile-label">{{ $t("dockerDisk") }}</div>
-                        <div class="tile-value">{{ dockerDiskTotal }}</div>
-                        <div class="tile-sub">{{ $t("reclaimable") }} {{ dockerDiskReclaimable }}</div>
-                    </div>
-                    <div v-if="dfImages" class="tile">
-                        <div class="tile-label">{{ $t("images") }}</div>
-                        <div class="tile-value">{{ dfImages.TotalCount }}</div>
-                        <div class="tile-sub">{{ dockerSize(dfImages.Size) }}</div>
-                    </div>
-                    <div v-if="dfVolumes" class="tile">
-                        <div class="tile-label">{{ $tc("volume", 2) }}</div>
-                        <div class="tile-value">{{ dfVolumes.TotalCount }}</div>
-                        <div class="tile-sub">{{ dockerSize(dfVolumes.Size) }}</div>
-                    </div>
+                </div>
+                <div v-if="dockerDiskTotal" class="tile">
+                    <div class="tile-label">{{ $t("dockerDisk") }}</div>
+                    <div class="tile-value">{{ dockerDiskTotal }}</div>
+                    <div class="tile-sub">{{ $t("reclaimable") }} {{ dockerDiskReclaimable }}</div>
+                </div>
+                <div v-if="dfImages" class="tile">
+                    <div class="tile-label">{{ $t("images") }}</div>
+                    <div class="tile-value">{{ dfImages.TotalCount }}</div>
+                    <div class="tile-sub">{{ dockerSize(dfImages.Size) }}</div>
+                </div>
+                <div v-if="dfVolumes" class="tile">
+                    <div class="tile-label">{{ $tc("volume", 2) }}</div>
+                    <div class="tile-value">{{ dfVolumes.TotalCount }}</div>
+                    <div class="tile-sub">{{ dockerSize(dfVolumes.Size) }}</div>
                 </div>
             </div>
 
-            <div class="row gx-2 first-row">
+            <div class="row gx-3 first-row">
                 <!-- Left -->
                 <div class="col-md-7">
                     <!-- Docker Run -->
                     <div class="panel">
                         <div class="panel-head">
                             <span class="panel-title">{{ $t("Docker Run") }}</span>
-                            <span class="panel-note">{{ $t("Convert to Compose") }}</span>
+                            <span class="panel-note">{{ $t("dockerRunNote") }}</span>
                         </div>
                         <div class="panel-body">
-                            <textarea id="name" v-model="dockerRunCommand" type="text" class="form-control form-control-sm docker-run mb-2" required placeholder="docker run ..."></textarea>
-                            <button class="btn-normal btn btn-sm" @click="convertDockerRun">{{ $t("Convert to Compose") }}</button>
+                            <textarea id="name" v-model="dockerRunCommand" type="text" class="form-control docker-run mb-3" required placeholder="docker run ..." :aria-label="$t('Docker Run')"></textarea>
+                            <button class="btn-normal btn" @click="convertDockerRun">{{ $t("Convert to Compose") }}</button>
                         </div>
                     </div>
                 </div>
@@ -75,31 +74,33 @@
                     <div class="panel">
                         <div class="panel-head">
                             <span class="panel-title">{{ $tc("dockgeAgent", 2) }}</span>
-                            <span class="badge bg-warning state-badge">beta</span>
+                            <span class="badge bg-warning-subtle text-warning-emphasis state-badge">beta</span>
+                            <button v-if="!showAgentForm" class="mini-btn ms-auto" @click="showAgentForm = true">{{ $t("addAgent") }}</button>
                         </div>
-                        <div class="panel-body">
-                            <div v-for="(agentItem, endpoint) in $root.agentList" :key="endpoint" class="mb-3 agent">
-                                <!-- Agent Status -->
-                                <template v-if="$root.agentStatusList[endpoint]">
-                                    <span v-if="$root.agentStatusList[endpoint] === 'online'" class="badge bg-primary me-2">{{ $t("agentOnline") }}</span>
-                                    <span v-else-if="$root.agentStatusList[endpoint] === 'offline'" class="badge bg-danger me-2">{{ $t("agentOffline") }}</span>
-                                    <span v-else class="badge bg-secondary me-2">{{ $t($root.agentStatusList[endpoint]) }}</span>
-                                </template>
+                        <div>
+                            <div v-for="(agentItem, endpoint) in $root.agentList" :key="endpoint" class="agent">
+                                <span class="status-dot" :class="agentDotClass(endpoint)"></span>
 
                                 <!-- Agent Display Name -->
-                                <template v-if="$root.agentStatusList[endpoint]">
-                                    <span v-if="endpoint === ''" class="badge bg-secondary me-2">{{ $t("currentEndpoint") }}</span>
-                                    <span v-else class="me-2">{{ $root.endpointDisplayFunction(endpoint) }}</span>
-                                </template>
+                                <div class="agent-text">
+                                    <span v-if="endpoint === ''" class="agent-title">{{ $t("currentEndpoint") }}</span>
+                                    <template v-else>
+                                        <span class="agent-title">{{ $root.endpointDisplayFunction(endpoint) }}</span>
+                                        <span v-if="agentItem.name" class="agent-url mono">{{ endpoint }}</span>
+                                    </template>
+                                </div>
+
+                                <!-- Agent Status -->
+                                <span v-if="$root.agentStatusList[endpoint]" class="agent-status" :class="agentStatusClass(endpoint)">{{ agentStatusText(endpoint) }}</span>
 
                                 <!-- Edit Name. An agent row has no name field when the database cannot store one. -->
-                                <button v-if="endpoint !== '' && agentItem.name !== undefined" type="button" class="btn btn-link p-0 action" :title="$t('editAgentName')" :aria-label="$t('editAgentName')" @click="showEditAgentName(agentItem)">
-                                    <font-awesome-icon icon="pen-to-square" />
+                                <button v-if="endpoint !== '' && agentItem.name !== undefined" type="button" class="mini-btn" @click="showEditAgentName(agentItem)">
+                                    {{ $t("editAgentName") }}
                                 </button>
 
                                 <!-- Remove Button -->
-                                <button v-if="endpoint !== ''" type="button" class="btn btn-link p-0 ms-2 action text-danger remove-agent" :title="$t('removeAgent')" :aria-label="$t('removeAgent')" @click="showRemoveAgent(agentItem.url)">
-                                    <font-awesome-icon icon="trash" />
+                                <button v-if="endpoint !== ''" type="button" class="mini-btn text-danger" @click="showRemoveAgent(agentItem.url)">
+                                    {{ $t("remove") }}
                                 </button>
                             </div>
 
@@ -117,10 +118,8 @@
                                 {{ $t("removeAgentMsg") }}
                             </Confirm>
 
-                            <button v-if="!showAgentForm" class="btn btn-normal btn-sm" @click="showAgentForm = !showAgentForm">{{ $t("addAgent") }}</button>
-
                             <!-- Add Agent Form -->
-                            <form v-if="showAgentForm" @submit.prevent="addAgent">
+                            <form v-if="showAgentForm" class="agent-form" @submit.prevent="addAgent">
                                 <div class="mb-3">
                                     <label for="url" class="form-label">{{ $t("dockgeURL") }}</label>
                                     <input id="url" v-model="agent.url" type="url" class="form-control" required placeholder="http://">
@@ -141,10 +140,11 @@
                                     <input id="name" v-model="agent.name" type="text" class="form-control" optional>
                                 </div>
 
-                                <button type="submit" class="btn btn-primary" :disabled="connectingAgent">
+                                <button type="submit" class="btn btn-primary me-2" :disabled="connectingAgent">
                                     <template v-if="connectingAgent">{{ $t("connecting") }}</template>
                                     <template v-else>{{ $t("connect") }}</template>
                                 </button>
+                                <button type="button" class="btn btn-normal" :disabled="connectingAgent" @click="showAgentForm = false">{{ $t("cancel") }}</button>
                             </form>
                         </div>
                     </div>
@@ -354,6 +354,35 @@ export default {
             });
         },
 
+        /**
+         * The colour of the status dot of an agent.
+         * @param {string} endpoint the agent endpoint
+         * @returns {string} the class of the dot
+         */
+        agentDotClass(endpoint) {
+            const status = this.$root.agentStatusList[endpoint];
+            if (status === "online") {
+                return "dot-success";
+            }
+            return status === "offline" ? "dot-danger" : "dot-secondary";
+        },
+
+        agentStatusClass(endpoint) {
+            const status = this.$root.agentStatusList[endpoint];
+            if (status === "online") {
+                return "text-success";
+            }
+            return status === "offline" ? "text-danger" : "text-body-secondary";
+        },
+
+        agentStatusText(endpoint) {
+            const status = this.$root.agentStatusList[endpoint];
+            if (status === "online") {
+                return this.$t("agentOnline");
+            }
+            return status === "offline" ? this.$t("agentOffline") : this.$t(status);
+        },
+
         getStatusNum(statusName) {
             let num = 0;
 
@@ -388,40 +417,46 @@ export default {
 </script>
 
 <style lang="scss" scoped>
-.tiles {
+.page-head {
     display: flex;
+    align-items: baseline;
     flex-wrap: wrap;
-    border-radius: 0 0 4px 4px;
-    overflow: hidden;
-    // Pushes the last column's divider outside the clip, so it does not
-    // double up with the panel border.
-    margin-right: -1px;
+    gap: 0.25rem 0.75rem;
+    margin-bottom: 1rem;
+}
+
+.page-title {
+    margin: 0;
+    font-size: 24px;
+    font-weight: 600;
+}
+
+.tiles {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+    gap: 0.75rem;
+    margin-bottom: 1rem;
 }
 
 .tile {
-    flex: 1 1 160px;
-    min-width: 150px;
-    padding: 0.5rem 0.6rem;
-    border-right: 1px solid var(--bs-border-color);
-    // Row dividers: every tile draws a top border; the first row's one is
-    // pulled up under the panel head's bottom border.
-    border-top: 1px solid var(--bs-border-color);
-    margin-top: -1px;
+    min-width: 0;
+    padding: 0.85rem 1rem;
+    background-color: var(--app-surface);
+    border: 1px solid var(--bs-border-color);
+    border-radius: 8px;
 }
 
 .tile-label {
-    font-size: 10.5px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
+    font-size: 12px;
+    font-weight: 500;
     color: var(--bs-secondary-color);
 }
 
 .tile-value {
-    font-size: 1.15rem;
+    font-size: 1.7rem;
     font-weight: 600;
     font-variant-numeric: tabular-nums;
-    line-height: 1.4;
+    line-height: 1.3;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -429,12 +464,12 @@ export default {
 
 .tile-dim {
     color: var(--bs-secondary-color);
-    font-size: 0.85em;
+    font-size: 0.6em;
     font-weight: 500;
 }
 
 .tile-sub {
-    font-size: 11px;
+    font-size: 12px;
     color: var(--bs-secondary-color);
     white-space: nowrap;
     overflow: hidden;
@@ -445,7 +480,7 @@ export default {
     height: 4px;
     border-radius: 2px;
     background-color: var(--bs-secondary-bg);
-    margin-top: 0.4rem;
+    margin-top: 0.5rem;
     overflow: hidden;
 }
 
@@ -458,16 +493,47 @@ export default {
 
 .docker-run {
     font-family: 'JetBrains Mono', monospace;
-    font-size: 14px;
-}
-
-.remove-agent {
-    cursor: pointer;
+    font-size: 13px;
+    min-height: 110px;
 }
 
 .agent {
-    a {
-        text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    min-height: 48px;
+    padding: 0.4rem 1rem;
+
+    + .agent {
+        border-top: 1px solid var(--bs-border-color);
     }
+}
+
+.agent-text {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.agent-title {
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.agent-url {
+    font-size: 12px;
+    color: var(--bs-secondary-color);
+}
+
+.agent-status {
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.agent-form {
+    padding: 1rem;
+    border-top: 1px solid var(--bs-border-color);
 }
 </style>

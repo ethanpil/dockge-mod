@@ -2,7 +2,7 @@
     <div class="form-container">
         <div class="form">
             <form @submit.prevent="submit">
-                <h1 class="h3 mb-3 fw-normal" />
+                <h1 class="h5 mb-3">{{ $t("Login") }}</h1>
 
                 <div v-if="!tokenRequired" class="form-floating">
                     <input id="floatingInput" v-model="username" type="text" class="form-control" placeholder="Username" autocomplete="username" required>
@@ -96,9 +96,12 @@ export default {
 
 .form {
     width: 100%;
-    max-width: 330px;
-    padding: 15px;
+    max-width: 360px;
+    padding: 1.5rem;
     margin: auto;
     text-align: center;
+    background-color: var(--app-surface);
+    border: 1px solid var(--bs-border-color);
+    border-radius: 10px;
 }
 </style>

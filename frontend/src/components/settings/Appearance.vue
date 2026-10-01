@@ -20,7 +20,7 @@
                 <div
                     class="btn-group btn-group-sm"
                     role="group"
-                    aria-label="Basic checkbox toggle button group"
+                    :aria-label="$t('Theme')"
                 >
                     <input
                         id="btncheck1"

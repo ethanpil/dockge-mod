@@ -73,6 +73,7 @@ import {
     faArrowUp,
     faFileLines,
     faBoxArchive,
+    faEllipsis,
 } from "@fortawesome/free-solid-svg-icons";
 
 library.add(
@@ -147,6 +148,7 @@ library.add(
     faArrowUp,
     faFileLines,
     faBoxArchive,
+    faEllipsis,
 );
 
 export { FontAwesomeIcon };

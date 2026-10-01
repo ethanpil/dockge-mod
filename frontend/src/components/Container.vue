@@ -278,7 +278,7 @@ export default defineComponent({
 /* .panel-head, .panel-title, .mini-btn and .mono are global (main.scss) */
 .container-card {
     border: 1px solid var(--bs-border-color);
-    border-radius: 4px;
+    border-radius: 8px;
 }
 
 /* Only the differences from the global .panel-head */
@@ -289,11 +289,12 @@ export default defineComponent({
 
     &.closed {
         border-bottom: 0;
-        border-radius: 4px;
+        border-radius: 8px;
     }
 }
 
 .svc-title {
+    font-size: 15px;
     font-weight: 600;
     white-space: nowrap;
     overflow: hidden;
@@ -302,7 +303,7 @@ export default defineComponent({
 }
 
 .img-note {
-    font-size: 11.5px;
+    font-size: 12px;
     color: var(--bs-secondary-color);
     white-space: nowrap;
     overflow: hidden;
@@ -316,7 +317,7 @@ export default defineComponent({
 }
 
 .counts {
-    font-size: 11px;
+    font-size: 12px;
     color: var(--bs-secondary-color);
     white-space: nowrap;
     overflow: hidden;
@@ -334,16 +335,16 @@ export default defineComponent({
 // Keep the touch target at the 24px minimum; Delete is destructive and
 // sits beside Close.
 .head-btn {
-    padding: 0.15rem 0.5rem;
-    font-size: 11.5px;
+    padding: 0.15rem 0.6rem;
+    font-size: 12px;
     line-height: 1.5;
-    min-height: 24px;
-    border-radius: 3px;
+    min-height: 26px;
+    border-radius: 6px;
     white-space: nowrap;
 }
 
 .config {
-    padding: 0.5rem;
+    padding: 1rem;
 }
 
 /* .panel-title supplies the type; this adds the row layout */
@@ -351,10 +352,8 @@ export default defineComponent({
     display: flex;
     align-items: center;
     gap: 0.4rem;
-    font-size: 10.5px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
+    font-size: 12px;
+    font-weight: 500;
     color: var(--bs-secondary-color);
     margin-bottom: 0.2rem;
     min-height: 24px;
