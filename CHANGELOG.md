@@ -6,6 +6,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Eac
 
 ## [Unreleased]
 
+## [1.5.0-mod-2026-10-01] - 2026-10-01
+
 ### Changed
 
 - A new look for the whole interface: a cleaner dark and light theme, the IBM Plex Sans font, more space, and one style for panels, tables, and buttons.
