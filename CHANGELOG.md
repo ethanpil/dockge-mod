@@ -6,6 +6,18 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Eac
 
 ## [Unreleased]
 
+### Changed
+
+- A new look for the whole interface: a cleaner dark and light theme, the IBM Plex Sans font, more space, and one style for panels, tables, and buttons.
+- The stack page has the title and status on one line and the actions grouped below it. **Down** is a button of its own, **Update** shows the count of images with an update, and each container has **Logs** and **Shell** buttons.
+- The stack list filters by status with one click, and each filter shows its count. Edit mode puts the form and the files side by side on a wide screen.
+- Shorter, clearer labels, tooltips, and messages on every page. The prune buttons on the Resources page explain themselves in a tooltip.
+
+### Fixed
+
+- The logo had a light box behind it in dark mode.
+- A few server messages showed their internal name, for example `successAdded`.
+
 ## [1.5.0-mod-2026-09-30-4] - 2026-09-30
 
 ### Changed
