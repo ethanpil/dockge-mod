@@ -6,6 +6,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Eac
 
 ## [Unreleased]
 
+### Fixed
+
+- The stack page Update count stayed after a successful Update or image check until the page was reloaded; it now follows the live stack list like the sidebar badge.
+
 ## [1.5.0-mod-2026-10-01] - 2026-10-01
 
 ### Changed

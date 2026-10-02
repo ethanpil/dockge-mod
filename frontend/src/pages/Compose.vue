@@ -33,7 +33,7 @@
                     :override-supported="overrideSupported"
                     :merged-config-loading="mergedConfigLoading"
                     :git-info="gitInfo"
-                    :image-updates="stack.imageUpdates ?? 0"
+                    :image-updates="imageUpdates"
                     :check-running="checkRunning"
                     :show-backups="modFeatures"
                     @deploy="deployStack"
@@ -778,6 +778,19 @@ export default {
          */
         globalStack() {
             return this.$root.completeStackList[this.stack.name + "_" + this.endpoint];
+        },
+
+        /**
+         * Live update count from the stack list. getStack leaves a snapshot
+         * on this.stack; after Update or a check, only stackList refreshes,
+         * so the toolbar badge would stay until a reload without this.
+         * @return {number}
+         */
+        imageUpdates() {
+            if (this.globalStack && this.globalStack.imageUpdates !== undefined) {
+                return this.globalStack.imageUpdates;
+            }
+            return this.stack.imageUpdates ?? 0;
         },
 
         status() {
